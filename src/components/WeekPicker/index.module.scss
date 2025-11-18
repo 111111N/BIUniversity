@@ -1,0 +1,54 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+$margin: 40px;
+
+:root {
+  --weekpicker-bg: #{$color-dark-tertiary};
+  --weekpicker-text: #{$color-text-secondary};
+  --weekpicker-hover-bg: #{$color-accent-background};
+  --weekpicker-active-bg: #{$color-accent-background-hover};
+  --weekpicker-hover-text: #{$color-text-light};
+  --weekpicker-option-bg: #{$color-dark-primary};
+  --weekpicker-border: #{$color-border};
+  --weekpicker-focus-border: #{$color-accent-primary};
+  --weekpicker-focus-bg: #{$color-accent-primary};
+  --weekpicker-gradient: #{$gradient-color-logo};
+}
+
+.weekPicker {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-radius: 8px;
+  font-family: sans-serif;
+  width: 100%;
+}
+
+
+.weekPickerControls {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  
+}
+
+.weekPickerArrow {
+  padding: 8px 15px;
+  background: none;
+}
+
+.weekPickerCurrentButton {
+  padding: 8px 30px;
+  margin-inline: 5px;
+  background: $color-dark-primary;
+  border-color: $color-dark-primary;
+}
+
+.weekPickerDisplayWrapper {
+  position: relative;
+  flex: 1;
+  
+  display: inline-block;
+  margin-right: $margin;
+}

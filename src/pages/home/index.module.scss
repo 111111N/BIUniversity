@@ -1,0 +1,65 @@
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.pagecontainer { 
+  color: $color-text-light;
+  min-height: 100vh;
+  width: calc(100% - 60px);
+  padding: 30px; 
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 3fr 2fr; 
+  gap: 30px; 
+  margin-top: 0; 
+}
+
+.dashboardCard {
+  @include dashboard-card();
+  margin-bottom: 15px; 
+}
+
+
+
+.cardTitle {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 15px;
+  color: $color-text-light;
+}
+
+.flexParams {
+  margin-top: 10px; 
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.paramBox {
+  flex-basis: 33.333%;
+  display: flex;
+  flex-direction: column;
+
+  &:not(:last-child) {
+    border-right: 1px solid $color-text-secondary;
+  }
+}
+
+.summaryValue {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: $color-accent-primary;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+.summaryLabel {
+  font-size: 0.8rem;
+  color: $color-text-secondary;
+  text-transform: uppercase;
+}
+
+.rightColumn{
+  margin-bottom: 50px;
+}

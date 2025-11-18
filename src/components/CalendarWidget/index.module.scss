@@ -1,0 +1,74 @@
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.calendarContainer {
+  display: flex; // Располагаем два месяца рядом
+  gap: 20px; // Небольшой отступ между календарями
+  padding: 10px; // Внутренний отступ контейнера
+}
+
+.calendarMonth {
+  flex: 1 1 50%;
+  text-align: center;
+}
+
+.monthName {
+  font-size: 10px;
+  font-weight: bold;
+  color: $color-text-secondary;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0; 
+}
+
+.calendarDayName {
+  font-size: 10px;
+  font-weight: 500;
+  color: $color-text-secondary;
+  padding: 5px 0;
+  text-transform: uppercase;
+}
+
+// Ячейка дня
+.calendarDay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 20px; 
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1;
+  border-radius: 1px;
+  cursor: default;
+  // Стили для пустых дней (заполнение)
+  &:not(.activeDay) {
+    color: transparent; // Пустые ячейки невидимы
+  }
+}
+
+// Активные дни (с числом)
+.activeDay {
+  color: $color-text-secondary; // Белый/светлый цвет
+}
+
+.weekend {
+  color: $color-accent-hover;
+}
+
+// Выделение сегодняшнего дня (если нужно, на скриншоте не очень видно)
+.today {
+  background-color: $color-dark-tertiary;
+   color:$color-text-light;
+}
+
+.activeDay:hover{
+    background-color: $color-accent-hover;
+    cursor: pointer;
+    color:$color-text-light;
+}

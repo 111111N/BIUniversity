@@ -1,0 +1,94 @@
+@use '../../styles/variables' as *;
+
+:root{
+  --accent-primary: #{$color-accent-primary}; 
+  --accent-secondary: #{$color-accent-secondary};
+}
+
+.sidebarNav {
+
+  background-color: $color-dark-primary;
+  width: 200px; 
+  min-height: 100vh;
+  padding-top: 20px;
+  border-right: 3px solid $color-border;
+}
+
+.navHeader {
+  padding: 0 0px 10px;
+  text-align: center;
+}
+
+.logoPlaceholder {
+  width: 50px; 
+  height: 50px; 
+  margin: 0 auto;
+}
+
+.logoImage {
+  width: 50%; 
+  height: 50%; 
+}
+
+.navList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  position: relative;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  text-decoration: none;
+  font-size: $font-size-base + 2px;
+  color: $color-text-secondary; 
+  transition: background-color $transition-speed, color $transition-speed;
+}
+
+.navLink:hover {
+  color: $color-text-light;
+  background-color: $color-accent-background-hover;
+  .icon{
+    color: $color-accent-hover;
+  }
+}
+
+.icon{
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  margin-right: 15px;
+}
+
+.text {
+  color: inherit; 
+}
+
+.active {
+  background: $gradient-color-logo;
+  box-shadow: 3px 0 0 0 $color-accent-primary, 0px -5px 10px 0 #0000003b;
+  .navLink {
+    color: $color-text-light;
+  }
+  transition: box-shadow calc($transition-speed/2);
+  .icon{
+    color: $color-text-light;
+  }
+  
+  
+}
+
+.active .navLink:hover {
+    background-color: $color-border; 
+    cursor: default;
+    color: $color-text-light;
+    .icon{
+       color: $color-text-light;
+    }
+    
+}

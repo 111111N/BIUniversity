@@ -1,0 +1,30 @@
+// --- Основные цвета (инверсия) ---
+$color-dark-primary: #efefef; // Был почти чёрный → стал почти белый
+$color-dark-secondary: #ffffff3f; // Был прозрачный тёмно-серый → стал светло-серый с почти полной непрозрачностью
+$color-dark-tertiary: #ffffffb8; // Был полупрозрачный чёрный → стал светло-серый с альфой
+$color-text-light: #000000; // Был белый → стал чёрный
+$color-text-secondary: #434343; // Инверсия серого (≈ нейтральный)
+$color-ghost: #0000001b; // Был прозрачный белый → стал прозрачный чёрный
+
+// --- Акцентные цвета (инверсия: красно-пурпурные → сине-бирюзовые) ---
+$color-accent-primary: #0ab3b3; // Инверсия  → бирюзовый
+$color-accent-secondary: #8bdac5; // Инверсия  → светлый мятный
+$color-accent-added: #50b267; // Инверсия пурпурного → зеленовато-бирюзовый
+$color-accent-hover: hsl(184, 100%, 35%); // Был красный → стал насыщенный голубовато-бирюзовый
+$color-accent-background: hsla(180, 80%, 51%, 0.9); // Прозрачный фон → холодный бирюзовый оттенок
+$color-accent-background-hover: hsla(185, 100%, 15%, 0.1); // Аналогичный светлый вариант
+$gradient-color-logo: linear-gradient(to left, #0ab3b3, #8bdac5); // Был красный → стал сине-бирюзовый градиент
+
+// --- Дополнительные цвета (инверсия по смыслу) ---
+$color-success: #039f03;
+$color-warning: #d98105;
+$color-error: #d9534f;
+$color-border: #868686; // Тонкие разделители
+$color-shadow: rgba(255, 255, 255, 0.4); // Тень стала светлой (для тёмных тем)
+
+// --- Шрифты и размеры (без изменений) ---
+$font-family-primary: 'Roboto', sans-serif;
+$font-size-base: 14px;
+$border-radius: 8px;
+$transition-speed: 0.1s;
+$padding: 20px;

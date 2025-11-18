@@ -1,0 +1,36 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+@use "sass:color";
+
+:root {
+  --grid-color: #{$color-dark-primary}; // #272729
+  --line-start: #{$color-accent-secondary}; // #842a43 
+  --line-end: #{$color-accent-primary}; // #dc4648 
+  --area-start: #{$color-accent-primary}; // #dc4648 
+  --area-end: #{$color-accent-secondary}; // #842a43
+  --text-color: #{color.adjust($color-text-light, $alpha: -0.1)};
+  --tooltip-bg: #{color.adjust($color-dark-tertiary, $alpha: -0.3)}; // #16111163 
+  --tooltip-text: #{$color-text-light}; // #ffffff
+  --tooltip-border: #{color.adjust($color-dark-primary, $alpha: -0.65)}; // #0000005d 
+  --hover-line: #{$color-accent-hover}; // #e63946 
+  --circle-stroke: #{$color-accent-hover}; // #e63946
+  --circle-hover-fill: #{$color-accent-hover}; // #e63946
+  --circle-hover-stroke: #{color.adjust($color-dark-primary, $alpha: -0.44)}; // #00000090 
+  --value-color: #{$color-dark-tertiary};
+  --bar-bg: #{color.adjust($color-dark-tertiary, $alpha: -0.1)};
+  --bar-value-bg: #{$color-accent-primary};
+  --bg-dark-color: #{color.adjust($color-dark-primary, $blackness: 100%)};
+}
+
+.chartContainer {
+  width: 100%;
+
+
+  display: flex;             
+  justify-content: center;   
+  align-items: center;     
+    overflow-x: auto;
+  overflow-y: hidden;
+  @include scroll-bar(8px, $thumb-background: $color-ghost);
+}
+

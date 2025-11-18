@@ -1,0 +1,30 @@
+// --- Основные цвета ---
+$color-dark-primary: #1f1f21; // Основной фон (почти черный)
+$color-dark-secondary: #37373703; // Фон карточек/панелей (чуть светлее)
+$color-dark-tertiary: #15151575; // Фон активных/выделенных элементов
+$color-text-light: #ffffff; // Светлый текст
+$color-text-secondary: #767678; // Второстепенный текст/иконки
+$color-ghost: #ffffff0d;
+
+// --- Акцентные цвета (Красно-пурпурные) ---
+$color-accent-primary: #f54c4c; // Яркий красный (для активных, кнопок)
+$color-accent-secondary: #74253a;
+$color-accent-added: #af4d98; // Пурпурный (для графиков, выделения)
+$color-accent-hover: hsl(354, 100%, 65%) ; // Эффект наведения
+$color-accent-background: hsla(0, 100%, 63%, 0.3); // Эффект наведения
+$color-accent-background-hover: hsla(355, 100%, 65%, 0.1); // Эффект наведения
+$gradient-color-logo: linear-gradient(to left, #f54c4c, #74253a);
+
+// --- Дополнительные цвета ---
+$color-success: #5cb85c;
+$color-warning: #f0ad4e;
+$color-error: #d9534f;
+$color-border: #272729; // Тонкие разделители
+$color-shadow: rgba(0, 0, 0, 0.4); // Тень
+
+// --- Шрифты и размеры ---
+$font-family-primary: 'Roboto', sans-serif; // Пример
+$font-size-base: 14px;
+$border-radius: 8px;
+$transition-speed: 0.1s;
+$padding : 20px;

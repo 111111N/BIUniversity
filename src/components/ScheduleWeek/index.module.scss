@@ -1,0 +1,159 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+:root {
+  --scale: 1.5;
+}
+
+.scheduleContainer {
+  font-family: $font-family-primary;
+  background: $color-dark-primary;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  margin-top: calc(1vh * var(--scale));
+  user-select: none;
+}
+
+.scheduleGrid {
+  display: flex;
+}
+
+.timeColumn {
+  flex-shrink: 0;
+  text-align: right;
+
+  .timeColumnInner {
+    height: calc(45vh * var(--scale));
+    overflow: hidden;
+  }
+}
+
+.timeSlot {
+  font-size: 0.75rem;
+  color: $color-text-secondary;
+  padding-right: calc(0.5vw * var(--scale));
+}
+
+.rightSide {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.dayHeader {
+  display: flex;
+  background: $color-dark-secondary;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-width: max-content;
+}
+
+.dayName {
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: calc(0.6vh * var(--scale)) 0;
+  border: none;
+}
+
+.scheduleBodyWrapper {
+  flex-grow: 1;
+  max-height: calc(45vh * var(--scale));
+  overflow: auto;
+  @include scroll-bar(6px);
+  @include shadows-inset(5px, -5px, 5px);
+}
+
+.scheduleBody {
+  display: flex;
+  min-width: max-content;
+}
+
+.dayColumn {
+  position: relative;
+  border-right: calc(0.2vh * var(--scale)) dashed $color-border;
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.hourSlot {
+  border-bottom: calc(0.2vh * var(--scale)) dashed $color-border;
+}
+
+.scheduleItem {
+  position: absolute;
+  left: 0%;
+  width: 100%;
+
+  padding: calc(0.3vh * var(--scale)) calc(1vw * var(--scale));
+  border-radius: calc($border-radius * var(--scale));
+  background: $color-dark-tertiary;
+  @include border(calc(0.2vh * var(--scale)));
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: all $transition-speed;
+  z-index: 5;
+  
+  &:hover {
+    background: $color-accent-background;
+    border-color: $color-accent-hover;
+
+    .time,
+    .group {
+      color: $color-text-light;
+    }
+  }
+}
+
+.scheduleInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.subject {
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.time,
+.group,
+.teacher {
+  font-size: 0.8rem;
+  color: $color-text-secondary;
+}
+
+.time {
+  font-weight: 700;
+}
+
+.actionButtons {
+  position: absolute;
+  bottom: calc(10px * var(--scale));
+  right: calc(20px * var(--scale));
+  display: flex;
+  gap: calc(5px * var(--scale));
+  z-index: 20;
+
+  button {
+    padding: 2px;
+    svg text {
+      fill: $color-text-light;
+    }
+    &:hover {
+      svg text {
+        fill: $color-accent-primary;
+      }
+    }
+    &:active {
+      svg text {
+        fill: $color-text-light;
+      }
+    }
+  }
+}

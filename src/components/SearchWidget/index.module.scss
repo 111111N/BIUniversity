@@ -1,0 +1,63 @@
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.input{
+  @include input();
+}
+
+.dashboardCard {
+
+  margin-bottom: 25px; 
+  padding: 0;
+  border: none;
+}
+
+.toggleRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.toggleButton {
+  flex: 1;
+  background: transparent;
+  @include border();
+  border-top: none;
+  color: $color-text-secondary;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 17px 17px 0px 0px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  &:first-child {
+    margin-right: 8px;
+  }
+
+  &:hover {
+    background:  $color-accent-background-hover;
+    border-color: $color-accent-background;
+    color: $color-text-light;
+  }
+  &:active {
+    background:  $color-dark-tertiary;
+    border-color: $color-accent-background;
+    color: $color-text-light;
+  }
+}
+
+.active {
+  background: $color-dark-primary;
+  color: $color-text-light;
+  border-color: $color-accent-hover;
+  box-shadow: inset 0px 2px 10px $color-ghost;
+}
+
+.searchRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.searchButton {
+  padding: 8px 12px;
+}

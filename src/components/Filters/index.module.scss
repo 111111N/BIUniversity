@@ -1,0 +1,141 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+
+.filtersContainer {
+    display: flex;
+    flex-direction: column;
+    background-color: $color-dark-primary;
+
+    max-width: 400px;
+
+    height: 85.5vh;
+    flex-shrink: 0;            
+    flex-grow: 0;             
+  
+    color: $color-text-light;
+    border-radius: $border-radius;
+    @include border();
+}
+
+.title {
+    margin: 20px;
+    font-size: 22px;
+}
+
+.filterGroup {
+    margin-inline: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* ------------------------------------------------------------------
+ * КНОПКИ (СТАТИЧНЫЙ РАЗМЕР)
+ * Используется для кнопок в .filterGroup и .actions
+ * ------------------------------------------------------------------ */
+.button {
+    background-color: $color-border;
+    /* Фиксированный padding для статичного размера кнопок фильтров */
+    padding: 12px 15px; 
+    text-align: center;
+    cursor: pointer;
+    border-radius: $border-radius;
+    @include border();
+
+    &.active {
+        background: $gradient-color-logo;
+        color: #fff;
+        border-inline: none;
+        border-color: #ffffff00;
+        /* Padding должен быть сохранен, чтобы избежать смещения при активации */
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * КОНТЕЙНЕР ДЛЯ РАСТЯГИВАНИЯ
+ * Занимает все свободное вертикальное место, прибивая .actions к низу
+ * ------------------------------------------------------------------ */
+.mainContentWrapper {
+    /* ✨ КЛЮЧЕВОЙ МОМЕНТ: Забирает все оставшееся свободное место */
+    flex-grow: 1; 
+    
+    display: flex;
+    flex-direction: column;
+}
+/* ------------------------------------------------------------------ */
+
+
+.searchWrapper {
+    position: relative; 
+}
+
+.searchInputWrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 20px;
+    margin-bottom: 20px; 
+}
+
+.input {
+    @include input(10px, 10px);
+    flex-grow: 1;
+    margin-bottom: 0;
+}
+
+.searchButton {
+    padding: 8px 12px;
+}
+
+/* ------------------------------------------------------------------
+ * ОКНО РЕЗУЛЬТАТОВ (ДИНАМИЧЕСКИЙ РАЗМЕР)
+ * Сжимается по контенту, но добавляет скролл при переполнении
+ * ------------------------------------------------------------------ */
+.searchResults {
+    z-index: 10;
+    min-height: 200px;
+    max-height: 200px;
+    overflow-y: auto; 
+    @include shadows-inset(6px,-6px);
+    padding: 5px 0;
+  background-color: $color-dark-tertiary;
+}
+
+.resultsHeader {
+    margin: 0 20px 20px 20px;
+    font-size: 0.9em;
+    color: $color-text-secondary;
+    font-weight: 500;
+}
+
+.searchResultItem {
+    margin: 0 20px 0 20px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 1em;
+    outline: none;
+    border: 3px solid #ffffff00;
+  &:hover {
+    
+    background:  $color-accent-background;
+    border-color: $color-accent-hover;
+    color: $color-text-light;
+  }
+  &:active {
+    background:  $color-dark-tertiary;
+    border-color: $color-accent-background;
+    color: $color-text-light;
+  }
+}
+/* ------------------------------------------------------------------ */
+
+// КНОПКИ ДЕЙСТВИЙ (ПРИБИТЫ К НИЗУ)
+.actions {
+    margin: 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}

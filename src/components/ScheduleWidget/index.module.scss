@@ -1,0 +1,135 @@
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.scheduleWrapper {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 8px;
+  border-radius: 4px;
+  @include shadows-inset (6px, -6px);
+  @include scroll-bar();
+}
+
+.scheduleList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  margin-block: 2px;
+
+  li {
+    margin-bottom: 5px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: $color-dark-tertiary;
+    border-block: 1px solid $color-border;
+    transition: all 0.25s ease;
+
+    &:hover {
+      background-color: $color-accent-background-hover;
+      border-block: 1px solid $color-accent-primary;
+      cursor: pointer;
+    }
+
+    font-size: $font-size-base;
+    color: $color-text-secondary;
+  }
+}
+
+.scheduleItem {
+  position: relative; // уже есть, хорошо для абсолютного позиционирования стрелки
+
+  .lessonLink {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: $color-accent-primary;
+
+    border-radius: 50%;
+    text-decoration: none;
+    transition: all 0.2s ease;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease, color 0.2s ease;
+      stroke: currentColor;
+    }
+
+    &:hover {
+      color: $color-accent-hover;
+      svg {
+        transform: translateX(-2px);
+        color: $color-accent-hover;
+        &:active{
+          color: $color-text-light
+        }
+      }
+    }
+  }
+}
+
+.scheduleItem.now, 
+.scheduleItem.soon {
+  background: rgba($color-accent-primary, 0.2);
+  box-shadow: 0 0 8px rgba($color-accent-primary, 0.4);
+  border: 1px solid $color-accent-primary;
+  animation: pulseNow 2.5s infinite ease-in-out;
+}
+
+.scheduleItem.firstNext {
+  background: $color-dark-tertiary;
+  border: 3px solid rgba($color-accent-primary, 0.3);
+  &:hover{
+    border: 3px solid rgba($color-accent-hover, 0.3);
+  }
+}
+
+.scheduleItem.past {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.scheduleTime {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: $color-text-light;
+  margin-bottom: 4px;
+}
+
+.status {
+  font-size: 0.85rem;
+  color: $color-accent-primary;
+  margin-left: 10px;
+  font-weight: 500;
+}
+
+.scheduleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subject {
+  font-size: 1rem;
+  font-weight: 500;
+  color: $color-text-light;
+}
+
+.group {
+  font-size: 0.9rem;
+  color: $color-text-secondary;
+}
+
+@keyframes pulseNow {
+  0% { box-shadow: 0 0 6px rgba($color-accent-primary, 0.4); }
+  50% { box-shadow: 0 0 12px rgba($color-accent-primary, 0.6); }
+  100% { box-shadow: 0 0 6px rgba($color-accent-primary, 0.4); }
+}
+
