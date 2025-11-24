@@ -13,7 +13,7 @@ interface RadarChartProps {
   data: RadarDataPoint[];
   size?: number;
   maxValue?: number;
-  colorMode?: number; // добавляем возможность сдвига цветов
+  colorMode?: number;
 }
 
 export default function RadarChart({
@@ -109,10 +109,8 @@ export default function RadarChart({
       .style("fill", "var(--text-color)")
       .text(d => d);
 
-    // функция для расчета цвета серий
     // функция для расчета цвета серий от базового цвета --bar-value-bg
     const getSeriesColor = (index: number, total: number, colorMode: number) => {
-      // получаем цвет из CSS-переменной
       const baseColor = getComputedStyle(document.documentElement)
         .getPropertyValue('--bar-value-bg')
         .trim();
