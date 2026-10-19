@@ -1,0 +1,1 @@
+import{r as t}from"./index-CWa5JHef.js";const a=e=>{t.useEffect(()=>{if(!e)return;const r=n=>{n.preventDefault(),n.returnValue=""};return window.addEventListener("beforeunload",r),()=>window.removeEventListener("beforeunload",r)},[e])};export{a as u};

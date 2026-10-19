@@ -1,1 +1,0 @@
-import{j as s,L as e}from"./index-BzJL2CDE.js";const n="_page_1nx9b_1",t={page:n},o=()=>s.jsxs("section",{className:t.page,children:[s.jsx("span",{children:"404"}),s.jsx("h1",{children:"Такой страницы нет"}),s.jsx("p",{children:"Возможно, ссылка устарела или раздел был перемещён."}),s.jsx(e,{to:"/",children:"Вернуться на главную"})]});export{o as default};
