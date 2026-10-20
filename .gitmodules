@@ -1,0 +1,4 @@
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/111111N/BIUniversity.git
+	branch = master2

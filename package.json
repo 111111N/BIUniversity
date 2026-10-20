@@ -2,12 +2,14 @@
   "name": "bi-system",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n FRONT,BACK -c cyan,magenta \"pnpm --filter frontend dev\" \"pnpm --filter backend dev\"",
-    "lint": "pnpm --recursive run lint",
-    "format": "pnpm --recursive run format",
-    "test": "pnpm --recursive run test",
+    "dev": "corepack pnpm --filter frontend run dev",
+    "build": "corepack pnpm --filter frontend run build",
+    "typecheck": "corepack pnpm --filter frontend run typecheck",
+    "lint": "corepack pnpm --recursive run lint",
+    "format": "corepack pnpm --recursive run format",
+    "test": "corepack pnpm --recursive run test",
     "clean": "rimraf frontend/dist backend/dist node_modules",
-    "install:all": "pnpm install --recursive"
+    "install:all": "corepack pnpm install --recursive"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",
