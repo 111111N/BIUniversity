@@ -1,0 +1,63 @@
+@use "sass:map";
+@use "variables" as dark;
+@use "variables2" as light;
+
+// Темы меняют только палитру и эффекты. Размеры, рамки, отступы и
+// типографика задаются общими стилями компонентов; эталон — тёмная тема.
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-dark-primary: #{map.get(dark.$dark-theme, "dark-primary")};
+  --ui-dark-secondary: #{map.get(dark.$dark-theme, "dark-secondary")};
+  --ui-dark-tertiary: #{map.get(dark.$dark-theme, "dark-tertiary")};
+  --ui-text-light: #{map.get(dark.$dark-theme, "text-light")};
+  --ui-text-secondary: #{map.get(dark.$dark-theme, "text-secondary")};
+  --ui-on-accent: #{map.get(dark.$dark-theme, "on-accent")};
+  --ui-ghost: #{map.get(dark.$dark-theme, "ghost")};
+  --ui-accent-primary: #{map.get(dark.$dark-theme, "accent-primary")};
+  --ui-accent-secondary: #{map.get(dark.$dark-theme, "accent-secondary")};
+  --ui-accent-added: #{map.get(dark.$dark-theme, "accent-added")};
+  --ui-accent-hover: #{map.get(dark.$dark-theme, "accent-hover")};
+  --ui-accent-background: #{map.get(dark.$dark-theme, "accent-background")};
+  --ui-accent-background-hover: #{map.get(dark.$dark-theme, "accent-background-hover")};
+  --ui-gradient-logo: #{map.get(dark.$dark-theme, "gradient-logo")};
+  --ui-success: #{map.get(dark.$dark-theme, "success")};
+  --ui-warning: #{map.get(dark.$dark-theme, "warning")};
+  --ui-error: #{map.get(dark.$dark-theme, "error")};
+  --ui-chart-red: #{map.get(dark.$dark-theme, "chart-red")};
+  --ui-chart-green: #{map.get(dark.$dark-theme, "chart-green")};
+  --ui-chart-purple: #{map.get(dark.$dark-theme, "chart-purple")};
+  --ui-chart-amber: #{map.get(dark.$dark-theme, "chart-amber")};
+  --ui-chart-blue: #{map.get(dark.$dark-theme, "chart-blue")};
+  --ui-border: #{map.get(dark.$dark-theme, "border")};
+  --ui-shadow: #{map.get(dark.$dark-theme, "shadow")};
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ui-dark-primary: #{light.$color-dark-primary};
+  --ui-dark-secondary: #{light.$color-dark-secondary};
+  --ui-dark-tertiary: #{light.$color-dark-tertiary};
+  --ui-text-light: #{light.$color-text-light};
+  --ui-text-secondary: #{light.$color-text-secondary};
+  --ui-on-accent: #ffffff;
+  --ui-ghost: #{light.$color-ghost};
+  --ui-accent-primary: #{light.$color-accent-primary};
+  --ui-accent-secondary: #{light.$color-accent-secondary};
+  --ui-accent-added: #{light.$color-accent-added};
+  --ui-accent-hover: #{light.$color-accent-hover};
+  --ui-accent-background: #{light.$color-accent-background};
+  --ui-accent-background-hover: #{light.$color-accent-background-hover};
+  --ui-gradient-logo: #{light.$gradient-color-logo};
+  --ui-success: #{light.$color-success};
+  --ui-warning: #{light.$color-warning};
+  --ui-error: #{light.$color-error};
+  --ui-chart-red: #{light.$color-chart-red};
+  --ui-chart-green: #{light.$color-chart-green};
+  --ui-chart-purple: #{light.$color-chart-purple};
+  --ui-chart-amber: #{light.$color-chart-amber};
+  --ui-chart-blue: #{light.$color-chart-blue};
+  --ui-border: #{light.$color-border};
+  --ui-shadow: #{light.$color-shadow};
+}

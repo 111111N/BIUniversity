@@ -1,0 +1,6 @@
+@use "../../styles/variables" as *;
+
+.wrapper { min-width: 0; max-width: 100%; }
+.button { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; }
+.button span { min-width: 0; overflow-wrap: anywhere; }
+.error { margin: 7px 0 0; max-width: 360px; color: $color-error; font-size: .65rem; line-height: 1.45; }

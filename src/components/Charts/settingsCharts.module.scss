@@ -1,28 +1,59 @@
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
-@use "sass:color";
 
 :root {
-  --grid-color: #{$color-dark-primary}; // #272729
+  --grid-color: #{$color-border};
   --line-start: #{$color-accent-secondary}; // #842a43 
   --line-end: #{$color-accent-primary}; // #dc4648 
   --area-start: #{$color-accent-primary}; // #dc4648 
   --area-end: #{$color-accent-secondary}; // #842a43
-  --text-color: #{color.adjust($color-text-light, $alpha: -0.1)};
-  --tooltip-bg: #{color.adjust($color-dark-tertiary, $alpha: -0.3)}; // #16111163 
+  --line-opacity: .7;
+  --area-opacity: .7;
+  --line-shadow: none;
+  --circle-fill: #{$color-dark-secondary};
+  --text-color: #{theme-alpha($color-text-light, .9)};
+  --tooltip-bg: #{$color-dark-primary};
   --tooltip-text: #{$color-text-light}; // #ffffff
-  --tooltip-border: #{color.adjust($color-dark-primary, $alpha: -0.65)}; // #0000005d 
+  --tooltip-border: #{theme-alpha($color-border, .55)};
   --hover-line: #{$color-accent-hover}; // #e63946 
   --circle-stroke: #{$color-accent-hover}; // #e63946
   --circle-hover-fill: #{$color-accent-hover}; // #e63946
-  --circle-hover-stroke: #{color.adjust($color-dark-primary, $alpha: -0.44)}; // #00000090 
+  --circle-hover-stroke: #{theme-alpha($color-text-light, .56)};
+  --radar-grid-stroke: var(--text-color);
+  --radar-axis-stroke: var(--text-color);
   --value-color: #{$color-dark-tertiary};
-  --bar-bg: #{color.adjust($color-dark-tertiary, $alpha: -0.1)};
+  --bar-bg: #{theme-alpha($color-dark-tertiary, .5)};
   --bar-value-bg: #{$color-accent-primary};
-  --bg-dark-color: #{color.adjust($color-dark-primary, $blackness: 100%)};
+  --bg-dark-color: #{$color-dark-primary};
 }
 
+:root[data-theme="light"] {
+  --grid-color: #e8edf3;
+  --line-start: var(--ui-chart-red);
+  --line-end: var(--ui-chart-red);
+  --area-start: var(--ui-chart-red);
+  --area-end: var(--ui-chart-red);
+  --line-opacity: 1;
+  --area-opacity: 0;
+  --line-shadow: none;
+  --circle-fill: #{$color-dark-secondary};
+  --circle-stroke: var(--ui-chart-red);
+  --circle-hover-fill: var(--ui-chart-red);
+  --circle-hover-stroke: #{$color-dark-secondary};
+  --hover-line: var(--ui-chart-red);
+  --bar-value-bg: var(--ui-chart-red);
+  --bar-bg: #{$color-dark-primary};
+  --bg-dark-color: #{$color-dark-secondary};
+  --chart-point-shadow: drop-shadow(0 2px 3px rgba(39, 57, 78, .16));
+  --radar-grid-stroke: #dce5ee;
+  --radar-axis-stroke: #e5ebf2;
+}
+
+:root[data-theme="light"] .chartContainer :is(.domain, .tick line) { stroke: $color-border; }
+:root[data-theme="light"] .chartContainer .tick text { fill: $color-text-secondary; }
+
 .chartContainer {
+  user-select: none;
   width: 100%;
 
 

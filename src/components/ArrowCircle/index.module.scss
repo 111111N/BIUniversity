@@ -1,0 +1,34 @@
+@use "../../styles/variables" as *;
+
+.circle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--arrow-circle-color, inherit);
+  transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+
+:is(a:hover, a:focus-visible, button:not(:disabled):hover, button:focus-visible) .circle,
+.circle:hover {
+  background: var(--arrow-circle-hover-background, #{$color-accent-primary});
+  color: var(--arrow-circle-hover-color, #{$color-on-accent});
+}
+
+:is(a:hover, a:focus-visible, button:not(:disabled):hover, button:focus-visible) .right,
+.right:hover { transform: translateX(2px); }
+:is(a:hover, a:focus-visible, button:not(:disabled):hover, button:focus-visible) .left,
+.left:hover { transform: translateX(-2px); }
+:is(a:hover, a:focus-visible, button:not(:disabled):hover, button:focus-visible) .up,
+.up:hover { transform: translateY(-2px); }
+:is(a:hover, a:focus-visible, button:not(:disabled):hover, button:focus-visible) .down,
+.down:hover { transform: translateY(2px); }
+
+button:disabled .circle { pointer-events: none; opacity: .45; }
+
+@media (prefers-reduced-motion: reduce) {
+  .circle { transition: none; }
+}

@@ -2,6 +2,7 @@
 @use "../../styles/mixins" as *;
 
 .scheduleWrapper {
+  position: relative;
   max-height: 220px;
   overflow-y: auto;
   padding-right: 8px;
@@ -36,56 +37,40 @@
 }
 
 .scheduleItem {
-  position: relative; // уже есть, хорошо для абсолютного позиционирования стрелки
+  position: relative;
 
   .lessonLink {
     position: absolute;
-    bottom: 8px;
-    right: 8px;
+    inset: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 8px;
     color: $color-accent-primary;
 
+    background: transparent;
     border-radius: 50%;
     text-decoration: none;
-    transition: all 0.2s ease;
-
-    svg {
-      width: 16px;
-      height: 16px;
-      transition: transform 0.2s ease, color 0.2s ease;
-      stroke: currentColor;
-    }
 
     &:hover {
       color: $color-accent-hover;
-      svg {
-        transform: translateX(-2px);
-        color: $color-accent-hover;
-        &:active{
-          color: $color-text-light
-        }
-      }
     }
   }
 }
 
 .scheduleItem.now, 
 .scheduleItem.soon {
-  background: rgba($color-accent-primary, 0.2);
-  box-shadow: 0 0 8px rgba($color-accent-primary, 0.4);
+  background: theme-alpha($color-accent-primary, 0.2);
+  box-shadow: 0 0 8px theme-alpha($color-accent-primary, 0.4);
   border: 1px solid $color-accent-primary;
   animation: pulseNow 2.5s infinite ease-in-out;
 }
 
 .scheduleItem.firstNext {
   background: $color-dark-tertiary;
-  border: 3px solid rgba($color-accent-primary, 0.3);
+  border: 3px solid theme-alpha($color-accent-primary, 0.3);
   &:hover{
-    border: 3px solid rgba($color-accent-hover, 0.3);
+    border: 3px solid theme-alpha($color-accent-hover, 0.3);
   }
 }
 
@@ -94,6 +79,13 @@
   filter: grayscale(0.4);
 }
 
+:root[data-theme="light"] .scheduleWrapper { box-shadow: none; }
+:root[data-theme="light"] .scheduleList li { border-color: $color-border; background: $color-dark-secondary; box-shadow: inset 1px 0 0 $color-border, inset -1px 0 0 $color-border; }
+:root[data-theme="light"] .scheduleList li:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; }
+:root[data-theme="light"] .scheduleItem.now,
+:root[data-theme="light"] .scheduleItem.soon { border-color: theme-alpha($color-accent-primary, .32); border-left-color: $color-accent-primary; background: color-mix(in srgb, #{$color-accent-primary} 6%, white); box-shadow: none; animation: none; }
+:root[data-theme="light"] .scheduleItem.firstNext { border-color: $color-border; background: $color-dark-secondary; }
+
 .scheduleTime {
   display: flex;
   justify-content: space-between;
@@ -101,35 +93,49 @@
   font-weight: 600;
   color: $color-text-light;
   margin-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
 }
 
 .status {
-  font-size: 0.85rem;
+  font-size: .68rem;
   color: $color-accent-primary;
   margin-left: 10px;
   font-weight: 500;
 }
 
 .scheduleInfo {
+  padding-right: 36px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
 .subject {
-  font-size: 1rem;
+  font-size: .86rem;
   font-weight: 500;
   color: $color-text-light;
 }
 
 .group {
-  font-size: 0.9rem;
+  font-size: .73rem;
   color: $color-text-secondary;
 }
 
 @keyframes pulseNow {
-  0% { box-shadow: 0 0 6px rgba($color-accent-primary, 0.4); }
-  50% { box-shadow: 0 0 12px rgba($color-accent-primary, 0.6); }
-  100% { box-shadow: 0 0 6px rgba($color-accent-primary, 0.4); }
+  0% { box-shadow: 0 0 6px theme-alpha($color-accent-primary, 0.4); }
+  50% { box-shadow: 0 0 12px theme-alpha($color-accent-primary, 0.6); }
+  100% { box-shadow: 0 0 6px theme-alpha($color-accent-primary, 0.4); }
 }
 
+
+.empty {
+  color: $color-text-secondary;
+  padding: 16px 0;
+  a { display: inline-flex; align-items: center; gap: 2px; color: $color-accent-primary; }
+  a:hover { color: $color-accent-hover; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scheduleItem.now, .scheduleItem.soon { animation: none; }
+}

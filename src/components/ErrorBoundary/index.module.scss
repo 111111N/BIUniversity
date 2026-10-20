@@ -1,0 +1,18 @@
+@use "../../styles/variables" as *;
+
+.state {
+  width: min(560px, calc(100% - 32px));
+  margin: clamp(48px, 12vh, 120px) auto;
+  padding: clamp(28px, 5vw, 52px);
+  border: 1px solid $color-border;
+  border-radius: 20px;
+  background: theme-alpha($color-dark-primary, .92);
+  box-shadow: 0 24px 80px $color-shadow;
+  text-align: center;
+
+  h1 { margin: 12px 0; font-size: clamp(24px, 4vw, 38px); }
+  p { margin: 0 auto 28px; max-width: 430px; color: $color-text-secondary; line-height: 1.6; }
+  button { border: 0; border-radius: $border-radius; padding: 12px 20px; background: $color-accent-primary; color: $color-on-accent; cursor: pointer; }
+}
+
+.code { color: $color-accent-primary; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }

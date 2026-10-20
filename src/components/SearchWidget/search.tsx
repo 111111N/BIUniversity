@@ -29,6 +29,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
   // Добавляем обработчик нажатия Enter для удобства
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       onSearch();
     }
   };
@@ -38,12 +39,15 @@ const SearchInput: React.FC<SearchInputProps> = ({
       <input
         type="text"
         placeholder={placeholder}
+        aria-label={placeholder}
         value={query}
         onChange={e => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         className={inputClassName}
       />
       <button 
+        type="button"
+        aria-label="Найти расписание"
         onClick={onSearch} 
         className={searchButtonClassName}
       >

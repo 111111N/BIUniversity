@@ -1,0 +1,11 @@
+@use "../../../../styles/variables" as *;
+
+.row { display: grid; grid-template-columns: 68px minmax(0, 1fr) 28px; align-items: center; gap: 12px; min-height: 44px; padding: 6px 14px; box-sizing: border-box; background: theme-alpha($color-text-secondary, .025); color: $color-text-secondary; }
+.time { display: grid; gap: 3px; }
+.time time:first-child { font-size: .72rem; font-weight: 500; }
+.time time:last-child { font-size: .59rem; }
+.content { display: grid; gap: 4px; font-size: .65rem; }
+.content small { font-size: .6rem; line-height: 1.4; overflow-wrap: anywhere; }
+.overlapping .content > span { color: $color-text-light; }
+@media (max-width: 650px) { .row { grid-template-columns: 59px minmax(0, 1fr) 28px; gap: 9px; padding: 6px 12px; } }
+@media print { .row { grid-template-columns: 65px minmax(0, 1fr); padding: 5px 8px; min-height: 0; break-inside: avoid; } }

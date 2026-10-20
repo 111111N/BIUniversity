@@ -1,0 +1,17 @@
+@use "../../styles/variables" as *;
+
+:root {
+  --select-bg: #{$color-dark-tertiary};
+  --select-option-bg: #{$color-dark-primary};
+  --select-border: #{$color-border};
+  --select-accent: #{$color-accent-primary};
+  --select-text: #{$color-text-light};
+  --select-muted: #{$color-text-secondary};
+  --select-hover-bg: #{$color-accent-background};
+  --select-active-bg: #{$color-accent-background-hover};
+  --select-gradient: #{$gradient-color-logo};
+  --select-dark: #{$color-dark-primary};
+}
+
+.field { display: block; min-width: 220px; }
+.field > span { display: block; margin: 0 0 6px 3px; color: $color-text-secondary; font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }

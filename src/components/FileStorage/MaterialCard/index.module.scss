@@ -1,0 +1,32 @@
+@use "../../../styles/variables" as *;
+
+.card { display: flex; flex-direction: column; align-items: stretch; gap: 12px; min-width: 0; padding: 16px; border: 1px solid $color-border; border-radius: 12px; background: $color-dark-secondary; transition: border-color $transition-speed; }
+.card:hover, .card:focus-within { border-color: theme-alpha($color-text-secondary, .4); }
+.pinned { border-color: theme-alpha($color-accent-primary, .3); }
+.heading { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; gap: 11px; }
+.fileType { display: grid; place-items: center; width: 42px; height: 46px; border: 1px solid theme-alpha($color-accent-primary, .15); border-radius: 9px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: .55rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.identity { min-width: 0; }
+.category { display: block; margin-bottom: 5px; color: $color-text-secondary; font-size: .62rem; line-height: 1.4; }
+.identity h3 { margin: 0; color: $color-text-light; font-size: .82rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.pin { align-self: start; padding: 4px 7px; border-radius: 5px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: .57rem; line-height: 1.4; }
+.description { margin: 0; color: $color-text-secondary; font-size: .72rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.metadata { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 2px 0 0; }
+.metadata > div { display: grid; gap: 4px; }
+.metadata dt { color: $color-text-secondary; font-size: .58rem; }
+.metadata dd { margin: 0; color: $color-text-light; font-size: .66rem; line-height: 1.5; }
+.author { margin: 0; color: $color-text-secondary; font-size: .61rem; line-height: 1.5; overflow-wrap: anywhere; }
+.author span { color: $color-text-light; }
+.actions { display: flex; flex-wrap: wrap; align-items: start; gap: 8px; margin-top: auto; padding-top: 13px; border-top: 1px solid $color-border; }
+.actions > div:not(.manage) { flex: 1 1 90px; }
+.actions button { min-height: 36px; padding: 7px 10px; border-width: 1px; font-size: .63rem; line-height: 1.4; }
+.actions .download { justify-content: center; width: 100%; border-color: theme-alpha($color-accent-primary, .25); background: $color-accent-background-hover; color: $color-accent-hover; }
+.actions .download:hover:not(:disabled) { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+.actions .previewButton { display: flex; align-items: center; justify-content: center; flex: 1 1 90px; gap: 7px; background: transparent; color: $color-text-light; }
+.previewButton svg { width: 17px; height: 17px; }
+.actions .previewButton:hover { border-color: theme-alpha($color-text-secondary, .45); background: $color-ghost; }
+.manage { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.manage button { flex: 1 1 80px; background: transparent; color: $color-text-secondary; }
+.manage button:hover:not(:disabled) { background: $color-ghost; color: $color-text-light; }
+.manage .deleteButton:hover:not(:disabled) { border-color: theme-alpha($color-error, .5); background: theme-alpha($color-error, .08); color: $color-error; }
+.actions button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }

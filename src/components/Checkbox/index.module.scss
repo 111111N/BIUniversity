@@ -1,0 +1,19 @@
+@use "../../styles/variables" as *;
+
+.checkbox { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: $color-text-secondary; font-size: .72rem; font-weight: 500; cursor: pointer; }
+.control { position: relative; display: block; flex: 0 0 18px; width: 18px; height: 18px; }
+.control input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.indicator { display: grid; place-items: center; box-sizing: border-box; width: 18px; height: 18px; border: 1px solid theme-alpha($color-text-secondary, .45); border-radius: 5px; background: $color-ghost; color: $color-on-accent; transition: border-color $transition-speed, background-color $transition-speed; }
+.indicator::after { width: 4px; height: 8px; margin-top: -2px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); content: ""; opacity: 0; }
+.checkbox:hover .control input:not(:disabled) + .indicator { border-color: $color-accent-primary; }
+.control input:checked + .indicator { border-color: $color-accent-primary; background: $color-accent-primary; }
+.control input:checked + .indicator::after { opacity: 1; }
+.control input:focus-visible + .indicator { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+.label { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.disabled { opacity: .5; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .indicator { transition: none; } }
+@media (forced-colors: active) {
+  .indicator { border-color: ButtonText; }
+  .control input:checked + .indicator { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+  .control input:focus-visible + .indicator { outline-color: Highlight; }
+}

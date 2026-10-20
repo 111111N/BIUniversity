@@ -1,30 +1,60 @@
-// --- Основные цвета ---
-$color-dark-primary: #1f1f21; // Основной фон (почти черный)
-$color-dark-secondary: #37373703; // Фон карточек/панелей (чуть светлее)
-$color-dark-tertiary: #15151575; // Фон активных/выделенных элементов
-$color-text-light: #ffffff; // Светлый текст
-$color-text-secondary: #767678; // Второстепенный текст/иконки
-$color-ghost: #ffffff0d;
+@use "sass:string";
 
-// --- Акцентные цвета (Красно-пурпурные) ---
-$color-accent-primary: #f54c4c; // Яркий красный (для активных, кнопок)
-$color-accent-secondary: #74253a;
-$color-accent-added: #af4d98; // Пурпурный (для графиков, выделения)
-$color-accent-hover: hsl(354, 100%, 65%) ; // Эффект наведения
-$color-accent-background: hsla(0, 100%, 63%, 0.3); // Эффект наведения
-$color-accent-background-hover: hsla(355, 100%, 65%, 0.1); // Эффект наведения
-$gradient-color-logo: linear-gradient(to left, #f54c4c, #74253a);
+// Цвета остаются едиными Sass-токенами для всех компонентов, а значения
+// выбираются в runtime через _theme.scss.
+$dark-theme: (
+  "dark-primary": #1f1f21,
+  "dark-secondary": #37373703,
+  "dark-tertiary": #15151575,
+  "text-light": #ffffff,
+  "text-secondary": #9a9aa2,
+  "on-accent": #ffffff,
+  "ghost": #ffffff0d,
+  "accent-primary": #f54c4c,
+  "accent-secondary": #74253a,
+  "accent-added": #af4d98,
+  "accent-hover": hsl(354, 100%, 65%),
+  "accent-background": hsla(0, 100%, 63%, .3),
+  "accent-background-hover": hsla(355, 100%, 65%, .1),
+  "gradient-logo": linear-gradient(to left, #f54c4c, #74253a),
+  "success": #5cb85c,
+  "warning": #f0ad4e,
+  "error": #d9534f,
+  "chart-red": #d9534f,
+  "chart-green": #5cb85c,
+  "chart-purple": #af4d98,
+  "chart-amber": #f0ad4e,
+  "chart-blue": #5a9cf3,
+  "border": #272729,
+  "shadow": rgba(0, 0, 0, .4),
+);
 
-// --- Дополнительные цвета ---
-$color-success: #5cb85c;
-$color-warning: #f0ad4e;
-$color-error: #d9534f;
-$color-border: #272729; // Тонкие разделители
-$color-shadow: rgba(0, 0, 0, 0.4); // Тень
+$color-dark-primary: var(--ui-dark-primary);
+$color-dark-secondary: var(--ui-dark-secondary);
+$color-dark-tertiary: var(--ui-dark-tertiary);
+$color-text-light: var(--ui-text-light);
+$color-text-secondary: var(--ui-text-secondary);
+$color-on-accent: var(--ui-on-accent);
+$color-ghost: var(--ui-ghost);
+$color-accent-primary: var(--ui-accent-primary);
+$color-accent-secondary: var(--ui-accent-secondary);
+$color-accent-added: var(--ui-accent-added);
+$color-accent-hover: var(--ui-accent-hover);
+$color-accent-background: var(--ui-accent-background);
+$color-accent-background-hover: var(--ui-accent-background-hover);
+$gradient-color-logo: var(--ui-gradient-logo);
+$color-success: var(--ui-success);
+$color-warning: var(--ui-warning);
+$color-error: var(--ui-error);
+$color-border: var(--ui-border);
+$color-shadow: var(--ui-shadow);
 
-// --- Шрифты и размеры ---
-$font-family-primary: 'Roboto', sans-serif; // Пример
+@function theme-alpha($value, $opacity) {
+  @return string.unquote("color-mix(in srgb, #{$value} #{$opacity * 100%}, transparent)");
+}
+
+$font-family-primary: 'Roboto', sans-serif;
 $font-size-base: 14px;
 $border-radius: 8px;
-$transition-speed: 0.1s;
-$padding : 20px;
+$transition-speed: .1s;
+$padding: 20px;

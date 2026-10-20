@@ -1,0 +1,86 @@
+@use '../../styles/variables' as *;
+
+.summary {
+  padding: $padding;
+  margin-bottom: 20px;
+  border: 1px solid $color-border;
+  border-radius: $border-radius;
+  background: linear-gradient(145deg, theme-alpha($color-text-light, .015), transparent 55%), $color-dark-tertiary;
+  h2 { margin: 0; font-size: 1.1rem; }
+  h3 { margin: 4px 0 0; font-size: 1rem; }
+  p, small, span { color: $color-text-secondary; }
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin: 20px 0;
+  > div { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid theme-alpha($color-text-light, .055); border-radius: $border-radius; background: theme-alpha($color-dark-primary, .34); }
+  > div > span { display: flex; align-items: center; gap: 7px; }
+  i { width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+  strong { color: $color-text-light; font-size: 1.8rem; }
+}
+.metricDotGrade { color: var(--color-grade-5); background: currentColor; }
+.metricDotAttendance { color: $color-accent-added; background: currentColor; }
+.metricDotCompletion { color: $color-accent-primary; background: currentColor; }
+.distribution {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid $color-border;
+  border-radius: $border-radius;
+  background: radial-gradient(circle at 35% 0, theme-alpha($color-accent-primary, .035), transparent 36%), theme-alpha($color-dark-primary, .42);
+}
+.distributionHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 24px 0 12px; }
+.distributionHeader > div > span { color: $color-accent-primary; font-size: .62rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.distributionHeader > strong { color: $color-text-secondary; font-size: .72rem; }
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0 54px 0 160px; color: $color-text-secondary; font-size: .56rem; }
+.scale span:not(:first-child):not(:last-child) { text-align: center; }
+.scale span:last-child { text-align: right; }
+.gradeRow { display: grid; grid-template-columns: 32px 104px minmax(0, 1fr) 46px; align-items: center; gap: 12px; padding: 4px 0; transition: transform .15s ease, background-color .15s ease; }
+.gradeRow:hover { transform: translateX(3px); }
+.gradeBadge { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid currentColor; border-radius: 9px; color: currentColor !important; background: theme-alpha($color-text-light, .035); font-weight: 800; box-shadow: inset 0 0 12px theme-alpha($color-text-light, .025); }
+.gradeLabel { overflow: hidden; color: $color-text-light !important; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.track { position: relative; height: 14px; overflow: hidden; border-radius: 4px; background-color: theme-alpha($color-text-light, .045); }
+.track::after { position: absolute; inset: 0; content: ""; background: repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 5px), theme-alpha($color-dark-primary, .82) calc(10% - 5px), theme-alpha($color-dark-primary, .82) 10%); pointer-events: none; }
+.track i { display: block; min-width: 0; height: 100%; border-radius: inherit; background: currentColor; box-shadow: 0 0 18px currentColor; transition: width .35s ease; }
+.gradeValue { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 4px; }
+.gradeValue strong { color: $color-text-light; font-size: .86rem; }
+.gradeValue small { font-size: .58rem; }
+.grade5 { color: var(--color-grade-5); }
+.grade4 { color: var(--color-grade-4); }
+.grade3 { color: var(--color-grade-3); }
+.grade2 { color: var(--color-grade-2); }
+:root[data-theme="light"] .grade5 .track i { background: var(--ui-chart-green); box-shadow: none; }
+:root[data-theme="light"] .grade4 .track i { background: var(--ui-chart-purple); box-shadow: none; }
+:root[data-theme="light"] .grade3 .track i { background: var(--ui-chart-amber); box-shadow: none; }
+:root[data-theme="light"] .grade2 .track i { background: var(--ui-chart-red); box-shadow: none; }
+.insights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; padding-top: 14px; border-top: 1px solid $color-border; }
+.insights > div { display: grid; gap: 5px; padding: 10px; border-radius: 7px; background: theme-alpha($color-text-light, .025); }
+.insights span { font-size: .6rem; }
+.insights strong { color: $color-text-light; font-size: .78rem; }
+.insights .insightRisk strong { color: var(--color-grade-2); }
+.emptyDistribution { display: grid; gap: 5px; padding: 25px; border: 1px dashed $color-border; border-radius: $border-radius; text-align: center; }
+.emptyDistribution strong { color: $color-text-light; }
+.emptyDistribution span { font-size: .72rem; }
+
+@media (max-width: 480px) {
+  .summary { padding: 14px; }
+  .metrics { grid-template-columns: 1fr; gap: 12px; }
+  .distribution { padding: 12px; }
+  .distributionHeader { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .scale { display: none; }
+  .gradeRow { grid-template-columns: 28px minmax(0, 1fr) 42px; gap: 8px; }
+  .gradeLabel { display: none; }
+  .gradeBadge { width: 27px; height: 27px; }
+  .insights { grid-template-columns: 1fr; }
+}
+.completion {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 20px;
+  div { display: flex; justify-content: space-between; gap: 15px; font-size: .75rem; }
+  strong { color: $color-text-light; }
+}
+.completionTrack { height: 8px; overflow: hidden; border-radius: 999px; background: theme-alpha($color-text-light, .08); }
+.completionTrack i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, $color-accent-secondary, $color-accent-primary); box-shadow: 0 0 14px theme-alpha($color-accent-primary, .35); transition: width .3s ease; }

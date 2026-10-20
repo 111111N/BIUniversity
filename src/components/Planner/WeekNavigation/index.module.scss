@@ -1,0 +1,23 @@
+@use "../../../styles/variables" as *;
+
+.navigation { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.days { display: flex; flex-wrap: wrap; gap: 5px; }
+.day { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; min-height: 33px; padding: 6px 9px; border: 1px solid theme-alpha($color-text-secondary, .35); border-radius: 7px; background: color-mix(in srgb, #{$color-dark-primary} 91%, #{$color-text-light}); color: $color-text-light; font-size: .64rem; font-weight: 400; }
+:root[data-theme="light"] .day { background: $color-dark-secondary; }
+.day > span { text-transform: capitalize; }
+.day strong { color: $color-text-light; font-size: .68rem; font-weight: 500; }
+.day small { min-width: 13px; padding: 2px; border-radius: 4px; background: $color-ghost; font-size: .52rem; font-variant-numeric: tabular-nums; }
+.day:hover, .day:focus-visible { border-color: theme-alpha($color-text-secondary, .65); background: color-mix(in srgb, #{$color-dark-primary} 86%, #{$color-text-light}); color: $color-text-light; }
+:root[data-theme="light"] .day:hover, :root[data-theme="light"] .day:focus-visible { background: $color-dark-primary; }
+.day.selected { border-color: theme-alpha($color-accent-primary, .65); background: color-mix(in srgb, #{$color-dark-primary} 86%, #{$color-accent-primary}); color: $color-accent-hover; }
+.day.selected strong { color: inherit; }
+:root[data-theme="light"] .day.selected { background: color-mix(in srgb, #{$color-dark-secondary} 91%, #{$color-accent-primary}); }
+.today > span { color: $color-accent-hover; }
+.scrollTools { display: flex; align-items: center; gap: 6px; }
+.scrollTools > span { margin-right: 4px; color: $color-text-secondary; font-size: .61rem; }
+.scrollTools button { display: grid; place-items: center; box-sizing: border-box; width: 30px; height: 30px; padding: 5px; border: 1px solid theme-alpha($color-text-secondary, .35); border-radius: 7px; background: color-mix(in srgb, #{$color-dark-primary} 91%, #{$color-text-light}); color: $color-text-light; }
+:root[data-theme="light"] .scrollTools button { background: $color-dark-secondary; }
+.scrollTools button:hover:not(:disabled) { border-color: theme-alpha($color-text-secondary, .65); background: color-mix(in srgb, #{$color-dark-primary} 86%, #{$color-text-light}); color: $color-text-light; }
+:root[data-theme="light"] .scrollTools button:hover:not(:disabled) { background: $color-dark-primary; }
+.scrollTools svg { width: 18px; height: 18px; }
+@media (max-width: 480px) { .day { gap: 4px; padding: 6px; }.scrollTools > span { display: none; } }

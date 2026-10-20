@@ -1,0 +1,41 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+.page { position: relative; z-index: 1; box-sizing: border-box; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+.header > div { min-width: 0; }
+.header h1 { margin: 10px 0 7px; color: $color-text-light; font-size: clamp(1.8rem, 3vw, 2.7rem); line-height: 1.2; overflow-wrap: anywhere; }
+.header p { margin: 0; color: $color-text-secondary; }
+.breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: .72rem; text-transform: capitalize; }
+.breadcrumbs a { color: $color-accent-primary; text-decoration: none; }
+.exportButton { padding: 11px 17px; white-space: nowrap; }
+.tableSection, .analyticsSection { @include dashboard-card($color-dark-secondary, 18px); margin-bottom: 16px; border-width: 1px; border-radius: 14px; }
+.sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px 15px; margin-bottom: 15px; }
+.sectionHeading span { color: $color-accent-primary; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.sectionHeading h2 { margin: 5px 0 0; font-size: 1.25rem; }
+.sectionHeading strong { color: $color-text-secondary; font-size: .75rem; }
+.chartsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.chartCard { min-width: 0; padding: 16px; border: 2px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; overflow: hidden; }
+.chartCard h3 { margin: 0 0 14px; font-size: .9rem; }
+.chartHint { margin: 0 0 18px; color: $color-text-secondary; font-size: .7rem; line-height: 1.6; }
+.chartEmpty { padding: 32px 12px; color: $color-text-secondary; font-size: .8rem; text-align: center; }
+.inlineAnalytics { margin-top: 26px; padding-top: 24px; border-top: 1px solid $color-border; }
+.groupMaterials { margin-bottom: 16px; }
+.tableFilters { display: grid; gap: 12px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid $color-border; }
+.tableFilters > div { margin-bottom: 0; }
+.pageError { margin: 0 0 14px; padding: 11px 13px; border: 1px solid theme-alpha($color-error, .35); border-radius: $border-radius; background: theme-alpha($color-error, .06); color: $color-error; font-size: .76rem; line-height: 1.6; }
+.tabs { display: flex; gap: 5px; margin-bottom: 16px; padding: 5px; border: 2px solid $color-border; border-radius: $border-radius; background: $color-dark-secondary; overflow-x: auto; }
+.tabs button { gap: 7px; min-width: 110px; padding: 10px 14px; border: 0; background: transparent; font-size: .75rem; }
+.tabs button span { display: grid; place-items: center; min-width: 19px; height: 19px; border-radius: 999px; background: $color-border; font-size: .6rem; }
+.tabs .activeTab { background: $gradient-color-logo; color: $color-on-accent; }
+
+@media (max-width: 950px) { .chartsGrid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) {
+  .header { align-items: flex-start; flex-direction: column; }
+  .exportButton { width: 100%; }
+}
+.saveStatus {
+  margin: 0 0 12px;
+  color: $color-success;
+  font-size: .75rem;
+}

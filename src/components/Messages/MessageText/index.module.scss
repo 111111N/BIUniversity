@@ -1,0 +1,4 @@
+@use "../../../styles/variables" as *;
+.link { color: $color-accent-hover; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.link:hover { color: $color-text-light; }
+.match { border-radius: 2px; background: theme-alpha($color-warning, .28); color: $color-text-light; }

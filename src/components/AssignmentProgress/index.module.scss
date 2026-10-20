@@ -1,0 +1,10 @@
+@use "../../styles/variables" as *;
+
+.progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.progress li { display: grid; gap: 5px; color: $color-text-secondary; font-size: .61rem; }
+.progress li span { height: 4px; border-radius: 999px; background: $color-border; }
+.progress .done span { background: $color-success; }
+.progress .current { color: $color-accent-hover; font-weight: 700; }
+.progress .current span { background: $color-accent-primary; }
+.revision .current { color: $color-warning; }
+.revision .current span { background: $color-warning; }

@@ -14,6 +14,7 @@ import {
 import { Student, AttendanceStatus, Grade } from './data/students';
 
 const STATUS_COLORS = {
+  unmarked: { fill: 'transparent', color2: 'var(--color-border)' },
   present: { fill: 'var(--color-visit)', color2: 'var(--color-visit)' },
   sick: { fill: 'var(--color-sick)', color2: 'var(--color-border)' },
   absent: { fill: 'var(--color-no-visit)', color2: 'var(--color-border)' },

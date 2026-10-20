@@ -1,30 +1,34 @@
-// --- Основные цвета (инверсия) ---
-$color-dark-primary: #efefef; // Был почти чёрный → стал почти белый
-$color-dark-secondary: #ffffff3f; // Был прозрачный тёмно-серый → стал светло-серый с почти полной непрозрачностью
-$color-dark-tertiary: #ffffffb8; // Был полупрозрачный чёрный → стал светло-серый с альфой
-$color-text-light: #000000; // Был белый → стал чёрный
-$color-text-secondary: #434343; // Инверсия серого (≈ нейтральный)
-$color-ghost: #0000001b; // Был прозрачный белый → стал прозрачный чёрный
+// Светлая тема сохраняет фирменный красный акцент, но даёт ему контраст на белом.
+$color-dark-primary: #f4f5f8;
+$color-dark-secondary: #ffffff;
+$color-dark-tertiary: #ffffff;
+$color-text-light: #20232b;
+$color-text-secondary: #5b6470;
+$color-ghost: #20232b0d;
 
-// --- Акцентные цвета (инверсия: красно-пурпурные → сине-бирюзовые) ---
-$color-accent-primary: #76cdcd; // Инверсия  → бирюзовый
-$color-accent-secondary: #a2f0db; // Инверсия  → светлый мятный
-$color-accent-added: #65b177; // Инверсия пурпурного → зеленовато-бирюзовый
-$color-accent-hover: hsl(184, 60%, 43%); // Был красный → стал насыщенный голубовато-бирюзовый
-$color-accent-background: hsla(180, 68%, 57%, 0.9); // Прозрачный фон → холодный бирюзовый оттенок
-$color-accent-background-hover: hsla(185, 100%, 15%, 0.1); // Аналогичный светлый вариант
-$gradient-color-logo: linear-gradient(to left, #3ab9b9, #96d4c3); // Был красный → стал сине-бирюзовый градиент
+$color-accent-primary: #b92d45;
+$color-accent-secondary: #70243d;
+$color-accent-added: #853d7d;
+$color-accent-hover: #9c1e37;
+$color-accent-background: #b92d4524;
+$color-accent-background-hover: #b92d4517;
+$gradient-color-logo: linear-gradient(to left, #b92d45, #70243d);
 
-// --- Дополнительные цвета (инверсия по смыслу) ---
-$color-success: #039f03;
-$color-warning: #d98105;
-$color-error: #d9534f;
-$color-border: #868686; // Тонкие разделители
-$color-shadow: rgba(255, 255, 255, 0.4); // Тень стала светлой (для тёмных тем)
+$color-success: #247544;
+$color-warning: #a45a05;
+$color-error: #b42338;
+$color-border: #e1e5ec;
+$color-shadow: rgba(31, 36, 49, .14);
 
-// --- Шрифты и размеры (без изменений) ---
+// Яркие цвета данных на белом фоне; текстовые акценты выше остаются темнее.
+$color-chart-red: #ff4058;
+$color-chart-green: #34c77a;
+$color-chart-purple: #af70dc;
+$color-chart-amber: #ffb347;
+$color-chart-blue: #5a9cec;
+
 $font-family-primary: 'Roboto', sans-serif;
 $font-size-base: 14px;
 $border-radius: 8px;
-$transition-speed: 0.1s;
+$transition-speed: .1s;
 $padding: 20px;

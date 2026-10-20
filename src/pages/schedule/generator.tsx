@@ -1,5 +1,6 @@
 // src/pages/Schedule/generator.ts
 import { WeeklyScheduleData, ScheduleItem } from "../../types/sched";
+import { hasTimeOverlap, toLocalDateKey } from "../../domain/schedule";
 
 const LESSONS = [
   "Математический Анализ",
@@ -23,12 +24,13 @@ const LOCATIONS = [
 ];
 
 const TEACHERS = [
-  "Иванов И.И.",
+  "Волкова Е.В.",
   "Петров П.П.",
   "Сидоров С.С.",
   "Доц. Смирнова",
   "Имк. Коалов",
 ];
+const GROUPS = ["112-МКо", "113-МКо", "211-ИВТ", "311-ПМИ"];
 
 const START_HOUR = 8;
 const END_HOUR = 18;
@@ -36,10 +38,6 @@ const SLOT_MINUTES = 90;
 
 // --- Случайное целое число ---
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-// --- Проверка пересечения слотов ---
-const isOverlap = (start: number, end: number, slots: { start: number; end: number }[]) =>
-  slots.some(slot => Math.max(slot.start, start) < Math.min(slot.end, end));
 
 // --- Генерация случайного дня без наложений ---
 const generateDaySchedule = (date: Date): ScheduleItem[] => {
@@ -49,8 +47,9 @@ const generateDaySchedule = (date: Date): ScheduleItem[] => {
   const lessonsCount = randomInt(2, 5);
 
   for (let i = 0; i < lessonsCount; i++) {
-    let startMinutes, endMinutes;
+    let startMinutes = 0, endMinutes = 0;
     let tries = 0;
+    let slotFound = false;
 
     do {
       const hour = randomInt(START_HOUR, END_HOUR - 1);
@@ -58,8 +57,11 @@ const generateDaySchedule = (date: Date): ScheduleItem[] => {
       startMinutes = hour * 60 + minute;
       endMinutes = startMinutes + SLOT_MINUTES;
       tries++;
-      if (tries > 50) break; // защита от зацикливания
-    } while (isOverlap(startMinutes, endMinutes, usedSlots));
+      if (!hasTimeOverlap(startMinutes, endMinutes, usedSlots)) slotFound = true;
+      if (tries > 50) break;
+    } while (hasTimeOverlap(startMinutes, endMinutes, usedSlots));
+
+    if (!slotFound) continue;
 
     usedSlots.push({ start: startMinutes, end: endMinutes });
 
@@ -70,7 +72,7 @@ const generateDaySchedule = (date: Date): ScheduleItem[] => {
 
     lessons.push({
       id: Date.now() + i + Math.floor(Math.random() * 1000),
-      date: date.toISOString().split("T")[0],
+      date: toLocalDateKey(date),
       dayOfWeek: date.getDay(),
       subject: LESSONS[randomInt(0, LESSONS.length - 1)],
       type: TYPES[randomInt(0, TYPES.length - 1)],
@@ -78,6 +80,7 @@ const generateDaySchedule = (date: Date): ScheduleItem[] => {
       endTime: `${endHour.toString().padStart(2, "0")}:${endMin.toString().padStart(2, "0")}`,
       location: LOCATIONS[randomInt(0, LOCATIONS.length - 1)],
       teacher: TEACHERS[randomInt(0, TEACHERS.length - 1)],
+      group: GROUPS[randomInt(0, GROUPS.length - 1)],
     });
   }
 
@@ -91,7 +94,7 @@ export const generateMockMonthSchedule = (startDate: Date): WeeklyScheduleData =
 
   for (let i = 0; i < daysInMonth; i++) {
     const currentDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-    if (currentDate.getDay() >= 1 && currentDate.getDay() <= 6) {
+    if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5) {
       schedule.push(...generateDaySchedule(currentDate));
     }
   }

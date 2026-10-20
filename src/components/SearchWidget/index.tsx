@@ -21,12 +21,16 @@ const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQu
     <div className={styles.dashboardCard}>
       <div className={styles.toggleRow}>
         <button
+          type="button"
+          aria-pressed={searchMode === "auditorium"}
           className={`${styles.toggleButton} ${searchMode === "auditorium" ? styles.active : ""}`}
           onClick={() => setSearchMode("auditorium")}
         >
           Поиск по аудитории
         </button>
         <button
+          type="button"
+          aria-pressed={searchMode === "group"}
           className={`${styles.toggleButton} ${searchMode === "group" ? styles.active : ""}`}
           onClick={() => setSearchMode("group")}
         >

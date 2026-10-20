@@ -1,0 +1,38 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+.composer { position: relative; flex: 0 0 auto; padding: 12px 22px 10px; background: var(--messenger-canvas); }
+.inputShell { border: 1px solid theme-alpha($color-text-secondary, .25); border-radius: 16px; background: var(--messenger-surface); box-shadow: 0 3px 12px theme-alpha($color-shadow, .08); transition: border-color .15s ease; }
+.inputShell:focus-within { border-color: theme-alpha($color-text-secondary, .65); }
+.composeRow { display: flex; align-items: flex-end; gap: 8px; padding: 6px; }
+.composeRow textarea { box-sizing: border-box; flex: 1; width: 100%; min-width: 0; min-height: 42px; max-height: 150px; margin: 0; padding: 11px 3px; resize: none; overflow-y: auto; border: 0; outline: none; border-radius: 0; background: transparent; box-shadow: none; color: $color-text-light; font: inherit; font-size: .8rem; font-weight: 400; line-height: 1.5; @include scroll-bar(4px); }
+.composeRow textarea::placeholder { color: $color-text-secondary; }
+.attachButton, .sendButton { display: grid; place-items: center; flex: 0 0 auto; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; }
+.attachButton { color: $color-text-secondary; background: transparent; }
+.attachButton:hover:not(:disabled) { color: $color-text-light; background: theme-alpha($color-text-secondary, .1); }
+.attachButton svg { width: 22px; height: 22px; }
+.sendButton { color: $color-on-accent; background: $color-accent-primary; }
+.sendButton svg { width: 20px; height: 20px; }
+.sendButton:hover:not(:disabled) { background: $color-accent-hover; border-color: $color-accent-hover; color: $color-on-accent; }
+.sendButton:disabled { background: theme-alpha($color-text-secondary, .12); color: $color-text-secondary; cursor: default; }
+.attachButton:disabled { opacity: .4; cursor: not-allowed; }
+.hint { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; padding: 8px 3px 0; color: $color-text-secondary; font-size: .56rem; line-height: 1.4; }
+.hint i { padding: 0 4px; font-style: normal; }
+.replyDraft { display: flex; align-items: center; gap: 10px; margin: 9px 10px 0 14px; padding: 8px 0 8px 10px; border-left: 2px solid $color-accent-primary; }
+.replyDraft > div { display: grid; flex: 1; min-width: 0; gap: 4px; }
+.replyDraft strong { color: $color-accent-hover; font-size: .65rem; font-weight: 500; }
+.replyDraft span { overflow: hidden; color: $color-text-secondary; font-size: .66rem; text-overflow: ellipsis; white-space: nowrap; }
+.replyDraft > svg { flex: 0 0 auto; color: $color-text-secondary; }
+.replyDraft button, .draftFiles button { display: grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; color: $color-text-secondary; background: transparent; }
+.replyDraft button:hover:not(:disabled), .draftFiles button:hover:not(:disabled) { color: $color-text-light; background: theme-alpha($color-text-secondary, .1); }
+.draftFiles { display: flex; flex-wrap: wrap; gap: 6px; max-height: 114px; margin: 10px 10px 0; padding: 0; overflow-y: auto; list-style: none; @include scroll-bar(4px); }
+.draftFiles li { display: flex; align-items: center; gap: 8px; box-sizing: border-box; max-width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid $color-border; border-radius: 10px; background: theme-alpha($color-text-secondary, .04); }
+.draftFiles li > svg { flex: 0 0 auto; color: $color-text-secondary; }
+.draftFiles span { display: grid; gap: 4px; min-width: 0; }
+.draftFiles strong { overflow: hidden; color: $color-text-light; font-size: .65rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.draftFiles small { color: $color-text-secondary; font-size: .57rem; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 700px) { .composer { padding: 8px 10px 9px; } .hint { font-size: .52rem; gap: 5px; } .hint > span:first-child { display: none; } .hint > span:last-child { margin-left: auto; } }
+@container messenger (max-width: 720px) { .composer { padding: 8px 10px 9px; } .hint { font-size: .52rem; gap: 5px; } .hint > span:first-child { display: none; } .hint > span:last-child { margin-left: auto; } }
+@media (prefers-reduced-motion: reduce) { .inputShell { transition: none; } }
+

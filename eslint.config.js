@@ -38,7 +38,9 @@ export default defineConfig([
       ...jsxA11y.configs.recommended.rules,
 
       "react/react-in-jsx-scope": "off",
-      "@typescript-eslint/no-unused-vars": ["warn"],
+      "react/prop-types": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "no-console": "warn",
     },
   },

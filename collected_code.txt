@@ -1,0 +1,6561 @@
+// index.html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+// src\App.tsx
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import Nav from "./components/Navigation";
+import Home from "./pages/home";
+import Schedule from "./pages/schedule";
+import Cabinet from "./pages/cabinet";
+import Planner from "./pages/planner";
+import Stats from "./pages/stats";
+import './styles/global.scss';
+
+const LayoutWithNav = () => {
+    const location = useLocation();
+    const [blobs, setBlobs] = useState<Array<{top?: string, left?: string, bottom?: string, right?: string}>>([]);
+    const getRandomPercentage = () => Math.floor(Math.random() * 80) + 10;
+    useEffect(() => {
+        const newBlobs = Array.from({ length: 6 }).map((_, i) => {
+            if (i % 2 === 0) {
+                return { top: `${getRandomPercentage()}%`, left: `${getRandomPercentage()}%` };
+            } else {
+                return { bottom: `${getRandomPercentage()}%`, right: `${getRandomPercentage()}%` };
+            }
+        });
+        setBlobs(newBlobs);
+    }, [location]);
+
+    return (
+        <div className="dashboard-layout">
+            <Nav />
+
+            <main className="main-content">
+                {blobs.map((style, index) => (
+                    <div 
+                        key={index} 
+                        className={`blob blob-${index % 2 === 0 ? 'even' : 'odd'}`} 
+                        style={style}
+                    ></div>
+                ))}
+
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/schedule" element={<Schedule />} />
+                    <Route path="/cabinet" element={<Cabinet />} />
+                    <Route path="/planner" element={<Planner />} />
+                    <Route path="/stats" element={<Stats />} />
+                </Routes>
+            </main>
+        </div>
+    );
+};
+
+export default function App() {
+    return (
+        <BrowserRouter>
+            <LayoutWithNav />
+        </BrowserRouter>
+    );
+}
+
+
+// src\components\Attendance\data\students.tsx
+// src/data/students.ts
+import { eachDayOfInterval, getDay, format } from 'date-fns';
+
+export type AttendanceStatus = 'present' | 'sick' | 'absent';
+export type Grade = 2 | 3 | 4 | 5 | null;
+
+export interface Student {
+  id: string;
+  name: string;
+  attendance: { [date: string]: AttendanceStatus };
+  grades: { [date: string]: Grade }; // новый объект для оценок
+}
+
+// --- Рабочие дни октября 2025 ---
+const START_DATE = new Date(2025, 9, 1); 
+const END_DATE = new Date(2025, 9, 30);
+
+export const workDays = eachDayOfInterval({ start: START_DATE, end: END_DATE })
+  .filter(d => getDay(d) !== 0)
+  .map(d => format(d, 'yyyy-MM-dd'));
+
+// --- Возможные статусы ---
+const STATUS: AttendanceStatus[] = ['present', 'sick','absent'];
+
+// --- Случайный выбор статуса ---
+const randomStatus = () => STATUS[Math.floor(Math.random() * STATUS.length)];
+
+// --- Возможные оценки ---
+const GRADES: Grade[] = [2, 3, 4, 5];
+
+// --- Случайная оценка ---
+const randomGrade = () => GRADES[Math.floor(Math.random() * GRADES.length)];
+
+// --- Генерация массива студентов ---
+export const INITIAL_STUDENTS: Student[] = [
+  'Иванов Иван', 'Петрова Мария', 'Сидоров Алексей', 'Козлова Елена', 'Николаев Дмитрий',
+  'Морозова Анна', 'Федоров Сергей', 'Куликова Ольга', 'Смирнов Павел', 'Васильева Татьяна',
+  'Андреев Виктор', 'Григорьева Юлия', 'Егоров Игорь', 'Соколова Наталья', 'Кузнецов Артём',
+  'Лебедева Марина', 'Орлов Константин', 'Воронова Ирина', 'Тихонов Михаил', 'Киселева Светлана',
+  'Зайцев Николай', 'Фролова Анастасия', 'Савельев Андрей', 'Михайлова Елизавета', 'Дмитриев Олег',
+  'Павлова Виктория', 'Романов Аркадий', 'Алексеева Полина', 'Семёнов Владислав', 'Ефимова Ксения',
+].map((name, index) => {
+  const attendance: { [date: string]: AttendanceStatus } = {};
+  const grades: { [date: string]: Grade } = {};
+
+  workDays.forEach(date => {
+    attendance[date] = randomStatus();
+    grades[date] = randomGrade();
+  });
+
+  return {
+    id: (index + 1).toString(),
+    name,
+    attendance,
+    grades,
+  };
+});
+
+
+// src\components\Attendance\index.module.scss
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+@use "sass:color";
+
+:root {
+  --color-no-visit: #{$color-border};
+  --color-border: #{$color-dark-primary};
+  --color-visit: #{$color-success};
+  --color-sick: #{$color-warning};
+  --color-border-hover: #{color.adjust($color-text-secondary, $lightness: 10%)};
+  --color-visit-active: #{color.adjust($color-success, $blackness: 25%)};
+  --color-sick-active: #{color.adjust($color-warning, $blackness: 30%)};
+  --color-no-visit-active: #{color.adjust($color-text-secondary, $blackness: 20%)};
+  --color-border-active: #{color.adjust($color-text-secondary, $blackness: 50%)};
+  --color-light: #{$color-text-light};
+  --color-grade-5: #{$color-success};
+  --color-grade-4: #{$color-success};
+  --color-grade-3: #{$color-warning};
+  --color-grade-2: #{$color-error};
+}
+
+.attendanceTableContainer {
+  position: relative;
+  width: 100%;
+  color: $color-text-light;
+  border-radius: $border-radius;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 30px;
+  h2 {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    font-weight: 500;
+
+  }
+
+  .tableWrapper {
+    width: 100%;
+    overflow: hidden;
+    max-height: 450px;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    border-radius: $border-radius;
+
+    &::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    &::-webkit-scrollbar-corner {
+      display: none;
+    }
+    box-shadow: inset 0px -16px 15px 0 rgba(0, 0, 0, 0.8);
+  }
+
+  table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      width: 40px;
+      height: 40px;
+      min-width: 60px;
+      min-height: 40px;
+      padding: 5px;
+      text-align: center;
+      white-space: nowrap;
+      background: $color-dark-tertiary;
+      user-select: none;
+      cursor: pointer;
+    }
+    tr{
+      &:nth-child(1){
+    box-shadow: inset 0 5px 5px 0 $color-dark-tertiary;
+    }}
+
+    td{
+      &:nth-child(2){
+    box-shadow: inset 5px 0 5px 0 $color-dark-tertiary;
+    }
+    }
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background: $color-dark-primary;
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .studentName,
+  .studentColumn {
+    position: sticky;
+    left: 0;
+    background: $color-dark-primary;
+    white-space: nowrap;
+  }
+  .studentName {
+    z-index: 20 !important;
+    padding: 20px 50px;
+    
+  }
+  .studentColumn {
+    z-index: 10;
+    padding: 0 12px 0 8px;
+    border-right: 1px solid var(--color-border);
+    
+  }
+
+  .percentage,
+  .percentageCell {
+    position: sticky;
+    right: 0;
+    background: $color-dark-primary;
+    z-index: 10;
+  }
+  .percentage {
+    z-index: 20 !important;
+    
+  }
+  .percentageCell {
+    font-weight: bold;
+    
+  }
+
+  .highlightHeader {
+    background: linear-gradient(to top, $color-ghost, $color-dark-primary);
+    
+  }
+  .highlightName {
+    background: linear-gradient(to left, $color-ghost, $color-dark-primary);
+  }
+
+  .dotWrapper {
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  }
+
+  .editNameWrapper {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+    width: 100%;
+
+    input {
+      flex: 1;
+      background: $color-dark-tertiary;
+      border: 3px solid $color-border;
+      padding: 5px 4px;
+      border-radius: 6px;
+      color: $color-text-light;
+      font-size: 14px;
+
+      &:focus {
+        outline: none;
+        border-color: $color-accent-hover;
+        background: $color-dark-primary;
+      }
+    }
+  }
+
+  .inlineDeleteBtn,
+  .inlineAddBtn {
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.15s ease;
+
+    svg {
+      display: block;
+    }
+  }
+
+  .inlineDeleteBtn {
+    background: $color-accent-primary;
+    color: $color-text-light;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+
+    &:hover {
+      background: $color-accent-background;
+    }
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .inlineAddBtn {
+    background: $color-accent-primary;
+    color: $color-text-light;
+    padding: 10px 20px;
+    font-size: 14px;
+
+    &:hover {
+      background: $color-accent-background;
+    }
+    &:active {
+      background: $color-accent-background-hover;
+    }
+
+    svg {
+      margin-right: 5px;
+      color: $color-text-light;
+    }
+  }
+
+  .addRow {
+    tr {
+      align-self: center;
+    }
+    td {
+      background: $color-dark-tertiary;
+      padding: 12px;
+      text-align: center;
+    }
+  }
+
+  .dragOver {
+    outline: 2px dashed $color-accent-hover;
+    outline-offset: -4px;
+    @include shadows-inset(14px, -14px);
+  }
+
+  .gradeCell.highlightCurrentCell {
+    background: $color-border;
+  }
+
+  &.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    border:none;
+    padding: 20px;
+    width: calc(100vw - 40px);
+    height: 120vh;
+    background: $color-dark-primary;
+    z-index: 2000 !important;
+    overflow: auto;
+
+    .tableWrapper {
+      max-height: calc(100vh - 140px);
+      overflow: auto;
+    }
+    .tableName{
+      font-weight: 700;
+    }
+  }
+
+  .overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.editOverlayButton {
+  background-color: rgba(0, 0, 0, 0.5);
+  width: 100%;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  outline: none;
+
+  &:hover{
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+  &:active{
+     background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  .editIconWrapper {
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .editOverlayText {
+    color: var(--color-light);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    user-select: none;
+  }
+}
+.oddRow{
+  background-color: $color-dark-secondary;
+}
+.evenRow {
+  background-color: $color-dark-tertiary; 
+}
+.gradeCellContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.gradeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.gradeValue {
+  font-weight: 500;
+}
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  .controlButton{
+  user-select: none;
+  font-size: 16px;
+  color: $color-text-light;
+  }
+
+  .leftButtons,
+  .rightButtons {
+    display: flex;
+    align-items: center;
+
+  }
+
+  button {
+    padding: 8px 16px;
+    height: 36px;
+    
+    svg {
+      display: block;
+    }
+  }
+
+  .activeButton {
+    background-color: $color-accent-primary;
+  }
+  
+}
+
+
+
+// src\components\Attendance\index.tsx
+import * as React from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { format, eachDayOfInterval, getDay } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import styles from './index.module.scss';
+import {
+  VisitMarkIcon,
+  PlusIcon,
+  MinusIcon,
+  EditIcon,
+  AcceptIcon,
+  CloseIcon,
+} from '../ButtonIcons/Icons';
+import { Student, AttendanceStatus, Grade } from './data/students';
+
+// Константы
+const START_DATE = new Date(2025, 9, 1);
+const END_DATE = new Date(2025, 9, 30);
+
+const STATUS_COLORS = {
+  present: { fill: 'var(--color-visit)', color2: 'var(--color-visit)' },
+  sick: { fill: 'var(--color-sick)', color2: 'var(--color-border)' },
+  absent: { fill: 'var(--color-no-visit)', color2: 'var(--color-border)' },
+};
+
+const GRADE_COLORS: Record<Exclude<Grade, null>, string> = {
+  5: 'var(--color-grade-5)',
+  4: 'var(--color-grade-4)',
+  3: 'var(--color-grade-3)',
+  2: 'var(--color-grade-2)',
+};
+
+const GRADE_ORDER: Grade[] = [null, 5, 4, 3, 2];
+const ATTENDANCE_ORDER: AttendanceStatus[] = ['absent', 'present', 'sick'];
+
+// Утилиты
+const generateDates = (start: Date, end: Date): Date[] =>
+  eachDayOfInterval({ start, end }).filter(d => getDay(d) !== 0);
+
+const getDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
+
+const getNextValue = <T,>(current: T, order: T[]): T => {
+  const currentIndex = order.indexOf(current);
+  const nextIndex = (currentIndex + 1) % order.length;
+  return order[nextIndex];
+};
+
+const getPrevValue = <T,>(current: T, order: T[]): T => {
+  const currentIndex = order.indexOf(current);
+  const prevIndex = (currentIndex - 1 + order.length) % order.length;
+  return order[prevIndex];
+};
+
+const nextAttendance = (status: AttendanceStatus): AttendanceStatus =>
+  getNextValue(status, ATTENDANCE_ORDER);
+
+const prevAttendance = (status: AttendanceStatus): AttendanceStatus =>
+  getPrevValue(status, ATTENDANCE_ORDER);
+
+const nextGrade = (grade: Grade): Grade =>
+  getNextValue(grade, GRADE_ORDER);
+
+const prevGrade = (grade: Grade): Grade =>
+  getPrevValue(grade, GRADE_ORDER);
+
+// Компоненты
+const MemoVisitMarkIcon = React.memo(VisitMarkIcon);
+
+const GradeDot: React.FC<{ grade: Exclude<Grade, null> }> = ({ grade }) => (
+  <span
+    className={styles.gradeDot}
+    style={{ backgroundColor: GRADE_COLORS[grade] }}
+  />
+);
+
+interface TableCellProps {
+  student: Student;
+  date: Date;
+  rowIndex: number;
+  colIndex: number;
+  mode: 'attendance' | 'grades';
+  hoveredCell: { row: number | null; col: number | null };
+  activeCell: { row: number | null; col: number | null };
+  isEditing: boolean;
+  toggleAttendance: (id: string, key: string, direction: 'next' | 'prev') => void;
+  toggleGrade: (id: string, key: string, direction: 'next' | 'prev') => void;
+  setHoveredCell: React.Dispatch<React.SetStateAction<{ row: number | null; col: number | null }>>;
+  setActiveCell: React.Dispatch<React.SetStateAction<{ row: number | null; col: number | null }>>;
+}
+
+const TableCellComponent: React.FC<TableCellProps> = React.memo(({
+  student,
+  date,
+  rowIndex,
+  colIndex,
+  mode,
+  hoveredCell,
+  activeCell,
+  isEditing,
+  toggleAttendance,
+  toggleGrade,
+  setHoveredCell,
+  setActiveCell,
+}) => {
+  const dateKey = getDateKey(date);
+  const isHovered = hoveredCell.row === rowIndex && hoveredCell.col === colIndex;
+  const isActive = activeCell.row === rowIndex && activeCell.col === colIndex;
+
+  const handleAction = useCallback(
+    (direction: 'next' | 'prev') => (e: React.MouseEvent) => {
+      if (!isEditing) return;
+
+      if (direction === 'prev') {
+        e.preventDefault();
+      }
+
+      if (mode === 'attendance') {
+        toggleAttendance(student.id, dateKey, direction);
+      } else {
+        toggleGrade(student.id, dateKey, direction);
+      }
+    },
+    [isEditing, mode, student.id, dateKey, toggleAttendance, toggleGrade]
+  );
+
+  const handleMouseEnter = useCallback(
+    () => setHoveredCell({ row: rowIndex, col: colIndex }),
+    [rowIndex, colIndex, setHoveredCell]
+  );
+
+  const handleMouseLeave = useCallback(
+    () => setHoveredCell({ row: null, col: null }),
+    [setHoveredCell]
+  );
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button === 0 || e.button === 2) {
+        setActiveCell({ row: rowIndex, col: colIndex });
+      }
+    },
+    [rowIndex, colIndex, setActiveCell]
+  );
+
+  const handleMouseUp = useCallback(
+    () => setActiveCell({ row: null, col: null }),
+    [setActiveCell]
+  );
+
+  const baseClass = mode === 'grades' ? styles.gradeCell : '';
+  const highlightClass = (isHovered || isActive) ? styles.highlightCurrentCell : '';
+
+  if (mode === 'attendance') {
+    const status = student.attendance?.[dateKey] ?? 'absent';
+    let fill = STATUS_COLORS[status].fill;
+    let color2 = STATUS_COLORS[status].color2;
+
+    if (isActive) {
+      fill =
+        status === 'present'
+          ? 'var(--color-visit-active)'
+          : status === 'sick'
+          ? 'var(--color-sick-active)'
+          : 'var(--color-no-visit-active)';
+      color2 = 'var(--color-border-active)';
+    } else if (isHovered) {
+      color2 = 'var(--color-border-hover)';
+    }
+
+    return (
+      <td
+        className={`${baseClass} ${highlightClass}`}
+        onClick={handleAction('next')}
+        onContextMenu={handleAction('prev')}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+      >
+        <MemoVisitMarkIcon
+          color="var(--color-border)"
+          size={36}
+          fill={fill}
+          color2={color2}
+        />
+      </td>
+    );
+  }
+
+  // Режим оценок
+  const grade = student.grades?.[dateKey] ?? null;
+
+  return (
+    <td
+      className={`${baseClass} ${highlightClass}`}
+      onClick={handleAction('next')}
+      onContextMenu={handleAction('prev')}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+    >
+      {grade !== null && (
+        <div className={styles.gradeCellContent}>
+          <GradeDot grade={grade} />
+          <span className={styles.gradeValue}>{grade}</span>
+        </div>
+      )}
+    </td>
+  );
+}, (prev, next) => {
+  // Кастомная проверка пропсов для оптимизации
+  const studentChanged = prev.student !== next.student;
+  const modeChanged = prev.mode !== next.mode;
+  const editingChanged = prev.isEditing !== next.isEditing;
+  const coordsChanged = prev.rowIndex !== next.rowIndex || prev.colIndex !== next.colIndex;
+
+  // Проверяем изменения hover/active только для этой ячейки
+  const wasHovered = prev.hoveredCell.row === prev.rowIndex && prev.hoveredCell.col === prev.colIndex;
+  const isHovered = next.hoveredCell.row === next.rowIndex && next.hoveredCell.col === next.colIndex;
+  const hoverChanged = wasHovered !== isHovered;
+
+  const wasActive = prev.activeCell.row === prev.rowIndex && prev.activeCell.col === prev.colIndex;
+  const isActive = next.activeCell.row === next.rowIndex && next.activeCell.col === next.colIndex;
+  const activeChanged = wasActive !== isActive;
+
+  // Проверяем изменения данных студента
+  const dateKey = getDateKey(prev.date);
+  const attendanceChanged = prev.student.attendance?.[dateKey] !== next.student.attendance?.[dateKey];
+  const gradeChanged = prev.student.grades?.[dateKey] !== next.student.grades?.[dateKey];
+
+  const shouldUpdate = studentChanged || modeChanged || editingChanged || coordsChanged ||
+                      hoverChanged || activeChanged || attendanceChanged || gradeChanged;
+
+  return !shouldUpdate;
+});
+
+interface AttendanceTableProps {
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+}
+
+export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setStudents }) => {
+  // Мемоизированные значения
+  const workDays = useMemo(() => generateDates(START_DATE, END_DATE), []);
+  const dateKeys = useMemo(() => workDays.map(getDateKey), [workDays]);
+
+  // Состояния
+  const [hoveredCell, setHoveredCell] = useState({ row: null as number | null, col: null as number | null });
+  const [activeCell, setActiveCell] = useState({ row: null as number | null, col: null as number | null });
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftStudents, setDraftStudents] = useState<Student[]>(students);
+  const [originalStudents, setOriginalStudents] = useState<Student[]>(students);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [mode, setMode] = useState<'attendance' | 'grades'>('attendance');
+  const [hoveredTable, setHoveredTable] = useState(false);
+
+  // Эффекты
+  useEffect(() => {
+    document.body.style.overflow = isEditing ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isEditing]);
+
+  // Обработчики
+  const startEditing = useCallback(() => {
+    const normalized = students.map(student => {
+      const attendance = { ...student.attendance };
+      const grades = { ...student.grades };
+
+      workDays.forEach(date => {
+        const key = getDateKey(date);
+        if (!attendance[key]) attendance[key] = 'absent';
+        if (grades[key] === undefined) grades[key] = null;
+      });
+
+      return {
+        ...student,
+        attendance,
+        grades,
+      };
+    });
+
+    const deepCopy = normalized.map(s => ({
+      ...s,
+      attendance: { ...s.attendance },
+      grades: { ...s.grades },
+    }));
+
+    setOriginalStudents(deepCopy);
+    setDraftStudents(deepCopy);
+    setStudents(normalized);
+    setIsEditing(true);
+    setHoveredCell({ row: null, col: null });
+    setActiveCell({ row: null, col: null });
+  }, [students, setStudents, workDays]);
+
+  const acceptChanges = useCallback(() => {
+    setStudents(draftStudents);
+    setIsEditing(false);
+    setHoveredCell({ row: null, col: null });
+    setActiveCell({ row: null, col: null });
+  }, [draftStudents, setStudents]);
+
+  const cancelChanges = useCallback(() => {
+    setDraftStudents(originalStudents);
+    setStudents(originalStudents);
+    setIsEditing(false);
+    setHoveredCell({ row: null, col: null });
+    setActiveCell({ row: null, col: null });
+  }, [originalStudents, setStudents]);
+
+  const moveStudent = useCallback((from: number, to: number) => {
+    setDraftStudents(prev => {
+      const newStudents = [...prev];
+      const [movedStudent] = newStudents.splice(from, 1);
+      newStudents.splice(to, 0, movedStudent);
+      return newStudents;
+    });
+  }, []);
+
+  const addStudent = useCallback(() => {
+    const newStudent: Student = {
+      id: crypto.randomUUID(),
+      name: 'Новый ученик',
+      attendance: {},
+      grades: {},
+    };
+
+    workDays.forEach(date => {
+      const key = getDateKey(date);
+      newStudent.attendance[key] = 'absent';
+      newStudent.grades[key] = null;
+    });
+
+    setDraftStudents(prev => [...prev, newStudent]);
+  }, [workDays]);
+
+  const deleteStudent = useCallback((id: string) => {
+    setDraftStudents(prev => prev.filter(student => student.id !== id));
+  }, []);
+
+  const toggleAttendance = useCallback((studentId: string, dateKey: string, direction: 'next' | 'prev') => {
+    setDraftStudents(prev =>
+      prev.map(student =>
+        student.id !== studentId
+          ? student
+          : {
+              ...student,
+              attendance: {
+                ...student.attendance,
+                [dateKey]: direction === 'next'
+                  ? nextAttendance(student.attendance?.[dateKey] ?? 'absent')
+                  : prevAttendance(student.attendance?.[dateKey] ?? 'absent'),
+              },
+            }
+      )
+    );
+  }, []);
+
+  const toggleGrade = useCallback((studentId: string, dateKey: string, direction: 'next' | 'prev') => {
+    setDraftStudents(prev =>
+      prev.map(student =>
+        student.id !== studentId
+          ? student
+          : {
+              ...student,
+              grades: {
+                ...student.grades,
+                [dateKey]: direction === 'next'
+                  ? nextGrade(student.grades?.[dateKey] ?? null)
+                  : prevGrade(student.grades?.[dateKey] ?? null),
+              },
+            }
+      )
+    );
+  }, []);
+
+  const updateStudentName = useCallback((studentId: string, name: string) => {
+    setDraftStudents(prev =>
+      prev.map(student =>
+        student.id === studentId ? { ...student, name } : student
+      )
+    );
+  }, []);
+
+  // Мемоизированные вычисления
+  const calcAverage = useCallback((student: Student) => {
+    const grades = dateKeys
+      .map(key => student.grades?.[key])
+      .filter((grade): grade is Exclude<Grade, null> => grade !== null);
+
+    if (grades.length === 0) return '-';
+
+    const sum = grades.reduce((total, grade) => total + grade, 0);
+    return (sum / grades.length).toFixed(2);
+  }, [dateKeys]);
+
+  const calcPresence = useCallback((student: Student) => {
+    const total = workDays.length;
+    const present = dateKeys.filter(key => student.attendance?.[key] === 'present').length;
+
+    if (total === 0) return '0%';
+    return `${((present / total) * 100).toFixed(1)}%`;
+  }, [workDays.length, dateKeys]);
+
+  // Обработчики drag & drop
+  const handleDragStart = useCallback((index: number) => {
+    if (isEditing) setDragIndex(index);
+  }, [isEditing]);
+
+  const handleDragEnter = useCallback((index: number) => {
+    if (isEditing) setDragOverIndex(index);
+  }, [isEditing]);
+
+  const handleDragEnd = useCallback(() => {
+    if (isEditing && dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      moveStudent(dragIndex, dragOverIndex);
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [isEditing, dragIndex, dragOverIndex, moveStudent]);
+
+  // Рендер ячеек таблицы
+  const renderTableCells = useCallback((student: Student, rowIndex: number) => {
+    return workDays.map((date, colIndex) => (
+      <TableCellComponent
+        key={`${student.id}-${getDateKey(date)}`}
+        student={student}
+        date={date}
+        rowIndex={rowIndex}
+        colIndex={colIndex}
+        mode={mode}
+        hoveredCell={hoveredCell}
+        activeCell={activeCell}
+        isEditing={isEditing}
+        toggleAttendance={toggleAttendance}
+        toggleGrade={toggleGrade}
+        setHoveredCell={setHoveredCell}
+        setActiveCell={setActiveCell}
+      />
+    ));
+  }, [workDays, mode, hoveredCell, activeCell, isEditing, toggleAttendance, toggleGrade]);
+
+  // Рендер строк таблицы
+  const renderTableRows = useCallback(() => {
+    return draftStudents.map((student, rowIndex) => {
+      const rowClasses = [
+        hoveredCell.row === rowIndex ? styles.highlightRow : '',
+        isEditing && dragOverIndex === rowIndex ? styles.dragOver : '',
+        rowIndex % 2 === 1 ? styles.evenRow : styles.oddRow,
+      ].filter(Boolean).join(' ');
+
+      const nameCellClasses = [
+        styles.studentColumn,
+        hoveredCell.row === rowIndex ? styles.highlightName : '',
+      ].filter(Boolean).join(' ');
+
+      return (
+        <tr
+          key={student.id}
+          draggable={isEditing}
+          onDragStart={() => handleDragStart(rowIndex)}
+          onDragEnter={() => handleDragEnter(rowIndex)}
+          onDragEnd={handleDragEnd}
+          className={rowClasses}
+        >
+          <td className={nameCellClasses}>
+            {isEditing ? (
+              <div className={styles.editNameWrapper}>
+                <input
+                  value={student.name}
+                  onChange={e => updateStudentName(student.id, e.target.value)}
+                  aria-label="Имя ученика"
+                />
+                <button
+                  className={styles.inlineDeleteBtn}
+                  onClick={() => deleteStudent(student.id)}
+                  aria-label="Удалить ученика"
+                >
+                  <MinusIcon size={24} fill="var(--color-ligth)" />
+                </button>
+              </div>
+            ) : (
+              student.name
+            )}
+          </td>
+
+          {renderTableCells(student, rowIndex)}
+
+          <td className={styles.percentageCell}>
+            {mode === 'attendance' ? calcPresence(student) : calcAverage(student)}
+          </td>
+        </tr>
+      );
+    });
+  }, [
+    draftStudents,
+    isEditing,
+    hoveredCell.row,
+    dragOverIndex,
+    handleDragStart,
+    handleDragEnter,
+    handleDragEnd,
+    updateStudentName,
+    deleteStudent,
+    renderTableCells,
+    mode,
+    calcPresence,
+    calcAverage,
+  ]);
+
+  return (
+    <div
+      className={`${styles.attendanceTableContainer} ${isEditing ? styles.fullscreen : ''}`}
+      onMouseEnter={() => !isEditing && setHoveredTable(true)}
+      onMouseLeave={() => !isEditing && setHoveredTable(false)}
+    >
+      {!isEditing && hoveredTable && (
+        <div className={styles.overlay}>
+          <button
+            className={styles.editOverlayButton}
+            onClick={startEditing}
+            onKeyDown={e => e.key === 'Enter' && startEditing()}
+            tabIndex={0}
+            aria-label="Редактировать таблицу"
+          >
+            <div className={styles.editIconWrapper}>
+              <EditIcon size={48} color="var(--color-light)" />
+            </div>
+            <span className={styles.editOverlayText}>Изменить</span>
+          </button>
+        </div>
+      )}
+
+      <div className={styles.layoutWithControls}>
+        {isEditing && (
+          <h2 className={styles.tableName}>
+            Таблица {mode === 'attendance' ? 'посещаемости' : 'оценок'}
+          </h2>
+        )}
+
+        <div className={styles.tableWrapper}>
+          <table className={!isEditing ? styles.inactiveTable : ''}>
+            <thead>
+              <tr>
+                <th className={styles.studentName}>Ученик</th>
+                {workDays.map((date, index) => (
+                  <th key={index} title={format(date, 'EEEE, d MMMM', { locale: ru })}>
+                    {format(date, 'dd.MM')}
+                  </th>
+                ))}
+                <th className={styles.percentage}>
+                  {mode === 'attendance' ? '%' : 'Ср. балл'}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {renderTableRows()}
+
+              {isEditing && (
+                <tr className={styles.addRow}>
+                  <td colSpan={workDays.length + 2}>
+                    <button
+                      className={styles.inlineAddBtn}
+                      onClick={addStudent}
+                      aria-label="Добавить ученика"
+                    >
+                      <PlusIcon size={12} fill="var(--color-ligth)" />
+                      Добавить ученика
+                    </button>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {isEditing && (
+          <div className={styles.controls}>
+            <button
+              className={styles.controlButton}
+              onClick={() => setMode(prev => prev === 'attendance' ? 'grades' : 'attendance')}
+              aria-label={mode === 'attendance' ? 'Переключить на оценки' : 'Переключить на посещаемость'}
+            >
+              {mode === 'attendance' ? 'Оценки' : 'Посещаемость'}
+            </button>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={cancelChanges}
+              className={styles.controlButton}
+              aria-label="Отменить изменения"
+            >
+              <CloseIcon size={24} color="var(--color-light)" fill="var(--color-light)" />
+            </button>
+            <button
+              onClick={acceptChanges}
+              className={styles.controlButton}
+              aria-label="Принять изменения"
+            >
+              <AcceptIcon size={24} color="var(--color-light)" fill="var(--color-light)" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// src\components\Attendance\indexorigin.tsx
+import * as React from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { format, eachDayOfInterval, getDay } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import styles from './index.module.scss';
+import {
+  VisitMarkIcon,
+  PlusIcon,
+  MinusIcon,
+  EditIcon,
+  AcceptIcon,
+  CloseIcon,
+} from '../ButtonIcons/Icons';
+import { Student, AttendanceStatus, Grade } from './data/students';
+
+const STATUS_COLORS = {
+  present: { fill: 'var(--color-visit)', color2: 'var(--color-visit)' },
+  sick: { fill: 'var(--color-sick)', color2: 'var(--color-border)' },
+  absent: { fill: 'var(--color-no-visit)', color2: 'var(--color-border)' },
+};
+
+const START_DATE = new Date(2025, 9, 1);
+const END_DATE = new Date(2025, 9, 30);
+
+const generateDates = (start: Date, end: Date): Date[] =>
+  eachDayOfInterval({ start, end }).filter(d => getDay(d) !== 0);
+
+interface AttendanceTableProps {
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+}
+
+export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setStudents }) => {
+  const workDays = useMemo(() => generateDates(START_DATE, END_DATE), []);
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+  const [activeCell, setActiveCell] = useState<{ row: number | null; col: number | null }>({ row: null, col: null });
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftStudents, setDraftStudents] = useState<Student[]>(students);
+  const [originalStudents, setOriginalStudents] = useState<Student[]>(students);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [mode, setMode] = useState<'attendance' | 'grades'>('attendance');
+  const [hoveredTable, setHoveredTable] = useState(false);
+
+  useEffect(() => {
+    // блокируем скролл страницы только когда редактируем
+    document.body.style.overflow = isEditing ? 'hidden' : '';
+  }, [isEditing]);
+
+  const startEditing = () => {
+    const normalized = students.map(s => {
+      const att = { ...s.attendance };
+      const grades: { [key: string]: Grade } = {};
+      workDays.forEach(d => {
+        const key = format(d, 'yyyy-MM-dd');
+        if (!att[key]) att[key] = 'absent';
+        grades[key] = s.grades?.[key] ?? null;
+      });
+      return { ...s, attendance: att, grades };
+    });
+
+    setOriginalStudents(normalized.map(s => ({ ...s, attendance: { ...s.attendance }, grades: { ...s.grades } })));
+    setDraftStudents(normalized.map(s => ({ ...s, attendance: { ...s.attendance }, grades: { ...s.grades } })));
+    setStudents(normalized);
+    setIsEditing(true);
+  };
+
+  const acceptChanges = () => {
+    setStudents(draftStudents);
+    setIsEditing(false);
+  };
+
+  const cancelChanges = () => {
+    setDraftStudents(originalStudents);
+    setStudents(originalStudents);
+    setIsEditing(false);
+  };
+
+  const moveStudent = (from: number, to: number) => {
+    setDraftStudents(prev => {
+      const arr = [...prev];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return arr;
+    });
+  };
+
+  const addStudent = () => {
+    const id = crypto.randomUUID();
+    const newStudent: Student = { id, name: 'Новый ученик', attendance: {}, grades: {} };
+    workDays.forEach(d => {
+      const key = format(d, 'yyyy-MM-dd');
+      newStudent.attendance[key] = 'absent';
+      newStudent.grades[key] = null;
+    });
+    setDraftStudents(prev => [...prev, newStudent]);
+  };
+
+  const deleteStudent = (id: string) => {
+    setDraftStudents(prev => prev.filter(s => s.id !== id));
+  };
+
+  const toggleAttendance = (studentId: string, dateKey: string) => {
+    setDraftStudents(prev =>
+      prev.map(s => {
+        if (s.id !== studentId) return s;
+        const cur: AttendanceStatus = s.attendance[dateKey] ?? 'absent';
+        const next: AttendanceStatus = cur === 'absent' ? 'present' : cur === 'present' ? 'sick' : 'absent';
+        return { ...s, attendance: { ...s.attendance, [dateKey]: next } };
+      })
+    );
+  };
+
+  const toggleGrade = (studentId: string, dateKey: string) => {
+    setDraftStudents(prev =>
+      prev.map(s => {
+        if (s.id !== studentId) return s;
+        const cur: Grade = s.grades?.[dateKey] ?? null;
+        const next: Grade = cur === null ? 5 : cur === 5 ? 4 : cur === 4 ? 3 : cur === 3 ? 2 : null;
+        return { ...s, grades: { ...s.grades, [dateKey]: next } };
+      })
+    );
+  };
+
+  const calcAverage = (student: Student) => {
+    const gradesArray = workDays
+      .map(d => student.grades?.[format(d, 'yyyy-MM-dd')])
+      .filter((g): g is Exclude<Grade, null> => g !== null);
+    if (gradesArray.length === 0) return '-';
+    const sum = gradesArray.reduce((a, b) => a + b, 0);
+    return (sum / gradesArray.length).toFixed(2);
+  };
+
+  const calcPresence = (student: Student) => {
+    const total = workDays.length;
+    const present = workDays.filter(d => student.attendance[format(d, 'yyyy-MM-dd')] === 'present').length;
+    return total === 0 ? '0%' : `${((present / total) * 100).toFixed(1)}%`;
+  };
+
+  return (
+  <div 
+    className={`${styles.attendanceTableContainer} ${isEditing ? styles.fullscreen : ''}`}
+    onMouseEnter={() => !isEditing && setHoveredTable(true)}
+    onMouseLeave={() => !isEditing && setHoveredTable(false)}
+  >
+    {/* Overlay + иконка редактирования до нажатия */}
+    {!isEditing && (
+  <div className={styles.overlay}>
+    {hoveredTable && (
+      <button
+        className={styles.editOverlayButton}
+        onClick={startEditing}
+        onKeyDown={e => e.key === 'Enter' && startEditing()}
+        tabIndex={0}
+        aria-label="Редактировать таблицу"
+      >
+        <div className={styles.editIconWrapper}>
+          <EditIcon size={48} color="var(--color-light)" />
+        </div>
+        <span className={styles.editOverlayText}>Изменить</span>
+      </button>
+    )}
+  </div>
+)}
+
+    <div className={styles.layoutWithControls}>
+      {isEditing? <h2>Таблица {mode === "attendance" ? 'посещаемости' : 'оценок'} </h2> : ''}
+
+      <div className={styles.tableWrapper}>
+        <table className={!isEditing ? styles.inactiveTable : ''}>
+          <thead>
+            <tr>
+              <th className={styles.studentName}>Ученик</th>
+              {workDays.map((date, colIndex) => (
+                <th
+                  key={colIndex}
+                  title={format(date, 'EEEE, d MMMM', { locale: ru })}
+                  className={hoveredCol === colIndex ? styles.highlightHeader : ''}
+                >
+                  {format(date, 'dd.MM')}
+                </th>
+              ))}
+              <th className={styles.percentage}>{mode === 'attendance' ? '%' : 'Ср. балл'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {draftStudents.map((student, rowIndex) => (
+              <tr
+                key={student.id}
+                draggable={isEditing}
+                onDragStart={() => isEditing && setDragIndex(rowIndex)}
+                onDragEnter={() => isEditing && setDragOverIndex(rowIndex)}
+                onDragEnd={() => {
+                  if (isEditing && dragIndex !== null && dragOverIndex !== null)
+                    moveStudent(dragIndex, dragOverIndex);
+                  setDragIndex(null);
+                  setDragOverIndex(null);
+                }}
+                className={`${hoveredRow === rowIndex ? styles.highlightRow : ''}${
+                  isEditing && dragOverIndex === rowIndex ? styles.dragOver : ''
+                }`}
+              >
+                <td className={`${styles.studentColumn} ${hoveredRow === rowIndex ? styles.highlightName : ''}`}>
+                  {isEditing ? (
+                    <div className={styles.editNameWrapper}>
+                      <input
+                        value={student.name}
+                        onChange={e =>
+                          setDraftStudents(prev => prev.map(s => (s.id === student.id ? { ...s, name: e.target.value } : s)))
+                        }
+                      />
+                      <button className={styles.inlineDeleteBtn} onClick={() => deleteStudent(student.id)}>
+                        <MinusIcon size={24} fill="var(--color-ligth)" />
+                      </button>
+                    </div>
+                  ) : (
+                    student.name
+                  )}
+                </td>
+
+                {workDays.map((date, colIndex) => {
+                  const dateKey = format(date, 'yyyy-MM-dd');
+                  const isHovered = hoveredRow === rowIndex && hoveredCol === colIndex;
+                  const isActive = activeCell.row === rowIndex && activeCell.col === colIndex;
+
+                  if (mode === 'attendance') {
+                    const status: AttendanceStatus = student.attendance[dateKey] ?? 'absent';
+                    const base = STATUS_COLORS[status];
+                    let fill = base.fill;
+                    let color2 = base.color2;
+                    const border = 'var(--color-border)';
+
+                    if (isActive) {
+                      fill =
+                        status === 'present'
+                          ? 'var(--color-visit-active)'
+                          : status === 'sick'
+                          ? 'var(--color-sick-active)'
+                          : 'var(--color-no-visit-active)';
+                      color2 = 'var(--color-border-active)';
+                    } else if (isHovered) color2 = 'var(--color-border-hover)';
+
+                    return (
+                      <td
+                        key={`${student.id}-${dateKey}`}
+                        className={`${isHovered ? styles.highlightCurrentCell : ''}`}
+                        onClick={() => isEditing && toggleAttendance(student.id, dateKey)}
+                        onMouseEnter={() => {
+                          setHoveredRow(rowIndex);
+                          setHoveredCol(colIndex);
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredRow(null);
+                          setHoveredCol(null);
+                        }}
+                        onMouseDown={() => setActiveCell({ row: rowIndex, col: colIndex })}
+                        onMouseUp={() => setActiveCell({ row: null, col: null })}
+                      >
+                        <VisitMarkIcon color={border} color2={color2} fill={fill} size={36} />
+                      </td>
+                    );
+                  } else {
+                    const grade: Grade = student.grades?.[dateKey] ?? null;
+                    return (
+                      <td
+                        key={`${student.id}-${dateKey}`}
+                        className={`${styles.gradeCell} ${
+                          isHovered || (mode === 'grades' && isActive) ? styles.highlightCurrentCell : ''
+                        }`}
+                        onClick={() => isEditing && toggleGrade(student.id, dateKey)}
+                        onMouseEnter={() => {
+                          setHoveredRow(rowIndex);
+                          setHoveredCol(colIndex);
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredRow(null);
+                          setHoveredCol(null);
+                        }}
+                      >
+                        {grade ?? ''}
+                      </td>
+                    );
+                  }
+                })}
+
+                <td className={styles.percentageCell}>
+                  {mode === 'attendance' ? calcPresence(student) : calcAverage(student)}
+                </td>
+              </tr>
+            ))}
+
+            {isEditing && (
+              <tr className={styles.addRow}>
+                <td colSpan={workDays.length + 2}>
+                  <button className={styles.inlineAddBtn} onClick={addStudent}>
+                    <PlusIcon size={12} fill="var(--color-ligth)" /> Добавить ученика
+                  </button>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Кнопки управления (редактирование, оценки) */}
+      {isEditing && (
+        <div className={styles.controls}>
+          <button
+            className={styles.controlButton}
+            onClick={() => setMode(prev => (prev === 'attendance' ? 'grades' : 'attendance'))}
+          >
+            {mode === 'attendance' ? 'Оценки' : 'Посещаемость'}
+          </button>
+          <div style={{ flex: 1 }}></div>
+          <button onClick={cancelChanges} className={styles.controlButton}>
+            <CloseIcon size={24} color="var(--color-light)" fill="var(--color-light)" />
+          </button>
+          <button onClick={acceptChanges} className={styles.controlButton}>
+            <AcceptIcon size={24} color="var(--color-light)" fill="var(--color-light)" />
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+};
+
+
+// src\components\ButtonIcons\Icons.tsx
+import * as React from "react";
+
+// --- Общий интерфейс для всех иконок ---
+interface IconProps {
+  size?: number;
+  color?: string;
+  color2?: string;
+  fill?: string;   
+  textColor?: string;  
+  text?: string;       
+  className?: string;
+
+}
+
+// ---------------- ArrowIcon ----------------
+export const ArrowIcon: React.FC<IconProps & { direction?: "up" | "down" | "left" | "right" }> = ({
+  direction = "down",
+  size = 20,
+  color = "currentColor",
+  className,
+}) => {
+  const rotation = {
+    up: "180deg",
+    down: "0deg",
+    left: "90deg",
+    right: "-90deg",
+  }[direction];
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill={color}
+      className={className}
+      style={{ transform: `rotate(${rotation})` }}
+    >
+      <path d="M4.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.574 0 0.436 0.445 0.408 1.197 0 1.615-0.406 0.418-4.695 4.502-4.695 4.502-0.217 0.223-0.502 0.335-0.787 0.335s-0.57-0.112-0.789-0.335c0 0-4.287-4.084-4.695-4.502s-0.436-1.17 0-1.615z" />
+    </svg>
+  );
+};
+
+// ---------------- EditIcon ----------------
+export const EditIcon: React.FC<IconProps> = ({ size = 48, color = "currentColor", className }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill={color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="m34.961 5.766-5.223 5.149 8.763 8.566 5.23-5.158z"
+        style={{ fill: color }}
+      />
+      <path
+        d="M36.362 21.631 27.539 13.161 6.5 34.104 4.527 44H14z"
+        style={{ fill: color }}
+      />
+    </svg>
+  );
+};
+
+// ---------------- PdfIcon ----------------
+export const PdfIcon: React.FC<IconProps> = ({
+  size = 48,
+  color = "currentColor",
+  textColor = "#fff",
+  text = "PDF",
+  className
+}) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M6.5 43V5.5h29l6 7.5-0.003 30z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 18.494H36.286M12 25.494H36.286M12.092 32.494H36.378"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="bevel"
+      />
+      <rect
+        x={4.458}
+        y={31.474}
+        width={19.279}
+        height={7.102}
+        fill={color}
+        stroke={color}
+        strokeWidth={2.898}
+        strokeLinejoin="bevel"
+      />
+      <text
+        x={5.5}
+        y={38}
+        fill={textColor}   // цвет текста теперь можно передавать
+        fontSize={8}
+        fontFamily="Arial"
+      >
+        {text}       
+      </text>
+    </svg>
+  );
+};
+
+// ---------------- MarkIcon ----------------
+export const VisitMarkIcon: React.FC<IconProps> = ({
+  size = 48,
+  color = "currentColor",
+  color2 = "currentColor",
+  fill = "currentColor",
+  className
+}) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      stroke={color}
+      className={className}
+    >
+
+      <circle
+        cx="24"
+        cy="24"
+        r="19.374"
+        stroke={color2}
+        strokeWidth="4"
+      />
+
+      <circle
+        cx="24"
+        cy="24.06"
+        r="12.11"
+        fill={fill}
+        stroke={color}
+        strokeWidth="4"
+      />
+    </svg>
+  );
+};
+
+
+// ---------------- RectIcon ----------------
+export const MinusIcon: React.FC<IconProps> = ({
+  size = 48,
+  color = "currentColor",
+  fill = "currentColor",
+  className
+}) => {
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill={color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <rect
+        x="8.5"
+        y="22.5"
+        width="30"
+        height="5"
+        fill={fill}
+        stroke={color}
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+// ---------------- PlusIcon ----------------
+export const PlusIcon: React.FC<IconProps> = ({
+  size = 48,
+  color = "currentColor",
+  fill = "currentColor",
+  className
+}) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill={color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M22.662 4.338V22.5H4.5v3h18.162V43.164h3.002V25.5h18.162v-3H25.664V4.338Z"
+        fill={fill}
+        stroke={color}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+
+export const CloseIcon: React.FC<IconProps> = ({
+  size = 48,
+  color = "currentColor",
+  fill = "currentColor",
+  className
+}) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill={fill}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M5 7.695 21.305 24 5 40.305 7.693 43 24 26.693 40.305 43 43 40.305 26.693 24 43 7.693 40.305 5 24 21.305 7.695 5 Z"
+        fill={fill}
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+export const AcceptIcon: React.FC<IconProps> = ({
+  size = 48,
+  color = "currentColor",
+  fill = "currentColor",
+  className,
+}) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M 41.642796,11.142454 20.414429,32.942163 8.0334897,21.517873 4.9991943,24.818787 20.911695,39.499069 21.268555,39.110381 45.000803,14.740255 Z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        fill={fill}
+      />
+    </svg>
+  );
+};
+
+// src\components\CalendarWidget\index.module.scss
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.calendarContainer {
+  display: flex; // Располагаем два месяца рядом
+  gap: 20px; // Небольшой отступ между календарями
+  padding: 10px; // Внутренний отступ контейнера
+}
+
+.calendarMonth {
+  flex: 1 1 50%;
+  text-align: center;
+}
+
+.monthName {
+  font-size: 10px;
+  font-weight: bold;
+  color: $color-text-secondary;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0; 
+}
+
+.calendarDayName {
+  font-size: 10px;
+  font-weight: 500;
+  color: $color-text-secondary;
+  padding: 5px 0;
+  text-transform: uppercase;
+}
+
+// Ячейка дня
+.calendarDay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 20px; 
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1;
+  border-radius: 1px;
+  cursor: default;
+  // Стили для пустых дней (заполнение)
+  &:not(.activeDay) {
+    color: transparent; // Пустые ячейки невидимы
+  }
+}
+
+// Активные дни (с числом)
+.activeDay {
+  color: $color-text-secondary; // Белый/светлый цвет
+}
+
+.weekend {
+  color: $color-accent-hover;
+}
+
+// Выделение сегодняшнего дня (если нужно, на скриншоте не очень видно)
+.today {
+  background-color: $color-dark-tertiary;
+   color:$color-text-light;
+}
+
+.activeDay:hover{
+    background-color: $color-accent-hover;
+    cursor: pointer;
+    color:$color-text-light;
+}
+
+
+// src\components\CalendarWidget\index.tsx
+import * as React from "react";
+import styles from "./index.module.scss";
+
+interface CalendarProps {
+  months?: number;
+}
+
+const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+function getMonthMatrix(year: number, month: number) {
+
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const weeks: (number | null)[][] = [];
+  let week: (number | null)[] = new Array(7).fill(null);
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const dayOfWeek = (firstDay + i) % 7;
+    week[dayOfWeek] = i + 1;
+
+    if (dayOfWeek === 6 || i === daysInMonth - 1) {
+      weeks.push(week);
+      week = new Array(7).fill(null);
+    }
+  }
+
+  return weeks;
+}
+
+
+const Calendar: React.FC<CalendarProps> = ({ months = 2 }) => {
+  const today = new Date();
+
+  const renderedMonths = Array.from({ length: months }, (_, idx) => {
+    const date = new Date(today.getFullYear(), today.getMonth() + idx, 1);
+
+    const monthName = date.toLocaleString("ru", { month: "short" });
+    const year = date.getFullYear();
+    const monthMatrix = getMonthMatrix(year, date.getMonth());
+
+    const isCurrentMonth = idx === 0;
+
+    return (
+      <div
+        key={idx}
+        className={`${styles.calendarMonth} ${isCurrentMonth ? styles.currentMonth : styles.nextMonth}`}
+      >
+
+        <h4 className={styles.monthName}>{monthName}</h4>
+        <div className={styles.calendarGrid}>
+
+          {DAYS.map((day) => (
+            <div key={day} className={styles.calendarDayName}>
+
+              {day.charAt(0)}
+            </div>
+          ))}
+
+          {monthMatrix.map((week, wIdx) =>
+            week.map((day, dIdx) => {
+
+              const dayOfWeek = (wIdx * 7 + dIdx) % 7;
+
+              const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+
+              return (
+                <div
+                  key={`${wIdx}-${dIdx}`}
+                  className={`${styles.calendarDay} 
+                              ${isWeekend && day ? styles.weekend : ''}
+                              ${day === today.getDate() && date.getMonth() === today.getMonth() ? styles.today : ""}
+                              ${day ? styles.activeDay : ''}
+                              `}
+                >
+                  {day || ""}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  });
+
+  return <div className={styles.calendarContainer}>{renderedMonths}</div>;
+};
+
+export default Calendar;
+
+// src\components\Charts\BarChart\index.tsx
+import { useEffect, useRef, useMemo } from "react";
+import * as d3 from "d3";
+import styles from "../../settingsCharts.module.scss";
+
+interface BarChartProps {
+  labels: string[];
+  values: number[];
+  id?: string | number;   // ← добавлено по твоему запросу
+  maxValue?: number;
+  height?: number;
+}
+
+export default function BarChart({
+  labels,
+  values,
+  id,
+  maxValue,
+  height = 350,
+}: BarChartProps) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // --- Уникальные ключи, чтобы labels могли повторяться ---
+  const keyedLabels = useMemo(
+    () => labels.map((l, i) => `${l}__${i}`),
+    [labels]
+  );
+
+  // --- Данные под длину labels ---
+  const chartData = useMemo(
+    () => (values ?? []).slice(0, labels.length),
+    [values, labels]
+  );
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+
+    const svg = d3.select(svgRef.current);
+    svg.selectAll("*").remove();
+
+    const containerWidth =
+      svgRef.current.parentElement?.clientWidth || 400;
+
+    const margin = { top: 30, right: 40, bottom: 60, left: 40 };
+    const innerWidth = Math.max(chartData.length * 60, containerWidth);
+    const innerHeight = height - margin.top - margin.bottom;
+
+    svg
+      .attr("width", innerWidth + margin.left + margin.right)
+      .attr("height", height);
+
+    const g = svg
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // --- шкалы ---
+    const xScale = d3
+      .scaleBand<string>()
+      .domain(keyedLabels)
+      .range([0, innerWidth])
+      .padding(0.3);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, maxValue ?? Math.max(...chartData)])
+      .range([innerHeight, 0])
+      .nice();
+
+    // --- сетка ---
+    g.append("g")
+      .call(
+        d3
+          .axisLeft(yScale)
+          .ticks(6)
+          .tickSize(-innerWidth)
+          .tickFormat(() => "")
+      )
+      .selectAll("line")
+      .attr("stroke", "var(--grid-color)");
+
+    g.select(".domain")?.remove();
+
+    // --- оси ---
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(
+        d3
+          .axisBottom(xScale)
+          .tickSize(0)
+          .tickFormat((d) => {
+            const index = keyedLabels.indexOf(d);
+            return labels[index];
+          })
+      )
+      .selectAll("text")
+      .style("font-size", "12px")
+      .attr("text-anchor", "end")
+      .attr("transform", "rotate(-35)");
+
+    g.append("g")
+      .call(d3.axisLeft(yScale).ticks(6))
+      .selectAll("text")
+      .style("font-size", "12px");
+
+    // --- линейный градиент ---
+    const defs = svg.append("defs");
+    const barGradient = defs
+      .append("linearGradient")
+      .attr("id", "bar-gradient")
+      .attr("x1", "0%")
+      .attr("x2", "0%")
+      .attr("y1", "0%")
+      .attr("y2", "100%");
+
+    barGradient
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "var(--area-start)")
+      .attr("stop-opacity", 0.7);
+
+    barGradient
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "var(--area-end)")
+      .attr("stop-opacity", 0);
+
+
+
+    // --- тултип ---
+    const tooltip = d3
+      .select("body")
+      .append("div")
+      .style("position", "absolute")
+      .style("background", "var(--tooltip-bg)")
+      .style("color", "var(--tooltip-text)")
+      .style("padding", "5px 10px")
+      .style("font-size", "14px")
+      .style("border-radius", "8px")
+      .style("pointer-events", "none")
+      .style("opacity", 0)
+      .style("z-index", 10);
+
+    // --- БАРЫ ---
+    const bars = g
+      .selectAll(".bar")
+      .data(chartData)
+      .join("rect")
+      .attr("class", "bar")
+      .attr("x", (_, i) => xScale(keyedLabels[i])!)
+      .attr("y", innerHeight)
+      .attr("width", xScale.bandwidth())
+      .attr("height", 0)
+      .attr("fill", "url(#bar-gradient)");
+
+    // Анимация появления
+    bars
+      .transition()
+      .duration(800)
+      .attr("y", (d) => yScale(d))
+      .attr("height", (d) => innerHeight - yScale(d));
+
+    bars.on("mouseover", function (event, d) {
+      const nodes = bars.nodes();
+      const i = nodes.indexOf(this as SVGRectElement);
+
+
+      tooltip
+        .style("opacity", 1)
+        .html(`${labels[i]}: ${d}`)
+        .style("left", event.pageX + 10 + "px")
+        .style("top", event.pageY - 25 + "px");
+
+      d3.select(this)
+        .transition()
+        .duration(150)
+        .attr("fill", "var(--line-end)");
+    });
+
+    bars.on("mousemove", (event) => {
+      tooltip
+        .style("left", event.pageX + 10 + "px")
+        .style("top", event.pageY - 25 + "px");
+    });
+
+    bars.on("mouseout", function () {
+      tooltip.style("opacity", 0);
+
+
+      d3.select(this)
+        .transition()
+        .duration(150)
+        .attr("fill", "url(#bar-gradient)");
+    });
+
+    return () => {
+      tooltip.remove();
+    };
+  }, [labels, chartData, maxValue, height, keyedLabels]);
+
+  return (
+    <div className={styles.chartContainer} id={id ? String(id) : undefined}>
+      <svg ref={svgRef} />
+    </div>
+  );
+}
+
+
+// src\components\Charts\BarChartTop\index.tsx
+import { useEffect, useRef, useMemo } from "react";
+import * as d3 from "d3";
+import styles from "../settingsCharts.module.scss";
+
+interface BarChartProps {
+    labels: string[];
+    values: number[];
+    id?: string | number;
+    maxValue?: number;
+    height?: number;
+    barHeight?: number;
+}
+
+export default function BarChart({
+    labels,
+    values,
+    id,
+    maxValue,
+    height = 350,
+    barHeight = 30,
+}: BarChartProps) {
+    const svgRef = useRef<SVGSVGElement | null>(null);
+
+    const keyedData = useMemo(() => {
+        return labels.map((label, i) => ({
+            key: `${label}__${i}`,
+            label,
+            value: values[i] ?? 0,
+            index: i,
+        }));
+    }, [labels, values]);
+
+    const chartData = useMemo(() => [...keyedData].sort((a, b) => b.value - a.value), [keyedData]);
+
+    useEffect(() => {
+        if (!svgRef.current) return;
+        const svg = d3.select(svgRef.current);
+        svg.selectAll("*").remove();
+
+        const containerWidth = svgRef.current.parentElement?.clientWidth || 400;
+        const margin = { top: 0, right: 0, bottom: 0, left: 0 };
+        const innerWidth = containerWidth - margin.left - margin.right;
+
+        const maxVisibleBars = Math.floor(height / barHeight);
+        const visibleData = chartData.slice(0, maxVisibleBars);
+
+        svg.attr("width", containerWidth).attr("height", height);
+        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const yScale = d3
+            .scaleBand()
+            .domain(visibleData.map((d) => d.key))
+            .range([0, barHeight * visibleData.length])
+            .padding(0);
+
+        const xScale = d3
+            .scaleLinear()
+            .domain([0, maxValue ?? d3.max(visibleData, (d) => d.value)!])
+            .range([0, innerWidth])
+            .nice();
+
+        // --- горизонтальный градиент ---
+        const defs = svg.append("defs");
+        const barGradient = defs
+            .append("linearGradient")
+            .attr("id", "bar-gradient")
+            .attr("x1", "0%")
+            .attr("x2", "100%")
+            .attr("y1", "0%")
+            .attr("y2", "0%");
+
+        barGradient.append("stop").attr("offset", "0%").attr("stop-color", "#f54c4c");
+        barGradient.append("stop").attr("offset", "100%").attr("stop-color", "#74253a");
+
+        const filter = defs.append("filter").attr("id", "drop-shadow");
+    filter.append("feDropShadow")
+        .attr("dx", 0)
+        .attr("dy", 2)
+        .attr("stdDeviation", 3)
+        .attr("flood-color", "#000")
+        .attr("flood-opacity", 1);
+        // --- заполнение градиентом ---
+        const bars = g
+            .selectAll(".bar")
+            .data(visibleData.slice().reverse()) 
+            .join("rect")
+            .attr("class", "bar")
+            .attr("y", (d) => yScale(d.key)!)
+            .attr("x", 0)
+            .attr("height", barHeight)
+            .attr("width", 0)
+            .attr("fill", "url(#bar-gradient)")
+            
+            .attr("filter", "url(#drop-shadow)"); // <-- применяем тень
+
+        bars.transition().duration(800).attr("width", (d) => xScale(d.value));
+
+        // --- подписи и значения в квадрате ---
+        const labelsGroup = g
+            .selectAll(".bar-label")
+            .data(visibleData)
+            .join("g")
+            .attr("class", "bar-label")
+            
+            .attr("transform", (d) => `translate(0, ${yScale(d.key)!})`);
+
+        labelsGroup
+            .append("text")
+            .attr("x", 5 + 15) // центрируем текст в квадрате
+            .attr("y", barHeight / 1.7)
+            .attr("alignment-baseline", "middle")
+            .attr("text-anchor", "middle")
+            .attr("fill", "var(--value-color)")
+            .style("font-size", "22px")
+            .attr("font-weight", "900")
+            .text((d) => d.value);
+
+        // Метка справа
+        labelsGroup
+            .append("text")
+            .attr("x", 45)
+            .attr("y", barHeight / 1.75)
+            .attr("alignment-baseline", "middle")
+            .attr("fill", "var(--text-color)")
+            .style("font-size", "22px")
+            .attr("font-weight", "900")
+            .text((d) => d.label);
+    }, [chartData, height, maxValue, barHeight]);
+
+    return (
+        <div className={styles.chartContainer} id={id ? String(id) : undefined}>
+            <svg ref={svgRef} />
+        </div>
+    );
+}
+
+
+// src\components\Charts\BarChartTop\withsegments\index.tsx
+import { useEffect, useRef, useMemo } from "react";
+import * as d3 from "d3";
+import styles from "../../settingsCharts.module.scss";
+
+interface BarChartProps {
+    labels: string[];
+    values: number[];
+    id?: string | number;
+    maxValue?: number;
+    height?: number;
+    barHeight?: number;
+    segments?: number;
+    colorMode?: number;
+}
+
+interface ChartItem {
+    key: string;
+    label: string;
+    value: number;
+    fillRatios: number[];
+}
+
+export default function BarChart({
+    labels,
+    values,
+    id,
+    maxValue = 100,
+    height = 350,
+    barHeight = 15,
+    segments = 10,
+    colorMode = 1,
+}: BarChartProps) {
+    const svgRef = useRef<SVGSVGElement | null>(null);
+
+    // Цвет сегментов
+    const activeColor = useMemo(() => {
+        const cssValue = getComputedStyle(document.documentElement)
+            .getPropertyValue("--bar-value-bg")
+            .trim();
+        const base = d3.color(cssValue) || d3.color("var(--bar-value-bg)");
+        const hsl = d3.hsl(base!);
+        if (colorMode === 1) return hsl.toString();
+        const hueShift = (colorMode - 1) * 22.5;
+        return d3.hsl((hsl.h + hueShift) % 360, hsl.s, hsl.l).toString();
+    }, [colorMode]);
+
+    // Glow цвет
+    const glowColor = useMemo(() => {
+        const c = d3.color(activeColor);
+        if (!c) return activeColor;
+        c.opacity = 0.35;
+        return c.toString();
+    }, [activeColor]);
+
+    // Подготовка данных и fillRatio
+    const chartData: ChartItem[] = useMemo(() => {
+        return labels
+            .map((label, i) => {
+                const parts = label.trim().split(/\s+/);
+                const last = parts[0] || "";
+                const initial = parts[1] ? `${parts[1][0]}.` : "";
+                const value = Math.min(values[i] ?? 0, maxValue);
+                const vPerSeg = maxValue / segments;
+                const fillRatios = Array.from({ length: segments }, (_, j) =>
+                    Math.min(Math.max(value - j * vPerSeg, 0), vPerSeg) / vPerSeg
+                );
+                return {
+                    key: `${label}__${i}`,
+                    label: `${last} ${initial}`,
+                    value,
+                    fillRatios,
+                };
+            })
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+    }, [labels, values, maxValue, segments]);
+
+    useEffect(() => {
+        if (!svgRef.current) return;
+
+        const svg = d3.select(svgRef.current);
+        const containerWidth = svgRef.current.parentElement?.clientWidth ?? 400;
+
+        const margin = { top: 15, right: 50, bottom: 10, left: 100 };
+        const innerWidth = containerWidth - margin.left - margin.right;
+        const innerHeight = chartData.length * barHeight;
+
+        svg.attr("width", containerWidth).attr("height", innerHeight + margin.top + margin.bottom);
+
+        // Группа для графика
+        let group = svg.select<SVGGElement>(".chart-group");
+        if (group.empty()) {
+            group = svg.append<SVGGElement>("g").attr("class", "chart-group");
+        }
+        group.attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // defs + glow один раз
+        let defs: d3.Selection<SVGDefsElement, unknown, null, undefined> = svg.select<SVGDefsElement>("defs");
+        if (defs.empty()) {
+            defs = svg.append<SVGDefsElement>("defs");
+            const glow = defs.append<SVGFilterElement>("filter")
+                .attr("id", "glow")
+                .attr("x", "-20%")
+                .attr("y", "-20%")
+                .attr("width", "140%")
+                .attr("height", "140%");
+            
+            glow.append("feGaussianBlur").attr("stdDeviation", 1.5).attr("result", "blur");
+            glow.append("feFlood").attr("flood-color", glowColor).attr("result", "glow");
+            glow.append("feComposite").attr("in", "glow").attr("in2", "blur").attr("operator", "in");
+            glow.append("feMerge").html(`
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+            `);
+        }
+
+        const y = d3.scaleBand<string>()
+            .domain(chartData.map(d => d.key))
+            .range([0, innerHeight])
+            .paddingInner(0.7);
+
+        const segmentWidth = innerWidth / segments;
+        const segmentPadding = 6;
+        const inactiveColor = "var(--bar-bg)";
+
+        // DATA JOIN
+        const rows = group.selectAll<SVGGElement, ChartItem>(".row")
+            .data(chartData, d => d.key);
+
+        // EXIT
+        rows.exit().remove();
+
+        // ENTER
+        const rowsEnter = rows.enter()
+            .append("g")
+            .attr("class", "row")
+            .attr("transform", d => `translate(0, ${y(d.key)})`);
+
+        // BG
+        rowsEnter.selectAll<SVGRectElement, number>("rect.bg")
+            .data(() => Array.from({ length: segments }, (_, i) => i))
+            .enter()
+            .append("rect")
+            .attr("class", "bg")
+            .attr("x", d => d * segmentWidth)
+            .attr("width", segmentWidth - segmentPadding)
+            .attr("height", y.bandwidth())
+            .attr("rx", 2)
+            .attr("fill", inactiveColor);
+
+        // ACTIVE
+        rowsEnter.selectAll<SVGRectElement, { fillRatio: number; i: number }>("rect.active")
+            .data(d => d.fillRatios.map((r, i) => ({ fillRatio: r, i })))
+            .enter()
+            .append("rect")
+            .attr("class", "active")
+            .attr("x", d => d.i * segmentWidth)
+            .attr("width", 0)
+            .attr("height", y.bandwidth())
+            .attr("rx", 2)
+            .attr("fill", activeColor)
+            .attr("filter", "url(#glow)")
+            .transition()
+            .duration(700)
+            .attr("width", d => (segmentWidth - segmentPadding) * d.fillRatio);
+
+        // LABELS
+        rowsEnter.append("text")
+            .attr("x", -10)
+            .attr("y", y.bandwidth() / 2)
+            .attr("text-anchor", "end")
+            .attr("alignment-baseline", "middle")
+            .attr("fill", "var(--text-color)")
+            .style("font-size", "11px")
+            .text(d => d.label);
+
+        // VALUE
+        rowsEnter.append("text")
+            .attr("x", innerWidth + 10)
+            .attr("y", y.bandwidth() / 2)
+            .attr("alignment-baseline", "middle")
+            .attr("fill", "var(--text-color)")
+            .style("font-size", "15px")
+            .style("font-weight", "900")
+            .text(d => Number.isInteger(d.value) ? d.value : d.value.toFixed(2));
+
+        // UPDATE
+        rows.attr("transform", d => `translate(0, ${y(d.key)})`);
+        rows.selectAll<SVGRectElement, { fillRatio: number; i: number }>("rect.active")
+            .data(d => d.fillRatios.map((r, i) => ({ fillRatio: r, i })))
+            .transition()
+            .duration(400)
+            .attr("width", d => (segmentWidth - segmentPadding) * d.fillRatio);
+
+        rows.select("text:last-of-type")
+            .text(d => Number.isInteger(d.value) ? d.value : d.value.toFixed(2));
+
+    }, [chartData, activeColor, glowColor, segments, barHeight]);
+
+    return (
+        <div
+            className={styles.chartContainer}
+            id={id ? String(id) : undefined}
+            style={{ height: "auto", minHeight: height }}
+        >
+            <svg ref={svgRef} />
+        </div>
+    );
+}
+
+
+// src\components\Charts\CircleChart\Radar\index.module.scss
+
+
+// src\components\Charts\CircleChart\Radar\index.tsx
+import * as React from "react";
+import { useRef, useEffect } from "react";
+import * as d3 from "d3";
+import styles from "../../settingsCharts.module.scss";
+
+interface RadarDataPoint {
+  seriesName: string;
+  values: number[];
+}
+
+interface RadarChartProps {
+  labels: string[];
+  data: RadarDataPoint[];
+  size?: number;
+  maxValue?: number;
+  colorMode?: number;
+}
+
+export default function RadarChart({
+  labels,
+  data,
+  size = 300,
+  maxValue = 5,
+  colorMode = 0,
+}: RadarChartProps) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+
+    const svg = d3.select(svgRef.current);
+    svg.selectAll("*").remove();
+    // ================== состояние видимости серий ==================
+    const seriesEnabled = new Map<number, boolean>();
+    data.forEach((_, i) => seriesEnabled.set(i, true));
+
+    const margin = 40;
+    const width = size + 2 * margin;
+    const height = size + 2 * margin;
+    const radius = size / 2;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const angleSlice = (Math.PI * 2) / labels.length;
+
+    svg.attr("width", width).attr("height", height);
+
+    const mainGroup = svg
+      .append("g")
+      .attr("transform", `translate(${centerX}, ${centerY})`);
+
+    const tooltip = d3
+      .select(svgRef.current.parentElement)
+      .append("div")
+      .attr("class", styles.tooltip)
+      .style("position", "absolute")
+      .style("padding", "4px 8px")
+      .style("background", "var(--grid-color)")
+      .style("color", "var(--text-color)")
+      .style("border", "1px solid var(--text-color)")
+      .style("border-radius", "4px")
+      .style("font-size", "11px")
+      .style("pointer-events", "none")
+      .style("opacity", 0)
+      .style("transition", "opacity 0.15s");
+
+    const rScale = d3.scaleLinear().range([0, radius]).domain([0, maxValue]);
+
+    const angleToCoords = (angle: number, value: number) => ({
+      x: rScale(value) * Math.cos(angle - Math.PI / 2),
+      y: rScale(value) * Math.sin(angle - Math.PI / 2),
+    });
+
+    const levels = d3.range(1, 6).map(i => (maxValue / 5) * i);
+
+    mainGroup
+      .selectAll(".grid-circle")
+      .data(levels)
+      .enter()
+      .append("circle")
+      .attr("class", "grid-circle")
+      .attr("r", d => rScale(d))
+      .style("fill", "var(--bg-dark-color)")
+      .style("fill-opacity", 0.8)
+      .style("stroke", "var(--text-color)")
+      .style("stroke-opacity", 0.5);
+
+    mainGroup
+      .selectAll(".axis-line")
+      .data(labels)
+      .enter()
+      .append("line")
+      .attr("class", "axis-line")
+      .attr("x1", 0)
+      .attr("y1", 0)
+      .attr("x2", (_, i) => angleToCoords(angleSlice * i, maxValue).x)
+      .attr("y2", (_, i) => angleToCoords(angleSlice * i, maxValue).y)
+      .style("stroke", "var(--text-color)")
+      .style("stroke-opacity", 0.3)
+      .style("stroke-width", 1);
+
+    mainGroup
+      .selectAll(".axis-label")
+      .data(labels)
+      .enter()
+      .append("text")
+      .attr("class", "axis-label")
+      .attr("x", (_, i) => angleToCoords(angleSlice * i, maxValue * 1.15).x)
+      .attr("y", (_, i) => angleToCoords(angleSlice * i, maxValue * 1.15).y)
+      .style("font-size", "12px")
+      .style("font-weight", "700")
+      .style("text-anchor", "middle")
+      .style("fill", "var(--text-color)")
+      .text(d => d);
+
+    // функция для расчета цвета серий от базового цвета --bar-value-bg
+    const getSeriesColor = (index: number, total: number, colorMode: number) => {
+      const baseColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--bar-value-bg')
+        .trim();
+
+      let h = 0, s = 70, l = 50;
+      const rgb = d3.color(baseColor);
+      if (rgb) {
+        const hsl = d3.hsl(rgb);
+        h = hsl.h;
+        s = hsl.s * 100;
+        l = hsl.l * 100;
+      }
+
+      const step = 360 / total; // равномерное распределение
+      const hue = (h + step * index + colorMode * 22.5) % 360; // сдвиг по colorMode
+      return `hsl(${hue}, ${s}%, ${l}%)`;
+    };
+
+
+    const radarLine = d3
+      .line<{ x: number; y: number }>()
+      .x(d => d.x)
+      .y(d => d.y)
+      .curve(d3.curveLinearClosed);
+
+    const labelsGroup = mainGroup.append("g").attr("class", "value-labels");
+
+    data.forEach((series, sIndex) => {
+      const color = getSeriesColor(sIndex, data.length, colorMode);
+
+      const seriesGroup = mainGroup
+        .append("g")
+        .attr("class", `series-group series-${sIndex}`);
+
+      const coords = series.values.map((v, i) =>
+        angleToCoords(angleSlice * i, v)
+      );
+
+      seriesGroup
+        .append("path")
+        .datum(coords)
+        .attr("class", `radar-area radar-area-${sIndex}`)
+        .attr("d", radarLine)
+        .style("fill", color)
+        .style("fill-opacity", 0.25)
+        .style("stroke", color)
+        .style("stroke-width", 2);
+
+      seriesGroup
+        .selectAll(".radar-point")
+        .data(
+          coords.map((p, i) => ({
+            ...p,
+            value: series.values[i],
+            label: labels[i],
+            color,
+            sIndex,
+            seriesName: series.seriesName,
+          }))
+        )
+        .enter()
+        .append("circle")
+        .attr("class", `radar-point point-${sIndex}`)
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", 4)
+        .style("fill", color)
+        .style("cursor", "pointer")
+        .on("mouseenter", function (event, d) {
+          if (!seriesEnabled.get(d.sIndex)) return
+          mainGroup.select(`.series-${d.sIndex}`).raise();
+          mainGroup
+            .select(`.radar-area-${d.sIndex}`)
+            .transition()
+            .duration(150)
+            .style("fill-opacity", 0.7)
+            .style("stroke-width", 3);
+
+          d3.select(this)
+            .transition()
+            .duration(150)
+            .attr("r", 7)
+            .style("filter", "drop-shadow(0 0 4px white)");
+
+          tooltip
+            .style("opacity", 1)
+            .html(`<b>${d.seriesName}</b><br/>${d.label}: <b>${d.value}</b>`);
+        })
+        .on("mousemove", function (event) {
+          tooltip
+            .style("left", event.offsetX + 20 + "px")
+            .style("top", event.offsetY + 20 + "px");
+        })
+        .on("mouseleave", function (event, d) {
+          mainGroup
+            .select(`.radar-area-${d.sIndex}`)
+            .transition()
+            .duration(150)
+            .style("fill-opacity", 0.35)
+            .style("stroke-width", 2);
+
+          d3.select(this)
+            .transition()
+            .duration(150)
+            .attr("r", 4)
+            .style("filter", "none");
+
+          tooltip.style("opacity", 0);
+        });
+    });
+    // === функции подсветки ===
+    const brightenColor = (color: string, percent: number) => {
+      const c = d3.hsl(color);
+      c.l = Math.min(1, c.l + c.l * (percent / 200));
+      return c.formatHsl();
+    };
+    const brightenBg = (percent: number) => {
+      const bg = getComputedStyle(document.documentElement)
+        .getPropertyValue('--grid-color')
+        .trim();
+
+      const c = d3.hsl(bg);
+      c.l = Math.min(1, c.l - c.l * (percent / 50));
+      return c.formatHsl();
+    };
+    const toggleSeries = (
+      i: number,
+      row: d3.Selection<SVGGElement, unknown, null, undefined>
+    ) => {
+      const enabled = seriesEnabled.get(i)!;
+      seriesEnabled.set(i, !enabled);
+
+      // показать / скрыть серию
+      mainGroup
+        .select(`.series-${i}`)
+        .transition()
+        .duration(200)
+        .style("opacity", enabled ? 0 : 1)
+        .style("pointer-events", enabled ? "none" : "all");
+
+      // квадратик легенды
+      row.select("rect.legend-color")
+        .transition()
+        .duration(200)
+        .style("fill", enabled ? "transparent" : getSeriesColor(i, data.length, colorMode))
+        .style("stroke", getSeriesColor(i, data.length, colorMode))
+        .style("stroke-width", enabled ? 1.5 : 0);
+
+      // приглушить текст
+      row.select("text.legend-name")
+        .transition()
+        .duration(200)
+        .style("opacity", enabled ? 0.5 : 1);
+
+      // убрать подписи значений
+      labelsGroup.selectAll("*").remove();
+    };
+    // === ЛЕГЕНДА ===
+    const legend = svg.append("g").attr("transform", `translate(${width - 130}, 20)`);
+    // увеличение яркости цвета фона (var(--grid-color))
+    const drawValueLabels = (i: number, color: string) => {
+      labelsGroup.selectAll("*").remove();
+
+      const seriesData = data[i];
+      const coords = seriesData.values.map((v, idx) => {
+        const angle = angleSlice * idx;
+        return { ...angleToCoords(angle, v), value: v };
+      });
+
+      coords.forEach(d => {
+        const text = labelsGroup
+          .append("text")
+          .attr("x", d.x)
+          .attr("y", d.y - 10)
+          .style("fill", color)
+          .style("font-size", "12px")
+          .style("font-weight", "600")
+          .style("text-anchor", "middle")
+          .text(d.value);
+
+        const bbox = text.node()!.getBBox();
+
+        labelsGroup
+          .insert("rect", "text")
+          .attr("x", bbox.x - 2)
+          .attr("y", bbox.y - 1)
+          .attr("width", bbox.width + 4)
+          .attr("height", bbox.height + 2)
+          .style("fill", "var(--grid-color)")
+          .style("rx", 3)
+          .style("ry", 3);
+      });
+
+      labelsGroup.raise();
+    };
+    const getEnabledSeries = () =>
+      Array.from(seriesEnabled.entries())
+        .filter(([, enabled]) => enabled)
+        .map(([i]) => i);
+    data.forEach((series, i) => {
+      const color = getSeriesColor(i, data.length, colorMode);
+      const brightColor = brightenColor(color, 30);
+      const y = i * 22;
+
+      const row = legend.append("g")
+        .attr("class", `legend-item legend-${i}`)
+        .style("cursor", "pointer")
+        .on("click", () => {
+
+          toggleSeries(i, row); mainGroup
+            .selectAll(".axis-line")
+            .transition()
+            .duration(150)
+            .style("stroke", "var(--text-color)")
+            .style("stroke-width", 1);
+
+        })
+        .on("mouseenter", () => {
+          if (!seriesEnabled.get(i)) return;
+
+          // поднять слой серии
+          mainGroup.select(`.series-${i}`).raise();
+
+          // фон строки легенды
+          row.select("rect.legend-bg")
+            .transition().duration(150)
+            .style("fill", brightenBg(60));
+
+          // подсветка области
+          mainGroup
+            .select(`.radar-area-${i}`)
+            .transition()
+            .duration(150)
+            .style("fill-opacity", 0.7)
+            .style("stroke-width", 3);
+
+          // подсветка осей
+          mainGroup
+            .selectAll(".axis-line")
+            .transition()
+            .duration(150)
+            .style("stroke-width", 3)
+            .style("stroke", brightColor);
+
+          // подсветка квадрата и текста в легенде
+          row.select("rect.legend-color")
+            .transition().duration(150)
+            .style("fill", brightColor);
+
+          row.select("text.legend-name")
+            .transition().duration(150)
+            .style("fill", brightColor);
+
+          // показать временные подписи значений этой серии
+          drawValueLabels(i, brightColor);
+        })
+        .on("mouseleave", () => {
+          if (!seriesEnabled.get(i)) return;
+
+          // вернуть фон строки легенды
+          row.select("rect.legend-bg")
+            .transition().duration(150)
+            .style("fill", "var(--grid-color)");
+
+          // убрать подсветку области
+          mainGroup
+            .select(`.radar-area-${i}`)
+            .transition()
+            .duration(150)
+            .style("fill-opacity", 0.35)
+            .style("stroke-width", 2);
+
+          // вернуть стандартный цвет осей
+          mainGroup
+            .selectAll(".axis-line")
+            .transition()
+            .duration(150)
+            .style("stroke", "var(--text-color)")
+            .style("stroke-width", 1);
+
+          // вернуть обычный цвет квадрата и текста
+          row.select("rect.legend-color")
+            .transition().duration(150)
+            .style("fill", getSeriesColor(i, data.length, colorMode));
+
+          row.select("text.legend-name")
+            .transition().duration(150)
+            .style("fill", getSeriesColor(i, data.length, colorMode));
+
+          // удалить временные подписи значений
+          const enabled = getEnabledSeries();
+          labelsGroup.selectAll("*").remove();
+
+          // если осталась одна активная серия — показать её подписи
+          if (enabled.length === 1) {
+            const idx = enabled[0];
+            drawValueLabels(
+              idx,
+              getSeriesColor(idx, data.length, colorMode)
+            );
+          }
+        });
+
+
+
+      // элемент легенды: фон строки
+      row
+        .append("rect")
+        .attr("class", "legend-bg")
+        .attr("x", 25)
+        .attr("y", y - 2)
+        .attr("width", 100)
+        .attr("height", 18)
+        .style("fill", "var(--grid-color)")
+        .style("opacity", 0.9)
+        .style("stroke", "var(--text-color)")
+        .style("stroke-width", 1)
+        .style("stroke-opacity", 0.2)
+        .style("rx", 4)
+        .style("ry", 4);
+
+      // квадратик цвета
+      row
+        .append("rect")
+        .attr("class", "legend-color")
+        .attr("x", 30)
+        .attr("y", y)
+        .attr("width", 12)
+        .attr("height", 12)
+        .style("fill", color);
+
+      // название серии
+      row
+        .append("text")
+        .attr("class", "legend-name")
+        .attr("x", 48)
+        .attr("y", y + 11)
+        .style("font-size", "12px")
+        .style("fill", color)
+        .style("user-select", "none")
+        .text(series.seriesName);
+    });
+
+    return () => {
+      tooltip.remove();
+    };
+  }, [labels, data, size, maxValue, colorMode]);
+
+  return (
+    <div className={styles.chartContainer} style={{ position: "relative" }}>
+      <svg ref={svgRef} />
+    </div>
+  );
+}
+
+
+// src\components\Charts\LineChart\index.tsx
+import { useEffect, useRef, useMemo } from "react";
+import * as d3 from "d3";
+import styles from "../settingsCharts.module.scss";
+
+
+interface LineChartProps {
+  data?: number[];       
+  labels?: string[];      
+  length?: number;       
+  height?: number;
+}
+
+export default function LineChart({
+  data,
+  labels,
+  length = 7,
+  height = 350,
+}: LineChartProps) {
+  const ref = useRef<SVGSVGElement | null>(null);
+ 
+  // --- Генерация данных ---
+  const chartData = useMemo(() => {
+    if (data && data.length > 0) return data.slice(0, length);
+    return Array.from({ length }, () => Math.floor(Math.random() * 100));
+  }, [data, length]);
+
+  // --- Метки оси X ---
+  const xLabels = useMemo(() => {
+    if (labels && labels.length > 0) return labels.slice(0, chartData.length);
+    return chartData.map((_, i) => `${i + 1}`);
+  }, [labels, chartData]);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const svg = d3.select(ref.current);
+    svg.selectAll("*").remove();
+
+    const containerWidth = ref.current.parentElement?.clientWidth || 400;
+    const margin = { top: 30, right: 60, bottom: 40, left: 40 };
+    const innerWidth = Math.max(chartData.length * 20, containerWidth);
+svg.attr("width", innerWidth + margin.left + margin.right)
+   .attr("height", height);
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const numPoints = chartData.length;
+
+    // --- Динамический размер точек и шрифта ---
+    const circleRadius = Math.max(3, 10 - numPoints * 0.5);
+    const xFontSize = Math.min(12, 20 - numPoints * 0.3);
+    const yFontSize = Math.min(12, 20 - numPoints * 0.3);
+
+    // --- Масштабы ---
+    const xScale = d3.scalePoint()
+      .domain(xLabels)
+      .range([0, innerWidth])
+      .padding(0.3);
+
+    const yScale = d3.scaleLinear()
+      .domain([0, Math.max(...chartData, 100)])
+      .range([innerHeight, 0])
+      .nice();
+
+    // --- Сетка ---
+    const gridGroup = g.append("g")
+      .attr("class", "grid")
+      .call(
+        d3.axisLeft(yScale)
+          .ticks(5)
+          .tickSize(-innerWidth)
+          .tickFormat(() => "")
+      );
+
+    gridGroup.select(".domain").attr("stroke", "none");
+    gridGroup.selectAll("line")
+      .attr("stroke", "var(--grid-color)")
+      .attr("stroke-width", 1)
+      .attr("stroke-opacity", 1);
+
+    // --- Оси ---
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(xScale).tickSize(0))
+      .selectAll("text")
+      .style("font-size", `${xFontSize}px`)
+      .attr("text-anchor", "middle");
+
+    g.append("g")
+      .call(d3.axisLeft(yScale).ticks(5).tickFormat((d) => `${d}%`).tickSize(0))
+      .selectAll("text")
+      .style("font-size", `${yFontSize}px`)
+      .attr("text-anchor", "end");
+
+    g.select(".domain").remove();
+
+    // --- Градиенты ---
+    const defs = svg.append("defs");
+
+    const lineGradient = defs.append("linearGradient")
+      .attr("id", "line-gradient")
+      .attr("x1", "0%").attr("x2", "100%")
+      .attr("y1", "0%").attr("y2", "0%");
+    lineGradient.append("stop").attr("offset", "0%").attr("stop-color", "var(--line-start)").attr("stop-opacity", 0.7);
+    lineGradient.append("stop").attr("offset", "100%").attr("stop-color", "var(--line-end)").attr("stop-opacity", 0.7);
+
+    const areaGradient = defs.append("linearGradient")
+      .attr("id", "area-gradient")
+      .attr("x1", "0%").attr("x2", "0%")
+      .attr("y1", "0%").attr("y2", "100%");
+    areaGradient.append("stop").attr("offset", "0%").attr("stop-color", "var(--area-start)").attr("stop-opacity", 0.7);
+    areaGradient.append("stop").attr("offset", "100%").attr("stop-color", "var(--area-end)").attr("stop-opacity", 0);
+
+    // --- Линия и область ---
+    const line = d3.line<number>()
+      .x((_, i) => xScale(xLabels[i])!)
+      .y(d => yScale(d))
+      .curve(d3.curveMonotoneX);
+
+    const area = d3.area<number>()
+      .x((_, i) => xScale(xLabels[i])!)
+      .y0(innerHeight)
+      .y1(d => yScale(d))
+      .curve(d3.curveMonotoneX);
+
+    const path = g.append("path")
+      .datum(chartData)
+      .attr("fill", "none")
+      .attr("stroke", "url(#line-gradient)")
+      .attr("stroke-width", 3)
+      .attr("d", line);
+
+    const totalLength = path.node()?.getTotalLength() || 0;
+    path.attr("stroke-dasharray", totalLength)
+      .attr("stroke-dashoffset", totalLength)
+      .transition()
+      .duration(1000)
+      .ease(d3.easeCubic)
+      .attr("stroke-dashoffset", 0);
+
+    g.append("path")
+      .datum(chartData)
+      .attr("fill", "url(#area-gradient)")
+      .attr("d", area)
+      .attr("opacity", 0)
+      .transition()
+      .duration(1000)
+      .attr("opacity", 1);
+
+    // --- Тулы и точки ---
+    const tooltip = d3.select("body")
+      .append("div")
+      .style("position", "absolute")
+      .style("background", "var(--tooltip-bg)")
+      .style("color", "var(--tooltip-text)")
+      .style("font-size", "16px")
+      .style("padding", "5px 10px")
+      .style("border", "1px solid var(--tooltip-border)")
+      .style("border-radius", "15px")
+      .style("pointer-events", "none")
+      .style("opacity", 0)
+      .style("z-index", 5);
+
+    const hoverLine = g.append("line")
+      .attr("stroke", "var(--hover-line)")
+      .attr("stroke-dasharray", "4 4")
+      .attr("opacity", 0);
+
+    g.selectAll("circle")
+      .data(chartData)
+      .join("circle")
+      .attr("cx", (_, i) => xScale(xLabels[i])!)
+      .attr("cy", d => yScale(d))
+      .attr("r", 0)
+      .attr("fill", "none")
+      .attr("stroke", "var(--circle-stroke)")
+      .attr("stroke-width", 3)
+      .on("mouseover", function (event, d) {
+        const node = this as SVGCircleElement;
+        const nodes = g.selectAll("circle").nodes();
+        const i = nodes.indexOf(node);
+
+        const x = xScale(xLabels[i])!;
+        const y = yScale(d);
+
+        tooltip.style("opacity", 1)
+          .html(`${xLabels[i]}: ${d}%`)
+          .style("left", event.pageX + 25 + "px")
+          .style("top", event.pageY - 25 + "px");
+
+        d3.select(node)
+          .transition()
+          .duration(200)
+          .attr("r", circleRadius + 5)
+          .attr("fill", "var(--circle-hover-fill)")
+          .attr("stroke", "var(--circle-hover-stroke)");
+
+        hoverLine.attr("x1", x)
+          .attr("y1", innerHeight)
+          .attr("x2", x)
+          .attr("y2", y)
+          .attr("opacity", 1);
+      })
+      .on("mousemove", (event) => {
+        tooltip.style("left", event.pageX + 10 + "px")
+               .style("top", event.pageY - 25 + "px");
+      })
+      .on("mouseout", (event) => {
+        tooltip.style("opacity", 0);
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .attr("r", circleRadius)
+          .attr("fill", "none")
+          .attr("stroke", "var(--circle-stroke)");
+
+        hoverLine.attr("opacity", 0);
+      })
+      .transition()
+      .duration(1000)
+      .attr("r", circleRadius);
+
+  }, [chartData, xLabels, height]);
+
+return (
+  <div className={styles.chartContainer}>
+  <svg
+    ref={ref}
+    style={{ width: "560%" }}
+  ></svg>
+</div>
+);
+
+
+}
+
+
+// src\components\Charts\settingsCharts.module.scss
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+@use "sass:color";
+
+:root {
+  --grid-color: #{$color-dark-primary}; // #272729
+  --line-start: #{$color-accent-secondary}; // #842a43 
+  --line-end: #{$color-accent-primary}; // #dc4648 
+  --area-start: #{$color-accent-primary}; // #dc4648 
+  --area-end: #{$color-accent-secondary}; // #842a43
+  --text-color: #{color.adjust($color-text-light, $alpha: -0.1)};
+  --tooltip-bg: #{color.adjust($color-dark-tertiary, $alpha: -0.3)}; // #16111163 
+  --tooltip-text: #{$color-text-light}; // #ffffff
+  --tooltip-border: #{color.adjust($color-dark-primary, $alpha: -0.65)}; // #0000005d 
+  --hover-line: #{$color-accent-hover}; // #e63946 
+  --circle-stroke: #{$color-accent-hover}; // #e63946
+  --circle-hover-fill: #{$color-accent-hover}; // #e63946
+  --circle-hover-stroke: #{color.adjust($color-dark-primary, $alpha: -0.44)}; // #00000090 
+  --value-color: #{$color-dark-tertiary};
+  --bar-bg: #{color.adjust($color-dark-tertiary, $alpha: -0.1)};
+  --bar-value-bg: #{$color-accent-primary};
+  --bg-dark-color: #{color.adjust($color-dark-primary, $blackness: 100%)};
+}
+
+.chartContainer {
+  width: 100%;
+
+
+  display: flex;             
+  justify-content: center;   
+  align-items: center;     
+    overflow-x: auto;
+  overflow-y: hidden;
+  @include scroll-bar(8px, $thumb-background: $color-ghost);
+}
+
+
+
+// src\components\Filters\index.module.scss
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+
+.filtersContainer {
+    display: flex;
+    flex-direction: column;
+    background-color: $color-dark-primary;
+
+    max-width: 400px;
+
+    height: 85.5vh;
+    flex-shrink: 0;            
+    flex-grow: 0;             
+  
+    color: $color-text-light;
+    border-radius: $border-radius;
+    @include border();
+}
+
+.title {
+    margin: 20px;
+    font-size: 22px;
+}
+
+.filterGroup {
+    margin-inline: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* ------------------------------------------------------------------
+ * КНОПКИ (СТАТИЧНЫЙ РАЗМЕР)
+ * Используется для кнопок в .filterGroup и .actions
+ * ------------------------------------------------------------------ */
+.button {
+    background-color: $color-border;
+    /* Фиксированный padding для статичного размера кнопок фильтров */
+    padding: 12px 15px; 
+    text-align: center;
+    cursor: pointer;
+    border-radius: $border-radius;
+    @include border();
+
+    &.active {
+        background: $gradient-color-logo;
+        color: #fff;
+        border-inline: none;
+        border-color: #ffffff00;
+        /* Padding должен быть сохранен, чтобы избежать смещения при активации */
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * КОНТЕЙНЕР ДЛЯ РАСТЯГИВАНИЯ
+ * Занимает все свободное вертикальное место, прибивая .actions к низу
+ * ------------------------------------------------------------------ */
+.mainContentWrapper {
+    /* ✨ КЛЮЧЕВОЙ МОМЕНТ: Забирает все оставшееся свободное место */
+    flex-grow: 1; 
+    
+    display: flex;
+    flex-direction: column;
+}
+/* ------------------------------------------------------------------ */
+
+
+.searchWrapper {
+    position: relative; 
+}
+
+.searchInputWrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 20px;
+    margin-bottom: 20px; 
+}
+
+.input {
+    @include input(10px, 10px);
+    flex-grow: 1;
+    margin-bottom: 0;
+}
+
+.searchButton {
+    padding: 8px 12px;
+}
+
+/* ------------------------------------------------------------------
+ * ОКНО РЕЗУЛЬТАТОВ (ДИНАМИЧЕСКИЙ РАЗМЕР)
+ * Сжимается по контенту, но добавляет скролл при переполнении
+ * ------------------------------------------------------------------ */
+.searchResults {
+    z-index: 10;
+    min-height: 200px;
+    max-height: 200px;
+    overflow-y: auto; 
+    @include shadows-inset(6px,-6px);
+    padding: 5px 0;
+  background-color: $color-dark-tertiary;
+}
+
+.resultsHeader {
+    margin: 0 20px 20px 20px;
+    font-size: 0.9em;
+    color: $color-text-secondary;
+    font-weight: 500;
+}
+
+.searchResultItem {
+    margin: 0 20px 0 20px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 1em;
+    outline: none;
+    border: 3px solid #ffffff00;
+  &:hover {
+    
+    background:  $color-accent-background;
+    border-color: $color-accent-hover;
+    color: $color-text-light;
+  }
+  &:active {
+    background:  $color-dark-tertiary;
+    border-color: $color-accent-background;
+    color: $color-text-light;
+  }
+}
+/* ------------------------------------------------------------------ */
+
+// КНОПКИ ДЕЙСТВИЙ (ПРИБИТЫ К НИЗУ)
+.actions {
+    margin: 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+// src\components\Filters\index.tsx
+import * as React from "react";
+import { useState, useMemo, useCallback, KeyboardEvent } from 'react';
+import styles from './index.module.scss';
+import SearchInput from '../SearchWidget/search'; 
+
+// Определяем типы для результатов
+type FilterKey = 'group' | 'auditory' | 'teacher';
+type FilterType = FilterKey | null;
+
+interface FilterResult {
+    id: number;
+    title: string;
+    type: FilterKey;
+}
+
+// Тестовые данные для демонстрации
+const DUMMY_RESULTS: Record<FilterKey, FilterResult[]> = {
+    group: [
+        { id: 1, title: 'Группа ИС-21', type: 'group' },
+        { id: 2, title: 'Группа БИ-19', type: 'group' },
+        { id: 3, title: 'Группа МК-22', type: 'group' },
+        { id: 4, title: 'Группа АА-23', type: 'group' }, 
+        { id: 5, title: 'Группа ТТ-20', type: 'group' }, 
+        { id: 6, title: 'Группа УУ-24', type: 'group' }, 
+    ],
+    auditory: [
+        { id: 11, title: 'Аудитория 205', type: 'auditory' },
+        { id: 12, title: 'Аудитория 312', type: 'auditory' },
+        { id: 13, title: 'Лаборатория А-10', type: 'auditory' },
+    ],
+    teacher: [
+        { id: 21, title: 'Иванов И.И.', type: 'teacher' },
+        { id: 22, title: 'Петрова С.А.', type: 'teacher' },
+        { id: 23, title: 'Сидоров К.В.', type: 'teacher' },
+    ],
+};
+
+interface FiltersProps {
+    onSearch?: () => void;
+}
+
+const Filters: React.FC<FiltersProps> = ({ onSearch }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState<FilterType>('group');
+
+    const displayedResults = useMemo(() => {
+        if (!activeFilter) return [];
+
+        const allResults = DUMMY_RESULTS[activeFilter as FilterKey] || [];
+        const query = searchQuery.toLowerCase().trim();
+
+        if (query === '') {
+            return allResults;
+        } else {
+            return allResults.filter(result => 
+                result.title.toLowerCase().includes(query)
+            );
+        }
+    }, [activeFilter, searchQuery]);
+    
+    const handleResultClick = useCallback((result: FilterResult) => {
+        setSearchQuery(result.title);
+        onSearch?.();
+    }, [onSearch]);
+
+    const handleResultKeyDown = (event: KeyboardEvent<HTMLDivElement>, result: FilterResult) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault(); 
+            handleResultClick(result);
+        }
+    };
+
+    const handleSearchClick = useCallback(() => {
+        onSearch?.();
+    }, [onSearch]);
+
+    const handleFilterClick = useCallback((filter: FilterKey) => {
+        setActiveFilter(filter);
+        setSearchQuery('');
+    }, []);
+
+    return (
+        <div className={styles.filtersContainer}>
+            <h2 className={styles.title}>Расписание</h2>
+
+            <div className={styles.filterGroup}>
+                {(['group', 'auditory', 'teacher'] as FilterKey[]).map((filterKey) => (
+                    <button
+                        key={filterKey}
+                        className={`${styles.button} ${activeFilter === filterKey ? styles.active : ''}`}
+                        onClick={() => handleFilterClick(filterKey)}
+                    >
+                        {filterKey === 'group' ? 'Группа' : filterKey === 'auditory' ? 'Аудитория' : 'Преподаватель'}
+                    </button>
+                ))}
+            </div>
+            
+            <div className={styles.mainContentWrapper}> 
+                <div className={styles.searchWrapper}>
+                    <SearchInput
+                        query={searchQuery}
+                        setQuery={setSearchQuery}
+                        placeholder={`Ваш запрос`}
+                        onSearch={handleSearchClick}
+                        containerClassName={styles.searchInputWrapper} 
+                        inputClassName={styles.input} 
+                        searchButtonClassName={styles.searchButton} 
+                    />
+                </div>
+                
+                <div 
+                    className={styles.searchResults}
+                    role="listbox" 
+                    aria-label="Результаты поиска"
+                >
+                    {displayedResults.length > 0 ? (
+                        <>
+                            <div className={styles.resultsHeader}>
+                                {searchQuery.trim() === '' ? 'Популярные результаты:' : 'Результаты:'}
+                            </div>
+                            {displayedResults.map((result) => (
+                                <div 
+                                    key={result.id} 
+                                    className={styles.searchResultItem}
+                                    onClick={() => handleResultClick(result)}
+                                    onKeyDown={(e) => handleResultKeyDown(e, result)}
+                                    role="option" 
+                                    tabIndex={0} 
+                                    aria-selected={searchQuery === result.title} 
+                                >
+                                    {result.title}
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        searchQuery.trim() !== '' && (
+                            <div className={styles.resultsHeader}>
+                                Ничего не найдено.
+                            </div>
+                        )
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Filters;
+
+
+// src\components\Navigation\icons.tsx
+import React from "react";
+
+
+export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+  >
+    <defs>
+      <linearGradient id="logoGradient" x1="0.612" y1="154.199" x2="202.077" y2="154.199" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stopColor="var(--accent-secondary)" />
+        <stop offset="1" stopColor="var(--accent-primary)" />
+      </linearGradient>
+    </defs>
+
+    <g transform="matrix(0.21839202,0,0,0.18977937,1.8663456,-4.5684394)" fill="url(#logoGradient)" stroke="#000">
+      <path
+        d="M28.5539 135.08L2.74191 154.688c-1.04518.669-.63066 1.286.03153 1.894l62.22776 40.986c3.2395.495 5.3256-.558 8.1078-2.591l92.548-72.627c1.753-1.212 2.84-1.093 3.998-1.116l15.215 9.907c2.102 1.21 2.388 1.01 3.379-.02l3.873-3.726c.169-.629.672-1.174-1.048-2.274L143.925 93.8557c-3.485-2.1773-5.967-1.466-8.419-.4573L38.9902 170.009c-1.3065.706-1.7133-.027-2.4647-.21L24.4877 161.23c-.5223-.686-.5104-1.373.6896-2.059l12.4224-10.312c1.1906-.435 1.4697-.111 1.9641.034l8.3932 5.069c.5386.217.9764.132 1.3928-.018l5.2591-4.187c.3396-.465.356-.93-.3947-1.394L32.0781 135.016c-1.3992-.409-2.1708-.315-3.5242.064z"
+        strokeWidth="2"
+        
+      />
+      <path
+        d="m94.531 184.61 6.808-5.237 12.046 7.856c1.787.875 2.227.156 3.142 0l44.516-35.744c.843-.496 1.708-.961 3.404-.262l35.713 23.848c.556.648.556 1.296 0 1.944l-48.327 37.773c-3.636 1.384-7.413 1.423-11.295.463z"
+        strokeWidth="2"
+      />
+    </g>
+  </svg>
+);
+
+
+export const CabinetIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="bevel"
+      strokeMiterlimit="40"
+      cx="24"
+      cy="14"
+      r="8.37"
+    />
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="bevel"
+      strokeMiterlimit="40"
+      d="M6.5 43C19.77 20.01 24.62 16.65 35.63 33.36c1.78 2.69 3.71 5.9 5.87 9.64"
+    />
+  </svg>
+);
+
+export const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    fill="none"
+  >
+    <path
+      d="M39 43V23h2.5L24 5.5 6.5 23H9v20"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const PlannerIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    fill="none"
+  >
+    <path
+      d="M6.5 43V5.5h29l6 7.5v30z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 21.5h24.29M12 28.5h24.29M12 35.5h24.29"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="bevel"
+    />
+    <rect
+      x="6.46"
+      y="5.46"
+      width="8.07"
+      height="8.07"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="bevel"
+    />
+  </svg>
+);
+
+export const ScheduleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <path
+      d="M41.5 13.17H6.5V36.5c0 3.97 1.99 6.5 6 6.5h23c4.06 0 6-2.54 6-6.5z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M6.51 12.74c0-5.9 0-7.14 5.93-7.14h23.56c5.96 0 5.93 1.12 5.93 7.14z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    {/* Ячейки календаря */}
+    {[0, 7, 14].map((dy) =>
+      [9.5, 17.5, 25.5, 33.5].map((dx, i) => (
+        <rect
+          key={`${dx}-${dy}-${i}`}
+          x={dx}
+          y={17.5 + dy}
+          width="5"
+          height="5"
+          stroke="currentColor"
+          strokeWidth="1.1"
+          fill="none"
+        />
+      ))
+    )}
+    {/* Верхние отметки */}
+    {[13, 23, 33].map((x, i) => (
+      <rect
+        key={i}
+        x={x}
+        y={3}
+        width="2"
+        height="5.5"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+    ))}
+  </svg>
+);
+export const StatsIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props} // теперь color и другие props передаются
+    viewBox="0 0 48 48"
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    fill="none"
+  >
+    <g>
+      <path
+        d="M 40.265625,16.318359 C 37.185661,18.008672 24.125,24.5625 24.125,24.5625 L 14.029297,9.0527344 A 17.98851,17.988512 0 0 0 6.0117187,24 17.98851,17.988512 0 0 0 24,41.988281 17.98851,17.988512 0 0 0 41.988281,24 17.98851,17.988512 0 0 0 40.265625,16.318359 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M 24,6.0117187 A 17.98851,17.988512 0 0 0 14.029297,9.0527344 L 24.125,24.5625 c 0,0 13.060661,-6.553828 16.140625,-8.244141 A 17.98851,17.988512 0 0 0 24,6.0117187 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </g>
+  </svg>
+)
+
+// src\components\Navigation\index.module.scss
+@use '../../styles/variables' as *;
+
+:root{
+  --accent-primary: #{$color-accent-primary}; 
+  --accent-secondary: #{$color-accent-secondary};
+}
+
+.sidebarNav {
+
+  background-color: $color-dark-primary;
+  width: 200px; 
+  min-height: 100vh;
+  padding-top: 20px;
+  border-right: 3px solid $color-border;
+}
+
+.navHeader {
+  padding: 0 0px 10px;
+  text-align: center;
+}
+
+.logoPlaceholder {
+  width: 50px; 
+  height: 50px; 
+  margin: 0 auto;
+}
+
+.logoImage {
+  width: 50%; 
+  height: 50%; 
+}
+
+.navList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  position: relative;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  text-decoration: none;
+  font-size: $font-size-base + 2px;
+  color: $color-text-secondary; 
+  transition: background-color $transition-speed, color $transition-speed;
+}
+
+.navLink:hover {
+  color: $color-text-light;
+  background-color: $color-accent-background-hover;
+  .icon{
+    color: $color-accent-hover;
+  }
+}
+
+.icon{
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  margin-right: 15px;
+}
+
+.text {
+  color: inherit; 
+}
+
+.active {
+  background: $gradient-color-logo;
+  box-shadow: 3px 0 0 0 $color-accent-primary, 0px -5px 10px 0 #0000003b;
+  .navLink {
+    color: $color-text-light;
+  }
+  transition: box-shadow calc($transition-speed/2);
+  .icon{
+    color: $color-text-light;
+  }
+  
+  
+}
+
+.active .navLink:hover {
+    background-color: $color-border; 
+    cursor: default;
+    color: $color-text-light;
+    .icon{
+       color: $color-text-light;
+    }
+    
+}
+
+// src\components\Navigation\index.tsx
+import { Link, useLocation } from "react-router-dom";
+import styles from "./index.module.scss";
+import {
+  HomeIcon,
+  ScheduleIcon,
+  CabinetIcon,
+  PlannerIcon,
+  StatsIcon,
+  LogoIcon,
+} from "./icons";
+
+export default function Nav() {
+  const location = useLocation();
+
+  const navItems = [
+    { to: "/", label: "Главная", Icon: HomeIcon },
+    { to: "/schedule", label: "Расписание", Icon: ScheduleIcon },
+    { to: "/cabinet", label: "Кабинет", Icon: CabinetIcon },
+    { to: "/planner", label: "Планировщик", Icon: PlannerIcon },
+    { to: "/stats", label: "Статистика", Icon: StatsIcon },
+  ];
+
+  return (
+    <nav className={styles.sidebarNav}>
+      <div className={styles.navHeader}>
+        <LogoIcon className={styles.logoImage} />
+      </div>
+
+      <ul className={styles.navList}>
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.to;
+
+          return (
+            <li
+              key={item.to}
+              className={`${styles.navItem} ${isActive ? styles.active : ""}`}
+            >
+              <Link to={item.to} className={styles.navLink}>
+                <item.Icon className={styles.icon} />
+                <span className={styles.text}>{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+
+// src\components\Planner\index.module.scss
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+.plannerContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  padding: 16px;
+}
+
+.plannerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.editBtn,
+.addBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text-color, #fff);
+}
+
+.cardsWrapper {
+  overflow-x: auto;
+  flex-grow: 1;
+  padding-bottom: 8px;
+}
+
+.cardsRow {
+  display: flex;
+  gap: 12px;
+  min-height: 200px; /* как у блока расписания */
+}
+
+.noteCard {
+  min-width: 260px;
+  background: var(--card-bg, #1e1e1e);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: default;
+  transition: transform 0.2s;
+}
+
+.noteCard:hover {
+  transform: translateY(-2px);
+}
+
+.noteHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.noteTitle {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  color: var(--accent-red, #ff4c4c);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.noteText {
+  font-size: 13px;
+  opacity: 0.9;
+  white-space: pre-wrap;
+  flex-grow: 1;
+}
+
+.noteDate {
+  font-size: 11px;
+  opacity: 0.6;
+  text-align: right;
+}
+
+/* ===== ADD NOTE FORM ===== */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.addForm {
+  width: 320px;
+  background: var(--card-bg, #1e1e1e);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.addForm input,
+.addForm textarea {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.addForm textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.formActions button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.formActions button:first-child {
+  background: var(--accent-green, #4caf50);
+  color: #fff;
+}
+
+.formActions button:last-child {
+  background: #333;
+  color: #fff;
+}
+
+
+// src\components\Planner\index.tsx
+import React, { useState, useRef, useMemo } from "react";
+import styles from "./index.module.scss";
+import { EditIcon } from "../ButtonIcons/Icons";
+
+export interface PlannerNote {
+  id: string;
+  title: string;
+  text: string;
+  startAt?: Date;
+  endAt?: Date;
+  createdAt: Date;
+}
+
+interface NoteCardProps {
+  note: PlannerNote;
+  onDelete: (id: string) => void;
+  onEdit: (note: PlannerNote) => void;
+}
+
+export const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onEdit }) => {
+  return (
+    <div className={styles.noteCard}>
+      <div className={styles.noteHeader}>
+        <span className={styles.noteTitle}>{note.title}</span>
+        <div className={styles.cardActions}>
+          {/* Используем иконку вместо символа ✎ */}
+          <button className={styles.editBtn} onClick={() => onEdit(note)}>
+            <EditIcon size={16} />
+          </button>
+          <button className={styles.deleteBtn} onClick={() => onDelete(note.id)}>✕</button>
+        </div>
+      </div>
+
+      <div className={styles.noteText}>{note.text}</div>
+
+      <div className={styles.noteDate}>
+        {note.startAt ? (
+          note.endAt ? (
+            `${note.startAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} — ${note.endAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+          ) : (
+            `${note.startAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+          )
+        ) : (
+          note.createdAt.toLocaleDateString()
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface AddEditNoteFormProps {
+  note?: PlannerNote;
+  onSave: (note: PlannerNote) => void;
+  onClose: () => void;
+}
+
+export const AddEditNoteForm: React.FC<AddEditNoteFormProps> = ({ note, onSave, onClose }) => {
+  const [title, setTitle] = useState(note?.title || "");
+  const [text, setText] = useState(note?.text || "");
+  const [startAt, setStartAt] = useState(note?.startAt ? note.startAt.toISOString().slice(0,16) : "");
+  const [endAt, setEndAt] = useState(note?.endAt ? note.endAt.toISOString().slice(0,16) : "");
+
+  const handleSave = () => {
+    if (!title.trim() && !text.trim()) return;
+
+    onSave({
+      id: note?.id || crypto.randomUUID(),
+      title: title || "Без названия",
+      text,
+      startAt: startAt ? new Date(startAt) : undefined,
+      endAt: endAt ? new Date(endAt) : undefined,
+      createdAt: note?.createdAt || new Date(),
+    });
+
+    onClose();
+  };
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.addForm}>
+        <input placeholder="Заголовок" value={title} onChange={e => setTitle(e.target.value)} />
+        <textarea placeholder="Текст заметки" value={text} onChange={e => setText(e.target.value)} />
+        <label>
+          Время начала:
+          <input type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} />
+        </label>
+        <label>
+          Время конца:
+          <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} />
+        </label>
+        <div className={styles.formActions}>
+          <button onClick={handleSave}>{note ? "Сохранить" : "Добавить"}</button>
+          <button onClick={onClose}>Отмена</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface NotesPlannerProps {
+  selectedWeekStart: Date;
+}
+
+const NotesPlanner: React.FC<NotesPlannerProps> = ({ selectedWeekStart }) => {
+  const [notes, setNotes] = useState<PlannerNote[]>([]);
+  const [editingNote, setEditingNote] = useState<PlannerNote | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const addOrUpdateNote = (note: PlannerNote) => {
+    setNotes(prev => {
+      const idx = prev.findIndex(n => n.id === note.id);
+      if (idx !== -1) {
+        const newNotes = [...prev];
+        newNotes[idx] = note;
+        return newNotes;
+      }
+      return [note, ...prev];
+    });
+  };
+
+  const deleteNote = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
+
+  const weekNotes = useMemo(() => {
+    const result: { [key: string]: PlannerNote[] } = {};
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(selectedWeekStart);
+      day.setDate(day.getDate() + i);
+      const dayKey = day.toLocaleDateString();
+
+      result[dayKey] = notes
+        .filter(n => (n.startAt ?? n.createdAt).toLocaleDateString() === dayKey)
+        .sort((a,b) => (a.startAt?.getTime() || 0) - (b.startAt?.getTime() || 0));
+    }
+    return result;
+  }, [notes, selectedWeekStart]);
+
+  return (
+    <div className={styles.plannerContainer}>
+      {Object.keys(weekNotes).map(dayKey => (
+        <div key={dayKey} className={styles.weekDaySection}>
+          <h3>
+            {dayKey}{" "}
+            <button
+              className={styles.addBtn}
+              onClick={() => setEditingNote({ id: crypto.randomUUID(), title: "", text: "", createdAt: new Date() })}
+            >
+              ＋
+            </button>
+          </h3>
+          <div className={styles.cardsWrapper} ref={containerRef} style={{ cursor: "grab" }}>
+            <div className={styles.cardsRow}>
+              {weekNotes[dayKey].map(note => (
+                <NoteCard key={note.id} note={note} onDelete={deleteNote} onEdit={setEditingNote} />
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {editingNote && (
+        <AddEditNoteForm
+          note={editingNote.id ? editingNote : undefined}
+          onSave={addOrUpdateNote}
+          onClose={() => setEditingNote(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default NotesPlanner;
+
+
+// src\components\ScheduleWeek\index.module.scss
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+:root {
+  --scale: 1.5;
+}
+
+.scheduleContainer {
+  font-family: $font-family-primary;
+  background: $color-dark-primary;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  margin-top: calc(1vh * var(--scale));
+  user-select: none;
+}
+
+.scheduleGrid {
+  display: flex;
+}
+
+.timeColumn {
+  flex-shrink: 0;
+  text-align: right;
+
+  .timeColumnInner {
+    height: calc(45vh * var(--scale));
+    overflow: hidden;
+  }
+}
+
+.timeSlot {
+  font-size: 0.75rem;
+  color: $color-text-secondary;
+  padding-right: calc(0.5vw * var(--scale));
+}
+
+.rightSide {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.dayHeader {
+  display: flex;
+  background: $color-dark-secondary;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-width: max-content;
+}
+
+.dayName {
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: calc(0.6vh * var(--scale)) 0;
+  border: none;
+}
+
+.scheduleBodyWrapper {
+  flex-grow: 1;
+  max-height: calc(45vh * var(--scale));
+  overflow: auto;
+  @include scroll-bar(6px);
+  @include shadows-inset(5px, -5px, 5px);
+}
+
+.scheduleBody {
+  display: flex;
+  min-width: max-content;
+}
+
+.dayColumn {
+  position: relative;
+  border-right: calc(0.2vh * var(--scale)) dashed $color-border;
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.hourSlot {
+  border-bottom: calc(0.2vh * var(--scale)) dashed $color-border;
+}
+
+.scheduleItem {
+  position: absolute;
+  left: 0%;
+  width: 100%;
+
+  padding: calc(0.3vh * var(--scale)) calc(1vw * var(--scale));
+  border-radius: calc($border-radius * var(--scale));
+  background: $color-dark-tertiary;
+  @include border(calc(0.2vh * var(--scale)));
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: all $transition-speed;
+  z-index: 5;
+
+  .arrowLink {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    // Используйте свои переменные или конкретные цвета
+    color: rgba(255, 255, 255,0); 
+   
+    border-radius: 50%;
+    text-decoration: none;
+    transition: all 0.2s ease;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease, color 0.2s ease;
+      stroke: currentColor;
+    }
+
+    &:hover {
+      background: $color-accent-primary; // Фон при наведении
+      color: #fff; // Цвет стрелки при наведении
+      transform: translateX(2px); // В вашем коде было -2px, для стрелки вправо лучше 2px
+
+    }
+
+    &:active {
+      background: none;
+    }
+  }
+
+  &:hover {
+    background: rgba($color-accent-background,0.05);
+    border-color: $color-accent-primary;
+
+    .time,
+    .group,.arrowLink {
+      color: $color-text-light;
+    }
+  }
+  
+
+
+}
+
+.scheduleInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.subject {
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.time,
+.group,
+.teacher {
+  font-size: 0.8rem;
+  color: $color-text-secondary;
+}
+
+.time {
+  font-weight: 700;
+}
+
+.actionButtons {
+  position: absolute;
+  bottom: calc(10px * var(--scale));
+  right: calc(20px * var(--scale));
+  display: flex;
+  gap: calc(5px * var(--scale));
+  z-index: 20;
+
+  button {
+    padding: 2px;
+    svg text {
+      fill: $color-text-light;
+    }
+    &:hover {
+      svg text {
+        fill: $color-accent-primary;
+      }
+    }
+    &:active {
+      svg text {
+        fill: $color-text-light;
+      }
+    }
+  }
+}
+
+
+// src\components\ScheduleWeek\index.tsx
+import React, { useRef, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ScheduleItem, WeeklyScheduleData } from "../../types/sched";
+import styles from "./index.module.scss";
+import { EditIcon, PdfIcon } from "../ButtonIcons/Icons"; 
+import { startOfWeek, endOfWeek, isBefore, isAfter } from "date-fns";
+
+const START_HOUR = 8;
+const END_HOUR = 22;
+const SLOT_MINUTES = 90;
+const DAYS_OF_WEEK = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const MAX_SUBJECT_LENGTH = 35;
+const LESSON_TYPES = ['Лек.', 'Пр.', 'Лаб.', 'Экз.', 'Зач.'];
+
+const SCALE = 1.5;
+const getSlotHeight = () => window.innerHeight * 0.08 * SCALE;
+const getDayWidth = () => window.innerWidth * 0.10 * SCALE;
+const timeToMinutes = (time: string) => {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+};
+
+const calcGrid = (item: ScheduleItem, slotHeight: number) => {
+  const start = timeToMinutes(item.startTime);
+  const end = timeToMinutes(item.endTime);
+  const offset = start - START_HOUR * 60;
+  const duration = end - start;
+  return {
+    top: (offset / SLOT_MINUTES) * slotHeight,
+    height: (duration / SLOT_MINUTES) * slotHeight,
+  };
+};
+
+interface ScheduleCardProps {
+  item: ScheduleItem;
+  slotHeight: number;
+  onClick?: (item: ScheduleItem) => void;
+}
+const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, slotHeight, onClick }) => {
+  const { top, height } = calcGrid(item, slotHeight);
+
+  // Логика обработки названия (оставляем без изменений)
+  let baseSubject = item.subject;
+  let displayType = "";
+  const subjectParts = item.subject.split(" ").filter(p => p.length > 0);
+  const lastWord = subjectParts[subjectParts.length - 1];
+
+  if (lastWord && LESSON_TYPES.some(type => lastWord.replace(".", "").toLowerCase() === type.replace(".", "").toLowerCase())) {
+    displayType = lastWord;
+    baseSubject = item.subject.substring(0, item.subject.lastIndexOf(lastWord)).trim();
+  }
+
+  let displaySubject = baseSubject;
+  if (baseSubject.length > MAX_SUBJECT_LENGTH) {
+    displaySubject = baseSubject.substring(0, MAX_SUBJECT_LENGTH) + "...";
+  }
+  const formattedType = displayType ? ` (${displayType})` : "";
+
+  // Обработчик только для стрелочки
+  const handleArrowClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Важно: чтобы не срабатывал drag или другие события на карточке
+    onClick?.(item);
+  };
+
+  return (
+    <div
+      className={styles.scheduleItem}
+      style={{ top, height }}
+      // Убрали onClick и role="button" отсюда
+    >
+      <div className={styles.scheduleInfo}>
+        <span className={styles.subject}>
+          {displaySubject}
+          <span className={styles.subjectType}>{formattedType}</span>
+        </span>
+        <span className={styles.time}>
+          {item.startTime} – {item.endTime}
+        </span>
+        <span className={styles.group}>{item.location}</span>
+        <span className={styles.teacher}>{item.teacher}</span>
+      </div>
+
+      {/* Теперь кнопка — это только стрелочка */}
+      <div 
+        className={styles.arrowLink} 
+        onClick={handleArrowClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { 
+          if (e.key === "Enter" || e.key === " ") {
+            e.stopPropagation();
+            onClick?.(item);
+          }
+        }}
+        style={{ cursor: 'pointer' }} // Явно указываем курсор для интерактивной зоны
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M5 12H19M19 12L12 5M19 12L12 19"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+interface WeeklyScheduleProps {
+  schedule: WeeklyScheduleData;
+  selectedWeek: Date;
+}
+
+const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({ schedule, selectedWeek }) => {
+  const navigate = useNavigate();
+  const [dimensions, setDimensions] = useState({
+    slotHeight: getSlotHeight(),
+    dayWidth: getDayWidth(),
+  });
+
+  const timeRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  // --- grab scroll ---
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!bodyRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - bodyRef.current.offsetLeft);
+    setStartY(e.pageY - bodyRef.current.offsetTop);
+    setScrollLeft(bodyRef.current.scrollLeft);
+    setScrollTop(bodyRef.current.scrollTop);
+    bodyRef.current.style.cursor = "grabbing";
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !bodyRef.current) return;
+    const x = e.pageX - bodyRef.current.offsetLeft;
+    const y = e.pageY - bodyRef.current.offsetTop;
+    const walkX = x - startX;
+    const walkY = y - startY;
+    bodyRef.current.scrollLeft = scrollLeft - walkX;
+    bodyRef.current.scrollTop = scrollTop - walkY;
+  };
+
+  const onMouseUpOrLeave = () => {
+    setIsDragging(false);
+    if (bodyRef.current) bodyRef.current.style.cursor = "grab";
+  };
+
+  // --- resize ---
+  useEffect(() => {
+    const handleResize = () =>
+      setDimensions({
+        slotHeight: getSlotHeight(),
+        dayWidth: getDayWidth(),
+      });
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // --- фильтруем события по выбранной неделе ---
+  const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 });
+
+  const filteredSchedule = schedule.filter(item => {
+    const itemDate = item.date ? new Date(item.date) : new Date();
+    return !isBefore(itemDate, weekStart) && !isAfter(itemDate, weekEnd);
+  });
+
+  const grouped = filteredSchedule.reduce((acc, item) => {
+    if (!acc[item.dayOfWeek]) acc[item.dayOfWeek] = [];
+    acc[item.dayOfWeek].push(item);
+    return acc;
+  }, {} as Record<number, ScheduleItem[]>);
+
+  const totalSlots = Math.ceil(((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES);
+
+  // --- синхронизация скролла и прокрутка к текущему времени ---
+  useEffect(() => {
+  const body = bodyRef.current;
+  const header = headerRef.current;
+  const timeCol = timeRef.current;
+  if (!body || !header || !timeCol) return;
+
+  const syncY = () => {
+    timeCol.scrollTop = body.scrollTop;
+  };
+  const syncX = () => {
+    header.style.transform = `translateX(-${body.scrollLeft}px)`;
+  };
+
+  body.addEventListener("scroll", syncY);
+  body.addEventListener("scroll", syncX);
+
+  return () => {
+    body.removeEventListener("scroll", syncY);
+    body.removeEventListener("scroll", syncX);
+  };
+}, []);
+
+useEffect(() => {
+  const body = bodyRef.current;
+  const header = headerRef.current;
+  const timeCol = timeRef.current;
+  if (!body || !header || !timeCol) return;
+
+  const { slotHeight, dayWidth } = dimensions;
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  // Рассчитываем позицию
+  const offsetMinutes = Math.max(currentMinutes - START_HOUR * 60, 0);
+  const scrollY = (offsetMinutes / SLOT_MINUTES) * slotHeight;
+  
+  const currentDay = now.getDay();
+  const mappedDay = currentDay === 0 ? 6 : currentDay - 1;
+  const scrollX = mappedDay * dayWidth;
+
+  // Выполняем прокрутку
+  body.scrollTo({ 
+    top: scrollY, 
+    left: scrollX, 
+    behavior: "smooth" 
+  });
+  
+  // Синхронизируем начальное состояние шапки и колонки времени
+  header.style.transform = `translateX(-${scrollX}px)`;
+  timeCol.scrollTop = scrollY;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+  const handleCardClick = (item: ScheduleItem) => {
+    // Переход к профилю по имени преподавателя или группе
+    // Можно заменить на реальные маршруты
+    navigate(`/profile/${encodeURIComponent(item.teacher || item.location)}`);
+  };
+
+  return (
+    <div className={styles.scheduleContainer}>
+      <div className={styles.scheduleGrid}>
+        <div className={styles.timeColumn}>
+          <div className={styles.timeColumnInner} ref={timeRef}>
+            {Array.from({ length: totalSlots }).map((_, i) => {
+              const hour = START_HOUR + Math.floor((i * SLOT_MINUTES) / 60);
+              const minutes = (i * SLOT_MINUTES) % 60;
+              const label = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+              return (
+                <div
+                  key={i}
+                  className={styles.timeSlot}
+                  style={{ height: `${dimensions.slotHeight}px`, lineHeight: `${dimensions.slotHeight}px` }}
+                >
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className={styles.rightSide}>
+          <div className={styles.dayHeader} ref={headerRef}>
+            {DAYS_OF_WEEK.map((d, i) => (
+              <div key={i} className={styles.dayName} style={{ width: `${dimensions.dayWidth}px` }}>
+                {d}
+              </div>
+            ))}
+          </div>
+
+          <div
+            className={styles.scheduleBodyWrapper}
+            ref={bodyRef}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUpOrLeave}
+            onMouseLeave={onMouseUpOrLeave}
+            style={{ cursor: "grab" }}
+          >
+            <div className={styles.scheduleBody}>
+              {DAYS_OF_WEEK.map((_, i) => {
+                const dayIndex = i + 1;
+                const events = grouped[dayIndex] || [];
+                return (
+                  <div key={i} className={styles.dayColumn} style={{ width: `${dimensions.dayWidth}px` }}>
+                    {Array.from({ length: totalSlots }).map((_, k) => (
+                      <div key={k} className={styles.hourSlot} style={{ height: `${dimensions.slotHeight}px` }} />
+                    ))}
+                    {events.map(e => (
+                      <ScheduleCard
+                        key={e.id}
+                        item={e}
+                        slotHeight={dimensions.slotHeight}
+                        onClick={handleCardClick}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.actionButtons}>
+        <button className={styles.editBtn} onClick={() => ""}>
+          <EditIcon size={40} />
+        </button>
+        <button className={styles.pdfBtn} onClick={() => ""}>
+          <PdfIcon size={40} textColor="var(--pdf-text-color)"/>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default WeeklySchedule;
+
+
+// src\components\ScheduleWidget\index.module.scss
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.scheduleWrapper {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 8px;
+  border-radius: 4px;
+  @include shadows-inset (6px, -6px);
+  @include scroll-bar();
+}
+
+.scheduleList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  margin-block: 2px;
+
+  li {
+    margin-bottom: 5px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: $color-dark-tertiary;
+    border-block: 1px solid $color-border;
+    transition: all 0.25s ease;
+
+    &:hover {
+      background-color: $color-accent-background-hover;
+      border-block: 1px solid $color-accent-primary;
+      cursor: pointer;
+    }
+
+    font-size: $font-size-base;
+    color: $color-text-secondary;
+  }
+}
+
+.scheduleItem {
+  position: relative; // уже есть, хорошо для абсолютного позиционирования стрелки
+
+  .lessonLink {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: $color-accent-primary;
+
+    border-radius: 50%;
+    text-decoration: none;
+    transition: all 0.2s ease;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease, color 0.2s ease;
+      stroke: currentColor;
+    }
+
+    &:hover {
+      color: $color-accent-hover;
+      svg {
+        transform: translateX(3px);
+        color: $color-accent-hover;
+        &:active{
+          color: $color-text-light
+        }
+      }
+    }
+  }
+}
+
+.scheduleItem.now, 
+.scheduleItem.soon {
+  background: rgba($color-accent-primary, 0.2);
+  box-shadow: 0 0 8px rgba($color-accent-primary, 0.4);
+  border: 1px solid $color-accent-primary;
+  animation: pulseNow 2.5s infinite ease-in-out;
+}
+
+.scheduleItem.firstNext {
+  background: $color-dark-tertiary;
+  border: 3px solid rgba($color-accent-primary, 0.3);
+  &:hover{
+    border: 3px solid rgba($color-accent-hover, 0.3);
+  }
+}
+
+.scheduleItem.past {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.scheduleTime {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: $color-text-light;
+  margin-bottom: 4px;
+}
+
+.status {
+  font-size: 0.85rem;
+  color: $color-accent-primary;
+  margin-left: 10px;
+  font-weight: 500;
+}
+
+.scheduleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subject {
+  font-size: 1rem;
+  font-weight: 500;
+  color: $color-text-light;
+}
+
+.group {
+  font-size: 0.9rem;
+  color: $color-text-secondary;
+}
+
+@keyframes pulseNow {
+  0% { box-shadow: 0 0 6px rgba($color-accent-primary, 0.4); }
+  50% { box-shadow: 0 0 12px rgba($color-accent-primary, 0.6); }
+  100% { box-shadow: 0 0 6px rgba($color-accent-primary, 0.4); }
+}
+
+
+
+// src\components\ScheduleWidget\index.tsx
+import { useEffect, useMemo, useRef, useCallback } from "react";
+import { parse, isWithinInterval, differenceInMinutes } from "date-fns";
+import styles from "./index.module.scss";
+
+export interface ScheduleItem {
+  time: string; 
+  subject: string;
+  group: string;
+}
+
+interface ScheduleProps {
+  schedule: ScheduleItem[];
+  currentTime: Date;
+}
+
+export default function Schedule({ schedule, currentTime }: ScheduleProps) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const parseTime = useCallback((t: string) => parse(t, "HH:mm", new Date()), []);
+
+  const getLessonStatus = useCallback(
+    (timeRange: string) => {
+      const [startStr, endStr] = timeRange.split("-");
+      const start = parseTime(startStr);
+      const end = parseTime(endStr);
+
+      if (isWithinInterval(currentTime, { start, end })) return "now";
+
+      const diff = differenceInMinutes(start, currentTime);
+
+      if (diff > 0 && diff <= 10) return "soon";
+      if (diff > 10) {
+        const hours = Math.floor(diff / 60);
+        const minutes = diff % 60;
+        return hours > 0 ? `через ${hours} ч ${minutes} мин` : `через ${diff} мин`;
+      }
+
+      return "past";
+    },
+    [currentTime, parseTime]
+  );
+
+  const lessonsWithStatus = useMemo(
+    () => schedule.map((item) => ({ ...item, status: getLessonStatus(item.time) })),
+    [schedule, getLessonStatus]
+  );
+
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
+
+    const allItems = container.querySelectorAll(`.${styles.scheduleItem}`);
+    if (!allItems.length) return;
+
+    const indexNowOrNext = lessonsWithStatus.findIndex(
+      (item) =>
+        ["now", "soon"].includes(item.status) || item.status.startsWith("через")
+    );
+
+    if (indexNowOrNext === -1) return;
+
+    const target = allItems[indexNowOrNext] as HTMLElement;
+    if (!target) return;
+
+    if (container.scrollHeight <= container.clientHeight) return;
+
+    const scrollTop =
+      target.offsetTop - container.clientHeight - target.offsetHeight * 1.2;
+
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const safeScroll = Math.max(0, Math.min(scrollTop, maxScroll));
+
+    container.scrollTo({ top: safeScroll, behavior: "smooth" });
+  }, [lessonsWithStatus]);
+
+  return (
+    <div className={styles.scheduleWrapper} ref={listRef}>
+      <ul className={styles.scheduleList}>
+        {lessonsWithStatus.map((item, index) => {
+          const isNow = item.status === "now";
+          const isSoon = item.status === "soon";
+          const isNext = item.status.startsWith("через");
+          const isPast = item.status === "past";
+          const isFirstNext = isNext && !lessonsWithStatus.slice(0, index).some(l => l.status.startsWith("через"));
+
+          return (
+            <li
+              key={index}
+              className={`${styles.scheduleItem} 
+                         ${isNow ? styles.now : ""} 
+                         ${isSoon ? styles.soon : ""} 
+                         ${isNext ? styles.next : ""} 
+                         ${isPast ? styles.past : ""} 
+                         ${isFirstNext ? styles.firstNext : ""}`}
+            >
+              <div className={styles.scheduleTime}>
+                {item.time}{" "}
+                <span className={styles.status}>
+                  {isNow
+                    ? "сейчас"
+                    : isSoon
+                    ? "скоро"
+                    : isPast
+                    ? "прошло"
+                    : item.status}
+                </span>
+              </div>
+              <div className={styles.scheduleInfo}>
+                <div className={styles.subject}>{item.subject}</div>
+                <div className={styles.group}>{item.group}</div>
+              </div>
+
+              <a
+                href="/cabinet" 
+                className={styles.lessonLink}
+                aria-label="Перейти в кабинет"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 12H19M19 12L12 5M19 12L12 19"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+
+// src\components\SearchWidget\index.module.scss
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.input{
+  @include input();
+}
+
+.dashboardCard {
+
+  margin-bottom: 25px; 
+  padding: 0;
+  border: none;
+}
+
+.toggleRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.toggleButton {
+  flex: 1;
+  background: transparent;
+  @include border();
+  border-top: none;
+  color: $color-text-secondary;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 17px 17px 0px 0px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  &:first-child {
+    margin-right: 8px;
+  }
+
+  &:hover {
+    background:  $color-accent-background-hover;
+    border-color: $color-accent-background;
+    color: $color-text-light;
+  }
+  &:active {
+    background:  $color-dark-tertiary;
+    border-color: $color-accent-background;
+    color: $color-text-light;
+  }
+}
+
+.active {
+  background: $color-dark-primary;
+  color: $color-text-light;
+  border-color: $color-accent-hover;
+  box-shadow: inset 0px 2px 10px $color-ghost;
+}
+
+.searchRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.searchButton {
+  padding: 8px 12px;
+}
+
+
+// src\components\SearchWidget\index.tsx
+// Search.tsx
+import React from "react";
+import styles from "./index.module.scss";
+import SearchInput from "./search";
+
+interface SearchProps {
+  searchMode: "group" | "auditorium";
+  setSearchMode: React.Dispatch<React.SetStateAction<"group" | "auditorium">>;
+  query: string;
+  setQuery: React.Dispatch<React.SetStateAction<string>>;
+  onSearch: () => void;
+}
+
+const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQuery, onSearch }) => {
+  
+  const placeholderText = searchMode === "group" 
+    ? "Введите название группы" 
+    : "Введите номер аудитории";
+
+  return (
+    <div className={styles.dashboardCard}>
+      <div className={styles.toggleRow}>
+        <button
+          className={`${styles.toggleButton} ${searchMode === "auditorium" ? styles.active : ""}`}
+          onClick={() => setSearchMode("auditorium")}
+        >
+          Поиск по аудитории
+        </button>
+        <button
+          className={`${styles.toggleButton} ${searchMode === "group" ? styles.active : ""}`}
+          onClick={() => setSearchMode("group")}
+        >
+          Поиск по группе
+        </button>
+      </div>
+
+      {/* Вместо старого блока searchRow используем новый компонент SearchInput */}
+      <SearchInput
+        query={query}
+        setQuery={setQuery}
+        placeholder={placeholderText}
+        onSearch={onSearch} // Передаем функцию поиска
+        // Передаем классы из ваших исходных стилей, чтобы сохранить внешний вид
+        containerClassName={styles.searchRow}
+        inputClassName={styles.input}
+        searchButtonClassName={styles.searchButton}
+      />
+    </div>
+  );
+};
+
+export default Search;
+
+// src\components\SearchWidget\search.tsx
+// SearchInput.tsx
+
+import React from "react";
+
+interface SearchInputProps {
+  /** Текущее значение поля ввода */
+  query: string;
+  /** Функция для обновления значения поля ввода */
+  setQuery: React.Dispatch<React.SetStateAction<string>>;
+  /** Текст-подсказка (placeholder) для поля ввода */
+  placeholder: string;
+  /** Функция, вызываемая при нажатии на кнопку поиска или Enter (опционально) */
+  onSearch: () => void;
+  /** CSS-класс для контейнера, для инпута и для кнопки (если нужно сохранить ваши стили) */
+  inputClassName?: string;
+  searchButtonClassName?: string;
+  containerClassName?: string;
+}
+
+const SearchInput: React.FC<SearchInputProps> = ({
+  query,
+  setQuery,
+  placeholder,
+  onSearch,
+  inputClassName = "input", // Условные классы
+  searchButtonClassName = "searchButton", // Условные классы
+  containerClassName = "searchRow" // Условные классы
+}) => {
+  // Добавляем обработчик нажатия Enter для удобства
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onSearch();
+    }
+  };
+
+  return (
+    <div className={containerClassName}>
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className={inputClassName}
+      />
+      <button 
+        onClick={onSearch} 
+        className={searchButtonClassName}
+      >
+        {/* SVG-иконка лупы */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+    </div>
+  );
+};
+
+export default SearchInput;
+
+// src\components\WeekPicker\index.module.scss
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+$margin: 40px;
+
+:root {
+  --weekpicker-bg: #{$color-dark-tertiary};
+  --weekpicker-text: #{$color-text-secondary};
+  --weekpicker-hover-bg: #{$color-accent-background};
+  --weekpicker-active-bg: #{$color-accent-background-hover};
+  --weekpicker-hover-text: #{$color-text-light};
+  --weekpicker-option-bg: #{$color-dark-primary};
+  --weekpicker-border: #{$color-border};
+  --weekpicker-focus-border: #{$color-accent-primary};
+  --weekpicker-focus-bg: #{$color-accent-primary};
+  --weekpicker-gradient: #{$gradient-color-logo};
+}
+
+.weekPicker {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-radius: 8px;
+  font-family: sans-serif;
+  width: 100%;
+}
+
+
+.weekPickerControls {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  
+}
+
+.weekPickerArrow {
+  padding: 8px 15px;
+  background: none;
+}
+
+.weekPickerCurrentButton {
+  padding: 8px 30px;
+  margin-inline: 5px;
+  background: $color-dark-primary;
+  border-color: $color-dark-primary;
+}
+
+.weekPickerDisplayWrapper {
+  position: relative;
+  flex: 1;
+  
+  display: inline-block;
+  margin-right: $margin;
+}
+
+
+// src\components\WeekPicker\index.tsx
+import * as React from 'react';
+import { useState, useMemo } from 'react';
+import Select, { SingleValue, StylesConfig } from 'react-select';
+import {
+  startOfWeek,
+  endOfWeek,
+  addWeeks,
+  format,
+  differenceInCalendarWeeks,
+  isBefore,
+  isAfter,
+} from 'date-fns';
+import { ru } from 'date-fns/locale';
+import styles from './index.module.scss';
+import { ArrowIcon } from '../ButtonIcons/Icons';
+
+const WEEK_OPTIONS = { locale: ru, weekStartsOn: 1 as 1 };
+
+
+const formatDateRange = (startDate: Date, endDate: Date): string => {
+  const startDay = format(startDate, 'd', WEEK_OPTIONS);
+  const startMonth = format(startDate, 'MMMM', WEEK_OPTIONS);
+  const endDay = format(endDate, 'd', WEEK_OPTIONS);
+  const endMonth = format(endDate, 'MMMM', WEEK_OPTIONS);
+  const year = format(endDate, 'yyyy', WEEK_OPTIONS);
+
+  if (startMonth === endMonth) {
+    return `${startDay} - ${endDay} ${endMonth} ${year} г.`;
+  } else {
+    return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year} г.`;
+  }
+};
+const getWeekNumberAndType = (date: Date) => {
+  const { start } = getAcademicYearBounds(date);
+  const weekNumber =
+    differenceInCalendarWeeks(date, start, WEEK_OPTIONS) + 1;
+
+  const type = weekNumber % 2 === 1 ? 'числ.' : 'знам.';
+  return { weekNumber, type };
+};
+
+const getAcademicYearBounds = (date: Date) => {
+  const month = date.getMonth(); // 0 = январь
+  const year = date.getFullYear();
+
+  // январь–июль → учебный год начался в прошлом году
+  const startYear = month < 8 ? year - 1 : year;
+
+  const start = new Date(startYear, 8, 1); // 1 сентября
+  const end = new Date(startYear + 1, 6, 31); // 31 июля
+
+  return { start, end };
+};
+
+interface WeekOption {
+  value: Date;
+  label: string;
+}
+
+interface WeekPickerProps {
+  onWeekChange?: (week: Date) => void;
+}
+
+const WeekPicker: React.FC<WeekPickerProps> = ({ onWeekChange }) => {
+  const today = useMemo(() => new Date(), []);
+  const [currentDate, setCurrentDate] = useState<Date>(today);
+const weeks: WeekOption[] = useMemo(() => {
+  const { start, end } = getAcademicYearBounds(today);
+
+  const list: WeekOption[] = [];
+  let current = startOfWeek(start, WEEK_OPTIONS);
+
+  while (!isAfter(current, end)) {
+    const weekStart = startOfWeek(current, WEEK_OPTIONS);
+    const weekEnd = endOfWeek(current, WEEK_OPTIONS);
+    const { weekNumber, type } = getWeekNumberAndType(weekStart);
+
+    list.push({
+      value: weekStart,
+      label: `${formatDateRange(weekStart, weekEnd)} (неделя ${weekNumber}, ${type})`,
+    });
+
+    current = addWeeks(current, 1);
+  }
+
+  return list;
+}, [today]);
+
+
+  const minWeek = weeks[0]?.value;
+  const maxWeek = weeks[weeks.length - 1]?.value;
+  const goToCurrentWeek = () => {
+  setCurrentDate(today);
+  onWeekChange?.(today);
+  };
+  const changeWeek = (offset: number) => {
+    setCurrentDate((prev) => {
+      const next = addWeeks(prev, offset);
+      if (minWeek && isBefore(next, minWeek)) return minWeek;
+      if (maxWeek && isAfter(next, maxWeek)) return maxWeek;
+      onWeekChange?.(next);
+      return next;
+    });
+  };
+
+  const handleChange = (selected: SingleValue<WeekOption>) => {
+    if (selected) {
+      setCurrentDate(selected.value);
+      onWeekChange?.(selected.value);
+    }
+  };
+
+  const customStyles: StylesConfig<WeekOption, false> = {
+    control: (provided, state) => ({
+      ...provided,
+      backgroundColor: 'var(--weekpicker-option-bg)',
+      borderRadius: '17px 17px 0px 0px',
+      borderBlock: `3px solid ${state.isFocused ? 'var(--weekpicker-bg)' : 'var(--weekpicker-border)'}`,
+      borderTop: 'none',
+      borderInline: `3px solid ${state.isFocused ? 'var(--weekpicker-focus-border)' : 'var(--weekpicker-border)'}`,
+      boxShadow: 'none',
+      padding: '2px 8px',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease-out',
+      '&:hover': {
+        borderColor: 'var(--weekpicker-focus-border)',
+        color: 'var(--weekpicker-hover-text)',
+        backgroundColor: 'var(--weekpicker-active-bg)',
+      },
+      '&:active': {
+        borderBlockColor: 'var(--weekpicker-active-bg)',
+        borderInlineColor: 'var(--weekpicker-focus-border)',
+        backgroundColor: 'var(--weekpicker-bg)',
+      },
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: 'var(--weekpicker-hover-text)',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      backgroundColor: 'var(--weekpicker-option-bg)',
+      borderRadius: '0 0 8px 8px',
+      zIndex: 9999,
+      marginTop: 0,
+      position: 'absolute',
+      top: '100%',
+      borderLeft: '3px solid var(--weekpicker-border)',
+      borderBottom: '3px solid var(--weekpicker-border)',
+      boxShadow: 'none',
+      WebkitBoxShadow: 'inset 0px 10px 3px -3px #000000b3',
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      background: state.isSelected
+        ? 'var(--weekpicker-gradient)'
+        : state.isFocused
+          ? 'var(--weekpicker-hover-bg)'
+          : 'var(--weekpicker-bg)',
+      border: `3px solid ${
+        state.isSelected
+          ? '#191919'
+          : state.isFocused
+            ? 'var(--weekpicker-focus-border)'
+            : 'var(--weekpicker-bg)'
+      }`,
+      color: state.isSelected
+        ? ''
+        : state.isFocused
+          ? 'var(--weekpicker-hover-text)'
+          : 'var(--weekpicker-text)',
+      cursor: 'pointer',
+      '&:active': {
+        backgroundColor: 'var(--weekpicker-active-bg)',
+        color: 'var(--weekpicker-hover-text)',
+        borderColor: 'var(--weekpicker-hover-bg)',
+        '&::last-child': {
+          borderRadius: '0 0 17px 17px',
+        },
+      },
+    }),
+    dropdownIndicator: (provided, state) => ({
+      ...provided,
+      color: 'var(--weekpicker-hover-text)',
+      transition: 'transform 0.2s ease',
+      transform: state.selectProps.menuIsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+      '&:hover': {
+        color: 'var(--weekpicker-hover-text)',
+      },
+    }),
+    indicatorSeparator: () => ({ display: 'none' }),
+  };
+
+  return (
+    <div className={styles.weekPicker}>
+      <div className={styles.weekPickerControls}>
+        <div className={styles.weekPickerDisplayWrapper}>
+          <Select
+            value={weeks.find(
+              (w) =>
+                w.value.getTime() ===
+                startOfWeek(currentDate, WEEK_OPTIONS).getTime()
+            )}
+            onChange={handleChange}
+            options={weeks}
+            styles={customStyles}
+            isSearchable={false}
+          />
+        </div>
+
+        <button
+          className={styles.weekPickerArrow}
+          onClick={() => changeWeek(-1)}
+          disabled={minWeek && isBefore(addWeeks(currentDate, -1), minWeek)}
+          aria-label="Предыдущая неделя"
+        >
+          <ArrowIcon direction="left" />
+        </button>
+
+        <button
+          className={styles.weekPickerCurrentButton}
+          onClick={goToCurrentWeek}
+        >
+          Текущая неделя
+        </button>
+
+        <button
+          className={styles.weekPickerArrow}
+          onClick={() => changeWeek(1)}
+          disabled={maxWeek && isAfter(addWeeks(currentDate, 1), maxWeek)}
+          aria-label="Следующая неделя"
+        >
+          <ArrowIcon direction="right" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default WeekPicker;
+
+
+// src\main.tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+
+// src\pages\cabinet\chartsCalculation.tsx
+import { Student, Grade, workDays } from '../../components/Attendance/data/students';
+
+export interface RadarDataPoint {
+  seriesName: string;
+  values: number[];
+}
+
+// --- Хелперы ---
+export const calculateAttendanceCounts = (students: Student[]) =>
+  students.map(s => Object.values(s.attendance).filter(v => v === 'present').length);
+
+export const calculateGradeCounts = (students: Student[]) =>
+  students.map(student => {
+    const gradesArray = Object.values(student.grades).filter(
+      (g): g is Exclude<Grade, null> => g !== null
+    );
+    if (gradesArray.length === 0) return 0;
+    return +(gradesArray.reduce((a, b) => a + b, 0) / gradesArray.length).toFixed(2);
+  });
+
+export const getTopBottom = <T,>(students: Student[], values: number[], top = true, count = 5) => {
+  return [...students]
+    .map((s, i) => ({ s, value: values[i] }))
+    .sort((a, b) => top ? b.value - a.value : a.value - b.value)
+    .slice(0, count);
+};
+
+export const calculateBlobValues = (students: Student[]) =>
+  workDays.map(day => {
+    const counts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0 };
+    students.forEach(student => {
+      const g = student.grades[day];
+      if (g && counts[g] !== undefined) counts[g] += 1;
+    });
+    return counts;
+  });
+
+export const prepareRadarData = (students: Student[]) => {
+  const blobValues = calculateBlobValues(students);
+
+  const radarDataGrades: RadarDataPoint[] = [
+    { seriesName: 'Оценки 5 и 4', values: blobValues.map(d => (d[5] || 0) + (d[4] || 0)) },
+    { seriesName: 'Оценки 3 и 2', values: blobValues.map(d => (d[3] || 0) + (d[2] || 0)) },
+  ];
+
+  const maxRadarValue = Math.max(...radarDataGrades.flatMap(d => d.values), 1);
+
+  const attendanceRadarData: RadarDataPoint[] = [
+    { seriesName: 'Присутствие', values: workDays.map(day => students.filter(s => s.attendance[day] === 'present').length) },
+    { seriesName: 'Болезнь', values: workDays.map(day => students.filter(s => s.attendance[day] === 'sick').length) },
+    { seriesName: 'Пропуски', values: workDays.map(day => students.filter(s => s.attendance[day] === 'absent').length) },
+  ];
+
+  const maxAttendanceValue = Math.max(...attendanceRadarData.flatMap(d => d.values), 1);
+
+  const radarLabels = workDays.map(day => {
+    const date = new Date(day);
+    return `${date.getDate()}.${date.getMonth() + 1}`;
+  });
+
+  const daysCount = workDays.length;
+
+  return { radarDataGrades, maxRadarValue, attendanceRadarData, maxAttendanceValue, radarLabels, daysCount };
+};
+
+
+// src\pages\cabinet\index.module.scss
+@use "../../styles/variables" as *;
+
+.container {
+  padding: 20px;
+}
+
+.flexContainer {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap; // адаптивное поведение на узких экранах
+  align-items: center;
+}
+
+.flexItem {
+  flex: 1;         // занимает равную долю
+  min-width: 300px; // минимальная ширина для адекватного отображения
+}
+
+h3{
+  padding: 0;
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center; /* по вертикали выравниваем */
+  justify-content: space-between; /* h1 слева, button справа */
+
+  padding: 10px;
+  button{
+    width: 90px;
+    height: 5px;
+    color: $color-text-light;
+  }
+}
+
+
+// src\pages\cabinet\index.tsx
+import * as React from 'react';
+import { useState, useMemo } from 'react';
+import { AttendanceTable } from '../../components/Attendance';
+import BarChartTop from '../../components/Charts/BarChartTop/withsegments';
+import RadarChart from '../../components/Charts/CircleChart/Radar';
+import { Student, INITIAL_STUDENTS } from '../../components/Attendance/data/students';
+import styles from './index.module.scss';
+import {
+  calculateAttendanceCounts,
+  calculateGradeCounts,
+  getTopBottom,
+  prepareRadarData,
+} from './chartsCalculation';
+
+const App: React.FC = () => {
+  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+
+  const chartsData = useMemo(() => {
+    const attendanceCounts = calculateAttendanceCounts(students);
+    const gradeCounts = calculateGradeCounts(students);
+
+    const topAttendance = getTopBottom(students, attendanceCounts, true);
+    const bottomAttendance = getTopBottom(students, attendanceCounts, false);
+    const topGrades = getTopBottom(students, gradeCounts, true);
+    const bottomGrades = getTopBottom(students, gradeCounts, false);
+
+    const radarData = prepareRadarData(students);
+
+    return { topAttendance, bottomAttendance, topGrades, bottomGrades, ...radarData };
+  }, [students]);
+
+  const handleBack = () => window.history.back();
+
+  return (
+    <div>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1>Группа: 112-МКо. Теория вероятностей</h1>
+          <button className={styles.backButton} onClick={handleBack}>Назад</button>
+        </div>
+
+        <AttendanceTable students={students} setStudents={setStudents} />
+
+        <div className={styles.flexContainer}>
+          <div className={styles.flexItem}>
+            <h3>5 лучших по посещаемости</h3>
+            <BarChartTop
+              labels={chartsData.topAttendance.map(d => d.s.name)}
+              values={chartsData.topAttendance.map(d => d.value)}
+              maxValue={chartsData.daysCount}
+              segments={5}
+              height={100}
+              colorMode={8}
+            />
+
+            <RadarChart
+              labels={chartsData.radarLabels}
+              data={chartsData.attendanceRadarData}
+              maxValue={chartsData.maxAttendanceValue}
+              size={300}
+              colorMode={7}
+            />
+
+            <h3>5 худших по посещаемости</h3>
+            <BarChartTop
+              labels={chartsData.bottomAttendance.map(d => d.s.name)}
+              values={chartsData.bottomAttendance.map(d => d.value)}
+              maxValue={chartsData.daysCount}
+              segments={5}
+              height={100}
+              colorMode={2}
+            />
+          </div>
+
+          <div className={styles.flexItem}>
+            <h3>5 лучших по успеваемости</h3>
+            <BarChartTop
+              labels={chartsData.topGrades.map(d => d.s.name)}
+              values={chartsData.topGrades.map(d => d.value)}
+              maxValue={5}
+              segments={5}
+              height={100}
+              colorMode={7}
+            />
+
+            <RadarChart
+              labels={chartsData.radarLabels}
+              data={chartsData.radarDataGrades}
+              maxValue={chartsData.maxRadarValue}
+              size={300}
+              colorMode={6}
+            />
+
+            <h3>5 худших по успеваемости</h3>
+            <BarChartTop
+              labels={chartsData.bottomGrades.map(d => d.s.name)}
+              values={chartsData.bottomGrades.map(d => d.value)}
+              maxValue={5}
+              segments={5}
+              height={100}
+              colorMode={15}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
+
+
+// src\pages\home\index.module.scss
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+.pagecontainer { 
+  color: $color-text-light;
+  min-height: 100vh;
+  width: calc(100% - 60px);
+  padding: 30px; 
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 3fr 2fr; 
+  gap: 30px; 
+  margin-top: 0; 
+}
+
+.dashboardCard {
+  @include dashboard-card();
+  margin-bottom: 15px; 
+}
+
+
+
+.cardTitle {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 15px;
+  color: $color-text-light;
+}
+
+.flexParams {
+  margin-top: 10px; 
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.paramBox {
+  flex-basis: 33.333%;
+  display: flex;
+  flex-direction: column;
+
+  &:not(:last-child) {
+    border-right: 1px solid $color-text-secondary;
+  }
+}
+
+.summaryValue {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: $color-accent-primary;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+.summaryLabel {
+  font-size: 0.8rem;
+  color: $color-text-secondary;
+  text-transform: uppercase;
+}
+
+.rightColumn{
+  margin-bottom: 50px;
+}
+
+
+// src\pages\home\index.tsx
+import { useState, useEffect, useMemo } from "react";
+import LineChart from "../../components/Charts/LineChart";
+import Calendar from "../../components/CalendarWidget";
+import Schedule, { ScheduleItem } from "../../components/ScheduleWidget";
+import Search from "../../components/SearchWidget";
+import styles from "./index.module.scss";
+
+export default function Home() {
+  const [searchMode, setSearchMode] = useState<"group" | "auditorium">("group");
+  const [query, setQuery] = useState("");
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  const data = useMemo(() => Array.from({ length: 100 }, () => Math.floor(Math.random() * 100)), []);
+
+  const schedule = useMemo<ScheduleItem[]>(
+    () => [
+      { time: "02:01-03:00", subject: "Математический анализ", group: "121-МКо, 424/1" },
+      { time: "03:01-04:00", subject: "Математический анализ", group: "121-МКо, 424/1" },
+      { time: "04:01-05:00", subject: "Математический анализ", group: "121-МКо, 424/1" },
+      { time: "10:10-11:40", subject: "Линейная алгебра", group: "121-МКо, 424/1" },
+      { time: "12:40-14:10", subject: "Информатика", group: "121-МКо, 424/1" },
+      { time: "14:20-15:50", subject: "История", group: "121-МКо, 424/1" },
+      { time: "16:00-17:30", subject: "Физика", group: "121-МКо, 424/1" },
+      { time: "17:40-19:10", subject: "Литература", group: "121-МКо, 424/1" },
+      { time: "19:20-20:50", subject: "Философия", group: "121-МКо, 424/1" },
+      { time: "21:00-22:30", subject: "Социология", group: "121-МКо, 424/1" },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="pageContainer">
+      
+      <h1 className={styles.title}>Главная</h1>
+
+      <div className={styles.dashboardGrid}>
+        <div className={styles.leftColumn}>
+          <Search
+            searchMode={searchMode}
+            setSearchMode={setSearchMode}
+            query={query}
+            setQuery={setQuery}
+            onSearch= {() => {}}
+          />
+
+          <div className={styles.dashboardCard}>
+            <h3 className={styles.cardTitle}>Расписание на сегодня</h3>
+            <Schedule schedule={schedule} currentTime={currentTime} />
+          </div>
+
+          <div className={`${styles.dashboardCard} ${styles.flexParams}`}>
+            <div className={styles.paramBox}>
+              <div className={styles.summaryValue}>3 / 5</div>
+              <div className={styles.summaryLabel}>Проведено пар</div>
+            </div>
+            <div className={styles.paramBox}>
+              <div className={styles.summaryValue}>3 / 5</div>
+              <div className={styles.summaryLabel}>Проставлено посещаемости</div>
+            </div>
+            <div className={styles.paramBox}>
+              <div className={styles.summaryValue}>22 / 22</div>
+              <div className={styles.summaryLabel}>Проставлено оценок</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.rightColumn}>
+          <div className={styles.dashboardCard}>
+            <h3 className={styles.cardTitle}>Общий график посещаемости</h3>
+            <LineChart length={100} data={data} height={200} />
+          </div>
+
+          <div className={styles.dashboardCard}>
+            <h3 className={styles.cardTitle}>Календарь</h3>
+            <Calendar months={2} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// src\pages\planner\index.module.scss
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+
+// src\pages\planner\index.tsx
+import React, { useState, useMemo } from "react";
+import NotesPlanner, { NoteCard, AddEditNoteForm, PlannerNote } from "../../components/Planner";
+import WeekPicker from "../../components/WeekPicker";
+import { startOfWeek, addDays, isSameDay } from "date-fns";
+import styles from "./index.module.scss";
+
+const PlannerWithWeekPicker: React.FC = () => {
+  const [notes, setNotes] = useState<PlannerNote[]>([]);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(
+    startOfWeek(new Date(), { weekStartsOn: 1 })
+  );
+  const [editingNote, setEditingNote] = useState<PlannerNote | null>(null);
+
+  const addOrUpdateNote = (note: PlannerNote) => {
+    setNotes(prev => {
+      const idx = prev.findIndex(n => n.id === note.id);
+      if (idx !== -1) {
+        const newNotes = [...prev];
+        newNotes[idx] = note;
+        return newNotes;
+      }
+      return [note, ...prev];
+    });
+  };
+
+  const deleteNote = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
+
+  const weekNotes = useMemo(() => {
+    const result: { [key: string]: PlannerNote[] } = {};
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(selectedWeekStart, i);
+      const dayKey = day.toLocaleDateString();
+
+      result[dayKey] = notes
+        .filter(n => (n.startAt ?? n.createdAt).toLocaleDateString() === dayKey)
+        .sort((a, b) => (a.startAt?.getTime() || 0) - (b.startAt?.getTime() || 0));
+    }
+    return result;
+  }, [notes, selectedWeekStart]);
+
+  return (
+    <div className={styles.plannerWithWeek}>
+      {/* Week Picker */}
+      <WeekPicker onWeekChange={setSelectedWeekStart} />
+
+      {/* Неделя */}
+      <div className={styles.weekSections}>
+        {Object.keys(weekNotes).map(dayKey => (
+          <div key={dayKey} className={styles.weekDaySection}>
+            <h3>
+              {dayKey}{" "}
+              <button
+                className={styles.addBtn}
+                onClick={() =>
+                  setEditingNote({ id: "", title: "", text: "", createdAt: new Date() })
+                }
+              >
+                ＋
+              </button>
+            </h3>
+            <div className={styles.cardsRow}>
+              {weekNotes[dayKey].map(note => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onDelete={deleteNote}
+                  onEdit={setEditingNote}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Модальное окно добавления/редактирования */}
+      {editingNote && (
+        <AddEditNoteForm
+          note={editingNote.id ? editingNote : undefined}
+          onSave={addOrUpdateNote}
+          onClose={() => setEditingNote(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default PlannerWithWeekPicker;
+
+
+// src\pages\schedule\generator.tsx
+// src/pages/Schedule/generator.ts
+import { WeeklyScheduleData, ScheduleItem } from "../../types/sched";
+
+const LESSONS = [
+  "Математический Анализ",
+  "Физика",
+  "Химия",
+  "Программирование",
+  "Обществознание",
+  "Теория вероятностей",
+  "Экономика",
+  "История",
+];
+
+const TYPES: ScheduleItem["type"][] = ["Лек.", "Пр.", "Лаб.", "Экз.", "Зач."];
+
+const LOCATIONS = [
+  "Ауд. 101",
+  "Ауд. 202",
+  "Ауд. 303",
+  "Ауд. 404",
+  "Онлайн (Zoom)",
+];
+
+const TEACHERS = [
+  "Иванов И.И.",
+  "Петров П.П.",
+  "Сидоров С.С.",
+  "Доц. Смирнова",
+  "Имк. Коалов",
+];
+
+const START_HOUR = 8;
+const END_HOUR = 18;
+const SLOT_MINUTES = 90;
+
+// --- Случайное целое число ---
+const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+// --- Проверка пересечения слотов ---
+const isOverlap = (start: number, end: number, slots: { start: number; end: number }[]) =>
+  slots.some(slot => Math.max(slot.start, start) < Math.min(slot.end, end));
+
+// --- Генерация случайного дня без наложений ---
+const generateDaySchedule = (date: Date): ScheduleItem[] => {
+  const lessons: ScheduleItem[] = [];
+  const usedSlots: { start: number; end: number }[] = [];
+
+  const lessonsCount = randomInt(2, 5);
+
+  for (let i = 0; i < lessonsCount; i++) {
+    let startMinutes, endMinutes;
+    let tries = 0;
+
+    do {
+      const hour = randomInt(START_HOUR, END_HOUR - 1);
+      const minute = Math.random() < 0.5 ? 0 : 30;
+      startMinutes = hour * 60 + minute;
+      endMinutes = startMinutes + SLOT_MINUTES;
+      tries++;
+      if (tries > 50) break; // защита от зацикливания
+    } while (isOverlap(startMinutes, endMinutes, usedSlots));
+
+    usedSlots.push({ start: startMinutes, end: endMinutes });
+
+    const startHour = Math.floor(startMinutes / 60);
+    const startMin = startMinutes % 60;
+    const endHour = Math.floor(endMinutes / 60);
+    const endMin = endMinutes % 60;
+
+    lessons.push({
+      id: Date.now() + i + Math.floor(Math.random() * 1000),
+      date: date.toISOString().split("T")[0],
+      dayOfWeek: date.getDay(),
+      subject: LESSONS[randomInt(0, LESSONS.length - 1)],
+      type: TYPES[randomInt(0, TYPES.length - 1)],
+      startTime: `${startHour.toString().padStart(2, "0")}:${startMin.toString().padStart(2, "0")}`,
+      endTime: `${endHour.toString().padStart(2, "0")}:${endMin.toString().padStart(2, "0")}`,
+      location: LOCATIONS[randomInt(0, LOCATIONS.length - 1)],
+      teacher: TEACHERS[randomInt(0, TEACHERS.length - 1)],
+    });
+  }
+
+  return lessons;
+};
+
+// --- Генерация расписания на месяц (только Пн-Пт) ---
+export const generateMockMonthSchedule = (startDate: Date): WeeklyScheduleData => {
+  const schedule: WeeklyScheduleData = [];
+  const daysInMonth = 30;
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const currentDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+    if (currentDate.getDay() >= 1 && currentDate.getDay() <= 6) {
+      schedule.push(...generateDaySchedule(currentDate));
+    }
+  }
+
+  return schedule;
+};
+
+
+// src\pages\schedule\index.module.scss
+@use '../../styles/variables' as *;
+@use "../../styles/mixins" as *;
+
+
+.title {
+    margin-bottom: 20px;
+    font-size: 28px;
+}
+
+.mainContent {
+    display: flex;
+    gap: 30px; 
+    max-width: 1400px; 
+    margin: 0 auto; 
+    width: 100%; 
+}
+
+.scheduleColumn {
+    flex: 3; 
+
+    min-width: 0;
+    overflow: hidden; 
+}
+
+.filtersColumn {
+    flex: 1; 
+    flex-shrink: 0; 
+
+}
+
+@media (max-width: 768px) {
+    .mainContent {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .scheduleColumn,
+    .filtersColumn {
+        flex: auto; 
+    }
+}
+
+// src\pages\schedule\index.tsx
+import * as React from 'react';
+import { useState, useMemo } from 'react';
+import WeeklySchedule from '../../components/ScheduleWeek'; 
+import WeekPicker from '../../components/WeekPicker';
+import styles from './index.module.scss';
+import Filters from "../../components/Filters";
+import { generateMockMonthSchedule } from "./generator";
+import { WeeklyScheduleData } from '../../types/sched';
+
+const ScheduleIndex: React.FC = () => {
+    const [selectedWeek, setSelectedWeek] = useState<Date>(new Date()); // выбранная неделя
+
+    // --- Генерируем расписание на месяц один раз при монтировании ---
+    const monthSchedule: WeeklyScheduleData = useMemo(
+        () => generateMockMonthSchedule(new Date()), 
+        []
+    );
+
+    // --- Фильтруем события только для выбранной недели ---
+    const scheduleForWeek = useMemo(() => {
+        const weekStart = new Date(selectedWeek);
+        const day = weekStart.getDay();
+        const diff = (day === 0 ? -6 : 1 - day); // смещаем на понедельник
+        weekStart.setDate(weekStart.getDate() + diff);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        return monthSchedule.filter(item => {
+            const itemDate = new Date(item.date);
+            return itemDate >= weekStart && itemDate <= weekEnd;
+        });
+    }, [selectedWeek, monthSchedule]);
+
+    return (
+        <div className="pageContainer">
+            <h1 className={styles.title}>Ваше расписание на неделю</h1>
+            
+            <div className={styles.mainContent}>
+                <div className={styles.scheduleColumn}>
+                    <WeekPicker onWeekChange={(week: Date) => setSelectedWeek(week)} />
+                    <WeeklySchedule schedule={scheduleForWeek} selectedWeek={selectedWeek} />
+                </div>
+                
+                <div className={styles.filtersColumn}>
+                    <Filters onSearch={() => {}} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ScheduleIndex;
+
+
+// src\pages\stats\index.tsx
+export default function Stats() {
+  return <h1 className="title">Статистика</h1>;
+}
+
+
+// src\scss.d.tsx
+
+
+// src\styles\global.scss
+@use "variables" as *;
+@use "mixins" as *;
+@use "sass:color";
+*:focus-visible {
+  outline: 3px solid $color-accent-primary; // цвет и ширина обводки
+  outline-offset: 2px;    // отступ, чтобы не прилипало к элементу
+}
+html, body, #root, #__next { 
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: color.adjust($color-dark-primary,$blackness:30%);
+  border-radius: 8px;
+
+}
+::-webkit-scrollbar-thumb {
+  background: color.adjust($color-border,$lightness:10%);
+  border-radius: 8px;
+
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: $color-border
+}
+::-webkit-scrollbar-thumb:active {
+  background: color.adjust($color-border,$blackness:20%);
+}
+  
+.pageContainer { 
+  color: $color-text-light;
+  min-height: 100vh;
+  width: calc(100% - 60px);
+  padding: 30px; 
+}
+
+path{
+  color:none;
+}
+body {
+  background-color: $color-dark-primary;
+  color: $color-text-light;
+  font-family: $font-family-primary;
+  font-size: $font-size-base;
+  margin: 0;
+  padding: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: $color-text-light;
+  margin-top: 0;
+}
+.title{
+    padding: 30px; 
+}
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 100vh;
+}
+
+.nav-menu {
+  background-color: $color-dark-primary;
+  padding-top: 20px;
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .nav-item {
+    position: relative;
+    transition: all $transition-speed ease;
+
+    a {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      text-decoration: none;
+      color: $color-text-secondary; 
+      width: 100%;
+    }
+
+    &:hover {
+      background-color: $color-dark-secondary;
+
+      a {
+        color: $color-text-light; // Светлый текст при наведении
+      }
+    }
+
+    &.active {
+      @include nav-item-active;
+
+      background-color: $color-dark-tertiary;
+      border-left: 6px solid $color-accent-primary;
+
+      a {
+        color: $color-text-light; 
+      }
+    }
+
+    i {
+      margin-right: 15px;
+      font-size: 20px;
+      width: 30px;
+      text-align: center;
+      color: inherit;
+    }
+  }
+}
+
+.dashboard-card {
+  @include dashboard-card;
+  &__header {
+    color: $color-text-light;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+  }
+}
+
+.main-content {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+
+.blob {
+  position: absolute;
+  border-radius: 100%;
+  filter: blur(30px);
+  opacity: 0.1;
+  z-index: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: all 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  
+}
+
+.blob-even {
+  width: 150px;
+  height: 150px;
+  background-color: $color-accent-primary;
+}
+
+.blob-odd {
+  width: 100px;
+  height: 100px;
+  background-color: $color-border;
+}
+
+
+button {
+  background: $color-dark-tertiary;
+  @include border();
+  padding: 20px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-secondary;
+  transition: background 0.2s ease-out;
+  transition: border 0.2s ease-out;
+  &:hover {
+    background-color: $color-accent-primary;
+    border-color: $color-accent-primary;
+    color: $color-text-light;
+  }
+
+  &:active {
+    color: $color-text-secondary;
+    background-color: $color-dark-tertiary;
+    border-block-color: $color-accent-background;
+    border-inline-color: $color-accent-primary;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: $color-accent-primary;
+  }
+}
+
+
+// src\styles\_mixins.scss
+@use "variables" as *;
+@use "sass:color";
+@mixin dashboard-card($background: $color-dark-secondary, $padding: 20px) {
+  background-color: $background;
+  border-radius: $border-radius;
+  padding: $padding;
+  border: 3px solid $color-border;
+}
+@mixin scroll-bar(
+  $size: 10px,
+  $track-background: $color-ghost,
+  $track-border-radius: 8px,
+  $thumb-background: $color-accent-primary,
+  $thumb-border-radius: 8px,
+  $thumb-hover-background: $color-accent-hover,
+  $thumb-active-background: $color-dark-tertiary,
+  $thumb-active-border-width: 2px,
+  $thumb-active-border-color: $color-accent-hover
+) {
+  &::-webkit-scrollbar {
+    width: $size;
+    height: $size;
+  }
+  &::-webkit-scrollbar-track {
+    background: $track-background;
+    border-radius: $track-border-radius;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $thumb-background;
+    border-radius: $thumb-border-radius;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: $thumb-hover-background;
+  }
+
+  &::-webkit-scrollbar-thumb:active {
+    cursor: grab;
+    background: $thumb-active-background;
+    border: $thumb-active-border-width solid $thumb-active-border-color;
+  }
+  &::-webkit-scrollbar-corner {
+    display: none;
+  }
+}
+
+@mixin shadows-inset($first,$second,$third:0,$fourth:0){
+   box-shadow: inset 0 $first 5px -4px #00000047, inset 0 $second 5px -4px #00000047, 
+   inset $third 0 5px -4px #00000047, inset $fourth 0 5px -4px #00000047 ;
+}
+
+
+@mixin accent-button($color: $color-accent-primary) {
+  background-color: $color;
+  color: $color-text-light;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color $transition-speed ease;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    background-color: $color-accent-hover;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba($color-accent-primary, 0.4);
+  }
+
+  &:active {
+    background-color: color.adjust($color-accent-primary, $lightness:5%);
+    transform: translateY(0);
+    box-shadow: none;
+  }
+}
+
+@mixin nav-item-active {
+  background-color: $color-dark-tertiary;
+  border-left: 4px solid $color-accent-primary;
+  color: $color-accent-primary;
+  font-weight: 600;
+}
+
+@mixin border($x:3px){
+  border: $x solid $color-border;
+}
+
+@mixin input($padding-inline:10px,$padding-block:10px){
+  @include border();
+  width: 100%; 
+  padding-block: $padding-block;
+  padding-inline: $padding-inline;
+  background-color: $color-dark-tertiary; 
+  border-radius: $border-radius;
+  color: $color-text-light;
+  font-size: $font-size-base;
+
+  transition: border-color $transition-speed;
+
+  &::placeholder {
+    color: $color-text-secondary;
+  }
+
+  &:focus {
+    border-inline: 3px solid $color-accent-primary;
+    color: $color-text-light;
+    outline: none;
+  }
+}
+
+// src\styles\_variables.scss
+// --- Основные цвета ---
+$color-dark-primary: #1f1f21; // Основной фон (почти черный)
+$color-dark-secondary: #37373703; // Фон карточек/панелей (чуть светлее)
+$color-dark-tertiary: #15151575; // Фон активных/выделенных элементов
+$color-text-light: #ffffff; // Светлый текст
+$color-text-secondary: #767678; // Второстепенный текст/иконки
+$color-ghost: #ffffff0d;
+
+// --- Акцентные цвета (Красно-пурпурные) ---
+$color-accent-primary: #f54c4c; // Яркий красный (для активных, кнопок)
+$color-accent-secondary: #74253a;
+$color-accent-added: #af4d98; // Пурпурный (для графиков, выделения)
+$color-accent-hover: hsl(354, 100%, 65%) ; // Эффект наведения
+$color-accent-background: hsla(0, 100%, 63%, 0.3); // Эффект наведения
+$color-accent-background-hover: hsla(355, 100%, 65%, 0.1); // Эффект наведения
+$gradient-color-logo: linear-gradient(to left, #f54c4c, #74253a);
+
+// --- Дополнительные цвета ---
+$color-success: #5cb85c;
+$color-warning: #f0ad4e;
+$color-error: #d9534f;
+$color-border: #272729; // Тонкие разделители
+$color-shadow: rgba(0, 0, 0, 0.4); // Тень
+
+// --- Шрифты и размеры ---
+$font-family-primary: 'Roboto', sans-serif; // Пример
+$font-size-base: 14px;
+$border-radius: 8px;
+$transition-speed: 0.1s;
+$padding : 20px;
+
+// src\styles\_variables2.scss
+// --- Основные цвета (инверсия) ---
+$color-dark-primary: #efefef; // Был почти чёрный → стал почти белый
+$color-dark-secondary: #ffffff3f; // Был прозрачный тёмно-серый → стал светло-серый с почти полной непрозрачностью
+$color-dark-tertiary: #ffffffb8; // Был полупрозрачный чёрный → стал светло-серый с альфой
+$color-text-light: #000000; // Был белый → стал чёрный
+$color-text-secondary: #434343; // Инверсия серого (≈ нейтральный)
+$color-ghost: #0000001b; // Был прозрачный белый → стал прозрачный чёрный
+
+// --- Акцентные цвета (инверсия: красно-пурпурные → сине-бирюзовые) ---
+$color-accent-primary: #76cdcd; // Инверсия  → бирюзовый
+$color-accent-secondary: #a2f0db; // Инверсия  → светлый мятный
+$color-accent-added: #65b177; // Инверсия пурпурного → зеленовато-бирюзовый
+$color-accent-hover: hsl(184, 60%, 43%); // Был красный → стал насыщенный голубовато-бирюзовый
+$color-accent-background: hsla(180, 68%, 57%, 0.9); // Прозрачный фон → холодный бирюзовый оттенок
+$color-accent-background-hover: hsla(185, 100%, 15%, 0.1); // Аналогичный светлый вариант
+$gradient-color-logo: linear-gradient(to left, #3ab9b9, #96d4c3); // Был красный → стал сине-бирюзовый градиент
+
+// --- Дополнительные цвета (инверсия по смыслу) ---
+$color-success: #039f03;
+$color-warning: #d98105;
+$color-error: #d9534f;
+$color-border: #868686; // Тонкие разделители
+$color-shadow: rgba(255, 255, 255, 0.4); // Тень стала светлой (для тёмных тем)
+
+// --- Шрифты и размеры (без изменений) ---
+$font-family-primary: 'Roboto', sans-serif;
+$font-size-base: 14px;
+$border-radius: 8px;
+$transition-speed: 0.1s;
+$padding: 20px;
+
+
+// src\svg.d.ts
+
+
+// src\types\sched.tsx
+// src/types/schedule.ts
+
+export interface ScheduleItem {
+  id: number;
+  subject: string;
+  date: string;
+  type: 'Лек.' | 'Пр.' | 'Лаб.' | 'Зач.' | 'Экз.';
+  startTime: string; // Например, "10:00"
+  endTime: string;   // Например, "11:30"
+  dayOfWeek: number; // 0=Воскресенье, 1=Понедельник, ..., 6=Суббота
+  location: string;  // Например, "Ауд. 424/1"
+  teacher?: string;  // Например, "Смирнова А.Б."
+  link?: string;
+}
+
+export type WeeklyScheduleData = ScheduleItem[];
+
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    polyfillModulePreload: false,
+  },
+
+});

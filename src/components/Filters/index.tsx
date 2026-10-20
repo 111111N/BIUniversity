@@ -1,148 +1,36 @@
-import * as React from "react";
-import { useState, useMemo, useCallback, KeyboardEvent } from 'react';
-import styles from './index.module.scss';
-import SearchInput from '../SearchWidget/search'; 
+import { useEffect, useState, type FormEvent } from "react";
+import type { ScheduleItem } from "../../types/sched";
+import { getScheduleSuggestions, type ScheduleSearchType } from "../../domain/scheduleLayout";
+import SearchField from "../SearchField";
+import ArrowCircle from "../ArrowCircle";
+import styles from "./index.module.scss";
 
-// Определяем типы для результатов
-type FilterKey = 'group' | 'auditory' | 'teacher';
-type FilterType = FilterKey | null;
+export interface FilterResult { id: number; title: string; type: ScheduleSearchType }
+interface Props { schedule: ScheduleItem[]; selected?: { title: string; type: ScheduleSearchType } | null; onSearch(result: FilterResult): void }
+const LABELS = { group: "Группа", auditory: "Аудитория", teacher: "Преподаватель" };
+const PLACEHOLDERS = { group: "Например, 112-МКо", auditory: "Например, 101", teacher: "Фамилия или инициалы" };
 
-interface FilterResult {
-    id: number;
-    title: string;
-    type: FilterKey;
-}
-
-// Тестовые данные для демонстрации
-const DUMMY_RESULTS: Record<FilterKey, FilterResult[]> = {
-    group: [
-        { id: 1, title: 'Группа ИС-21', type: 'group' },
-        { id: 2, title: 'Группа БИ-19', type: 'group' },
-        { id: 3, title: 'Группа МК-22', type: 'group' },
-        { id: 4, title: 'Группа АА-23', type: 'group' }, 
-        { id: 5, title: 'Группа ТТ-20', type: 'group' }, 
-        { id: 6, title: 'Группа УУ-24', type: 'group' }, 
-    ],
-    auditory: [
-        { id: 11, title: 'Аудитория 205', type: 'auditory' },
-        { id: 12, title: 'Аудитория 312', type: 'auditory' },
-        { id: 13, title: 'Лаборатория А-10', type: 'auditory' },
-    ],
-    teacher: [
-        { id: 21, title: 'Иванов И.И.', type: 'teacher' },
-        { id: 22, title: 'Петрова С.А.', type: 'teacher' },
-        { id: 23, title: 'Сидоров К.В.', type: 'teacher' },
-    ],
-};
-
-interface FiltersProps {
-    onSearch?: () => void;
-}
-
-const Filters: React.FC<FiltersProps> = ({ onSearch }) => {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState<FilterType>('group');
-
-    const displayedResults = useMemo(() => {
-        if (!activeFilter) return [];
-
-        const allResults = DUMMY_RESULTS[activeFilter as FilterKey] || [];
-        const query = searchQuery.toLowerCase().trim();
-
-        if (query === '') {
-            return allResults;
-        } else {
-            return allResults.filter(result => 
-                result.title.toLowerCase().includes(query)
-            );
-        }
-    }, [activeFilter, searchQuery]);
-    
-    const handleResultClick = useCallback((result: FilterResult) => {
-        setSearchQuery(result.title);
-        onSearch?.();
-    }, [onSearch]);
-
-    const handleResultKeyDown = (event: KeyboardEvent<HTMLDivElement>, result: FilterResult) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault(); 
-            handleResultClick(result);
-        }
-    };
-
-    const handleSearchClick = useCallback(() => {
-        onSearch?.();
-    }, [onSearch]);
-
-    const handleFilterClick = useCallback((filter: FilterKey) => {
-        setActiveFilter(filter);
-        setSearchQuery('');
-    }, []);
-
-    return (
-        <div className={styles.filtersContainer}>
-            <h2 className={styles.title}>Расписание</h2>
-
-            <div className={styles.filterGroup}>
-                {(['group', 'auditory', 'teacher'] as FilterKey[]).map((filterKey) => (
-                    <button
-                        key={filterKey}
-                        className={`${styles.button} ${activeFilter === filterKey ? styles.active : ''}`}
-                        onClick={() => handleFilterClick(filterKey)}
-                    >
-                        {filterKey === 'group' ? 'Группа' : filterKey === 'auditory' ? 'Аудитория' : 'Преподаватель'}
-                    </button>
-                ))}
-            </div>
-            
-            <div className={styles.mainContentWrapper}> 
-                <div className={styles.searchWrapper}>
-                    <SearchInput
-                        query={searchQuery}
-                        setQuery={setSearchQuery}
-                        placeholder={`Ваш запрос`}
-                        onSearch={handleSearchClick}
-                        containerClassName={styles.searchInputWrapper} 
-                        inputClassName={styles.input} 
-                        searchButtonClassName={styles.searchButton} 
-                    />
-                </div>
-                
-                <div 
-                    className={styles.searchResults}
-                    role="listbox" 
-                    aria-label="Результаты поиска"
-                >
-                    {displayedResults.length > 0 ? (
-                        <>
-                            <div className={styles.resultsHeader}>
-                                {searchQuery.trim() === '' ? 'Популярные результаты:' : 'Результаты:'}
-                            </div>
-                            {displayedResults.map((result) => (
-                                <div 
-                                    key={result.id} 
-                                    className={styles.searchResultItem}
-                                    onClick={() => handleResultClick(result)}
-                                    onKeyDown={(e) => handleResultKeyDown(e, result)}
-                                    role="option" 
-                                    tabIndex={0} 
-                                    aria-selected={searchQuery === result.title} 
-                                >
-                                    {result.title}
-                                </div>
-                            ))}
-                        </>
-                    ) : (
-                        searchQuery.trim() !== '' && (
-                            <div className={styles.resultsHeader}>
-                                Ничего не найдено.
-                            </div>
-                        )
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+const Filters = ({ schedule, selected, onSearch }: Props) => {
+  const [type, setType] = useState<ScheduleSearchType>(selected?.type ?? "group");
+  const [query, setQuery] = useState(selected?.title ?? "");
+  const [error, setError] = useState("");
+  useEffect(() => { setType(selected?.type ?? "group"); setQuery(selected?.title ?? ""); setError(""); }, [selected?.type, selected?.title]);
+  const suggestions = getScheduleSuggestions(schedule, type, query);
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!query.trim()) { setError("Введите запрос или выберите вариант ниже."); return; }
+    setError("");
+    onSearch({ id: 0, title: query.trim(), type });
+  };
+  return <section className={styles.panel} aria-label="Поиск расписания">
+    <div className={styles.heading}><div><span>Быстрый поиск</span><h2>Найти расписание</h2></div><p>Выберите группу, аудиторию или преподавателя</p></div>
+    <form onSubmit={submit} className={styles.form}>
+      <div className={styles.types} aria-label="Искать по">{(Object.keys(LABELS) as ScheduleSearchType[]).map((key) => <button key={key} type="button" aria-pressed={type === key} className={type === key ? styles.active : ""} onClick={() => { setType(key); setQuery(""); setError(""); }}>{LABELS[key]}</button>)}</div>
+      <div className={styles.inputRow}><SearchField label={LABELS[type]} placeholder={PLACEHOLDERS[type]} value={query} onChange={(value) => { setQuery(value); setError(""); }} /><button type="submit" className={styles.searchButton}>Показать<ArrowCircle /></button></div>
+    </form>
+    {error && <p className={styles.error} role="alert">{error}</p>}
+    <div className={styles.results}><span className={styles.resultsLabel}>{query.trim() ? "Подходящие варианты" : "Быстрый выбор"}</span><ul aria-label="Варианты расписания">{suggestions.map(({ title }) => <li key={title}><button type="button" aria-pressed={selected?.type === type && selected.title === title} onClick={() => { setQuery(title); setError(""); onSearch({ id: 0, title, type }); }}><span>{title}</span><ArrowCircle /></button></li>)}</ul>{!suggestions.length && <p className={styles.noResults} role="status">Вариантов нет. Проверьте запрос или нажмите «Показать», чтобы посмотреть результат.</p>}</div>
+  </section>;
 };
 
 export default Filters;

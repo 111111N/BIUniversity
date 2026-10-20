@@ -6,17 +6,36 @@
 }
 
 .sidebarNav {
-
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   background-color: $color-dark-primary;
-  width: 200px; 
+  width: 200px;
+  min-width: 200px;
+  height: 100vh;
   min-height: 100vh;
+  overflow-y: auto;
   padding-top: 20px;
   border-right: 3px solid $color-border;
 }
+:root[data-theme="light"] .sidebarNav { background-color: $color-dark-secondary; }
 
 .navHeader {
-  padding: 0 0px 10px;
+  padding: 0 0 10px;
   text-align: center;
+}
+
+.themeToggle {
+  width: 100%;
+  min-height: 68px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: $color-text-secondary;
+  cursor: pointer;
+  &:hover { background: $color-accent-background-hover; color: $color-accent-hover; }
 }
 
 .logoPlaceholder {
@@ -26,8 +45,8 @@
 }
 
 .logoImage {
-  width: 50%; 
-  height: 50%; 
+  width: 58px;
+  height: 58px;
 }
 
 .navList {
@@ -46,6 +65,7 @@
   padding: 12px 20px;
   text-decoration: none;
   font-size: $font-size-base + 2px;
+  line-height: 1.35;
   color: $color-text-secondary; 
   transition: background-color $transition-speed, color $transition-speed;
 }
@@ -59,6 +79,9 @@
 }
 
 .icon{
+  display: block;
+  flex: 0 0 20px;
+  align-self: center;
   width: 20px;
   height: 20px;
   text-align: center;
@@ -68,27 +91,83 @@
 .text {
   color: inherit; 
 }
+.badge { position: absolute; top: -4px; right: -4px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: $color-accent-primary; color: $color-on-accent; font-size: .57rem; font-weight: 800; }
+.profileRow { display: flex; align-items: center; box-sizing: border-box; width: 100%; gap: 3px; padding-right: 10px; transition: background-color $transition-speed; }
+.profileRow:hover { background-color: $color-accent-background-hover; }
+.profileRow > .navList { flex: 1; min-width: 0; }
+.profileRow .navLink { gap: 10px; padding: 12px 10px 12px 16px; font-size: .94rem; }
+.profileRow .navLink:hover { background: transparent; }
+.profileRow .icon { margin-right: 0; }
+.notificationsButton { position: relative; display: grid; place-items: center; flex: 0 0 34px; box-sizing: border-box; width: 34px; height: 34px; padding: 7px; border: 0; border-radius: 6px; color: $color-text-secondary; background: transparent; }
+.notificationsButton > svg { display: block; width: 19px; height: 19px; }
+.notificationsButton:hover, .notificationsOpen { color: $color-accent-hover; background: $color-accent-background-hover; }
+.notificationsButton:focus-visible { outline-offset: -2px; }
+.profileActive {
+  background: $gradient-color-logo;
+  box-shadow: 3px 0 0 0 $color-accent-primary, 0 -5px 10px 0 #0000003b;
+  .navLink, .icon, .notificationsButton { color: $color-on-accent; }
+  .navLink:hover .icon { color: $color-on-accent; }
+  .notificationsButton:hover, .notificationsOpen { background: theme-alpha($color-on-accent, .12); }
+  .navLink:focus-visible, .notificationsButton:focus-visible { outline-color: $color-on-accent; outline-offset: -3px; }
+}
 
 .active {
   background: $gradient-color-logo;
   box-shadow: 3px 0 0 0 $color-accent-primary, 0px -5px 10px 0 #0000003b;
   .navLink {
-    color: $color-text-light;
+    color: $color-on-accent;
   }
   transition: box-shadow calc($transition-speed/2);
   .icon{
-    color: $color-text-light;
+    color: $color-on-accent;
   }
   
   
 }
 
 .active .navLink:hover {
-    background-color: $color-border; 
+    background-color: theme-alpha($color-text-light, .07);
     cursor: default;
-    color: $color-text-light;
+    color: $color-on-accent;
     .icon{
-       color: $color-text-light;
+       color: $color-on-accent;
     }
     
+}
+.bottomNav { margin-top: auto; padding-bottom: 20px; }
+
+@media (max-width: 760px) {
+  .sidebarNav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 20;
+    flex-direction: row;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    overflow-x: auto;
+    border-top: 1px solid $color-border;
+    border-right: 0;
+  }
+
+  .navHeader { display: grid; place-items: center; flex: 0 0 52px; padding: 0; }
+  .themeToggle { min-height: 52px; padding: 2px; }
+  .logoImage { width: 38px; height: 38px; }
+  .navList { display: flex; }
+  .navLink { flex-direction: column; gap: 4px; min-width: 62px; padding: 9px 8px; font-size: .62rem; }
+  .icon { flex-basis: 18px; width: 18px; height: 18px; margin: 0; }
+  .badge { position: absolute; top: 5px; right: 5px; min-width: 15px; height: 15px; font-size: .52rem; }
+  .bottomNav { display: flex; margin: 0 0 0 auto; padding: 0; }
+  .bottomNav > div:not(.profileRow) {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+  }
+  .profileRow { width: auto; gap: 2px; padding: 0 9px 0 0; }
+  .profileRow .navLink { gap: 4px; min-width: 68px; padding: 9px 5px; font-size: .62rem; }
+  .profileRow .badge { top: -4px; right: -4px; }
 }

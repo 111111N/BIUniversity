@@ -1,5 +1,9 @@
 import React from "react";
 
+export const NotificationsIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M9.5 20a2.6 2.6 0 0 0 5 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+);
+
 
 export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -110,6 +114,13 @@ export const PlannerIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const JournalIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <path d="M8 6h27a5 5 0 0 1 5 5v31H13a5 5 0 0 1-5-5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <path d="M13 6v36M19 15h15M19 23h15M19 31h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 export const ScheduleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="none">
     <path
@@ -179,3 +190,6 @@ export const StatsIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </g>
   </svg>
 )
+export const MessagesIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="none"><path d="M7 9h34v25H20L10 42v-8H7z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/><path d="M14 17h20M14 24h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+);

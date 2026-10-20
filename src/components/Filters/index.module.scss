@@ -1,141 +1,28 @@
 @use "../../styles/variables" as *;
-@use "../../styles/mixins" as *;
 
-
-.filtersContainer {
-    display: flex;
-    flex-direction: column;
-    background-color: $color-dark-primary;
-
-    max-width: 400px;
-
-    height: 85.5vh;
-    flex-shrink: 0;            
-    flex-grow: 0;             
-  
-    color: $color-text-light;
-    border-radius: $border-radius;
-    @include border();
-}
-
-.title {
-    margin: 20px;
-    font-size: 22px;
-}
-
-.filterGroup {
-    margin-inline: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-/* ------------------------------------------------------------------
- * КНОПКИ (СТАТИЧНЫЙ РАЗМЕР)
- * Используется для кнопок в .filterGroup и .actions
- * ------------------------------------------------------------------ */
-.button {
-    background-color: $color-border;
-    /* Фиксированный padding для статичного размера кнопок фильтров */
-    padding: 12px 15px; 
-    text-align: center;
-    cursor: pointer;
-    border-radius: $border-radius;
-    @include border();
-
-    &.active {
-        background: $gradient-color-logo;
-        color: #fff;
-        border-inline: none;
-        border-color: #ffffff00;
-        /* Padding должен быть сохранен, чтобы избежать смещения при активации */
-    }
-}
-
-
-/* ------------------------------------------------------------------
- * КОНТЕЙНЕР ДЛЯ РАСТЯГИВАНИЯ
- * Занимает все свободное вертикальное место, прибивая .actions к низу
- * ------------------------------------------------------------------ */
-.mainContentWrapper {
-    /* ✨ КЛЮЧЕВОЙ МОМЕНТ: Забирает все оставшееся свободное место */
-    flex-grow: 1; 
-    
-    display: flex;
-    flex-direction: column;
-}
-/* ------------------------------------------------------------------ */
-
-
-.searchWrapper {
-    position: relative; 
-}
-
-.searchInputWrapper {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin: 20px;
-    margin-bottom: 20px; 
-}
-
-.input {
-    @include input(10px, 10px);
-    flex-grow: 1;
-    margin-bottom: 0;
-}
-
-.searchButton {
-    padding: 8px 12px;
-}
-
-/* ------------------------------------------------------------------
- * ОКНО РЕЗУЛЬТАТОВ (ДИНАМИЧЕСКИЙ РАЗМЕР)
- * Сжимается по контенту, но добавляет скролл при переполнении
- * ------------------------------------------------------------------ */
-.searchResults {
-    z-index: 10;
-    min-height: 200px;
-    max-height: 200px;
-    overflow-y: auto; 
-    @include shadows-inset(6px,-6px);
-    padding: 5px 0;
-  background-color: $color-dark-tertiary;
-}
-
-.resultsHeader {
-    margin: 0 20px 20px 20px;
-    font-size: 0.9em;
-    color: $color-text-secondary;
-    font-weight: 500;
-}
-
-.searchResultItem {
-    margin: 0 20px 0 20px;
-    padding: 8px 15px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    font-size: 1em;
-    outline: none;
-    border: 3px solid #ffffff00;
-  &:hover {
-    
-    background:  $color-accent-background;
-    border-color: $color-accent-hover;
-    color: $color-text-light;
-  }
-  &:active {
-    background:  $color-dark-tertiary;
-    border-color: $color-accent-background;
-    color: $color-text-light;
-  }
-}
-/* ------------------------------------------------------------------ */
-
-// КНОПКИ ДЕЙСТВИЙ (ПРИБИТЫ К НИЗУ)
-.actions {
-    margin: 20px;
-    display: flex;
-    justify-content: space-between;
-    gap: 15px;
-}
+.panel { display: grid; gap: 18px; padding: 22px; border: 1px solid $color-border; border-radius: 16px; background: $color-dark-secondary; }
+.heading { display: grid; gap: 9px; }
+.heading span { color: $color-accent-hover; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.heading h2 { margin: 5px 0 0; font-size: 1.12rem; }
+.heading p { margin: 0; color: $color-text-secondary; font-size: .76rem; line-height: 1.5; }
+.form { display: grid; gap: 16px; }
+.types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid $color-border; border-radius: 11px; background: $color-dark-tertiary; }
+.types button { padding: 10px 7px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: .73rem; }
+.types button:last-child { grid-column: 1 / -1; }
+.types button:hover { background: $color-accent-background-hover; color: $color-text-light; }
+.types .active, .types .active:hover { background: $color-dark-secondary; border-color: theme-alpha($color-accent-primary, .4); color: $color-accent-hover; }
+.inputRow { display: grid; gap: 10px; }
+.searchButton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 8px 14px; border: 1px solid $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; font-size: .78rem; }
+.results { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid $color-border; }
+.resultsLabel { color: $color-text-secondary; font-size: .7rem; }
+.results ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.results li { min-width: 0; }
+.results button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 7px 9px 7px 12px; border-width: 1px; background: $color-dark-secondary; font-size: .74rem; text-align: left; }
+.results button > span:first-child { overflow-wrap: anywhere; }
+.results button[aria-pressed="true"] { border-color: theme-alpha($color-accent-primary, .5); color: $color-accent-hover; background: $color-accent-background-hover; }
+.noResults { margin: 0; color: $color-text-secondary; font-size: .74rem; line-height: 1.5; }
+.error { margin: 0; color: $color-error; font-size: .76rem; }
+@media (max-width: 1100px) { .form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; } .types { grid-template-columns: repeat(3, minmax(0, 1fr)); } .types button:last-child { grid-column: auto; } .inputRow { grid-template-columns: minmax(0, 1fr) auto; align-items: end; } .results ul { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
+@media (max-width: 850px) { .form { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 650px) { .panel { padding: 16px; gap: 14px; } .form { gap: 12px; } .types { grid-template-columns: repeat(2, minmax(0, 1fr)); } .types button:last-child { grid-column: 1 / -1; } .types button { font-size: .7rem; } .inputRow { grid-template-columns: minmax(0, 1fr); } }
+@media print { .panel { display: none; } }

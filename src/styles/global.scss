@@ -1,6 +1,6 @@
 @use "variables" as *;
 @use "mixins" as *;
-@use "sass:color";
+@use "theme";
 *:focus-visible {
   outline: 3px solid $color-accent-primary; // цвет и ширина обводки
   outline-offset: 2px;    // отступ, чтобы не прилипало к элементу
@@ -10,16 +10,17 @@ html, body, #root, #__next {
     margin: 0;
     padding: 0;
 }
+html { scrollbar-gutter: stable; }
 ::-webkit-scrollbar {
     width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: color.adjust($color-dark-primary,$blackness:30%);
+  background: theme-alpha($color-text-light, .07);
   border-radius: 8px;
 
 }
 ::-webkit-scrollbar-thumb {
-  background: color.adjust($color-border,$lightness:10%);
+  background: color-mix(in srgb, #{$color-border} 70%, #{$color-text-secondary});
   border-radius: 8px;
 
 }
@@ -28,13 +29,18 @@ html, body, #root, #__next {
   background: $color-border
 }
 ::-webkit-scrollbar-thumb:active {
-  background: color.adjust($color-border,$blackness:20%);
+  background: $color-accent-primary;
 }
   
 .pageContainer { 
   color: $color-text-light;
   min-height: 100vh;
-  width: calc(100% - 60px);
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  // Общая рабочая область всех страниц; локальные раскладки не меняют её края.
   padding: 30px; 
 }
 
@@ -64,8 +70,13 @@ h6 {
 }
 .dashboard-layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 200px minmax(0, 1fr);
   min-height: 100vh;
+}
+
+@media (max-width: 760px) {
+  .dashboard-layout { display: block; padding-bottom: 66px; }
+  .main-content { padding-top: 44px; }
 }
 
 .nav-menu {
@@ -131,9 +142,15 @@ h6 {
 
 .main-content {
   position: relative;
+  min-width: 0;
   overflow: hidden;
   z-index: 1;
 }
+.page-loader { position: relative; z-index: 2; display: grid; place-items: center; align-content: center; gap: 12px; min-height: 70vh; color: $color-text-secondary; }
+.page-loader span { width: 34px; height: 34px; border: 3px solid $color-border; border-top-color: $color-accent-primary; border-radius: 50%; animation: page-loader-spin .7s linear infinite; }
+.page-loader p { margin: 0; }
+@keyframes page-loader-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .page-loader span { animation: none; border-color: $color-accent-primary; } .blob { transition: none; } }
 
 
 .blob {
@@ -141,7 +158,7 @@ h6 {
   border-radius: 100%;
   filter: blur(30px);
   opacity: 0.1;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   transform: translate(-50%, -50%);
   transition: all 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -162,6 +179,7 @@ h6 {
 
 
 button {
+  user-select: none;
   background: $color-dark-tertiary;
   @include border();
   padding: 20px 20px;
@@ -172,23 +190,29 @@ button {
   align-items: center;
   justify-content: center;
   color: $color-text-secondary;
-  transition: background 0.2s ease-out;
-  transition: border 0.2s ease-out;
-  &:hover {
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
+  &:where(:not(:disabled)):hover {
     background-color: $color-accent-primary;
     border-color: $color-accent-primary;
-    color: $color-text-light;
+    color: $color-on-accent;
   }
 
-  &:active {
-    color: $color-text-secondary;
-    background-color: $color-dark-tertiary;
-    border-block-color: $color-accent-background;
-    border-inline-color: $color-accent-primary;
+  &:where(:not(:disabled)):active {
+    filter: brightness(.92);
   }
 
   &:focus-visible {
-    outline: none;
+    outline: 3px solid $color-accent-primary;
+    outline-offset: 2px;
     border-color: $color-accent-primary;
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+  }
+}
+
+@media (max-width: 620px) {
+  .pageContainer { padding: 22px 16px; }
 }

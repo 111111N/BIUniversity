@@ -1,0 +1,12 @@
+@use "../../../styles/variables" as *;
+.file { display: flex; min-width: 0; overflow: hidden; border: 1px solid theme-alpha($color-text-secondary, .19); border-radius: 12px; background: theme-alpha($color-text-secondary, .04); }
+.open { display: flex; flex: 1; align-items: center; gap: 11px; min-width: 0; min-height: 66px; padding: 10px; border: 0; border-radius: 0; background: transparent; color: $color-text-light; text-align: left; }
+.open:hover:not(:disabled), .download:hover:not(:disabled) { background: theme-alpha($color-text-secondary, .1); border-color: transparent; color: $color-text-light; }
+.icon { display: grid; place-items: center; flex: 0 0 auto; box-sizing: border-box; width: 38px; height: 42px; padding: 3px; border-radius: 9px; background: theme-alpha(var(--ui-chart-blue), .12); color: color-mix(in srgb, var(--ui-chart-blue) 75%, #{$color-text-light}); font-size: .59rem; font-weight: 650; }
+.image { background: theme-alpha(var(--ui-chart-purple), .12); color: color-mix(in srgb, var(--ui-chart-purple) 75%, #{$color-text-light}); }
+.identity { display: grid; flex: 1; gap: 6px; min-width: 0; }
+.identity strong { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: $color-text-light; font-size: .73rem; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.identity small { color: color-mix(in srgb, #{$color-text-secondary} 80%, #{$color-text-light}); font-size: .6rem; }
+.download { display: grid; place-items: center; flex: 0 0 auto; width: 36px; padding: 5px; border: 0; border-radius: 0; color: $color-text-secondary; background: transparent; }
+.download svg { width: 19px; height: 19px; }
+.file button:disabled { cursor: wait; }

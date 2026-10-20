@@ -69,8 +69,8 @@ export default function BarChart({
             .attr("y1", "0%")
             .attr("y2", "0%");
 
-        barGradient.append("stop").attr("offset", "0%").attr("stop-color", "#f54c4c");
-        barGradient.append("stop").attr("offset", "100%").attr("stop-color", "#74253a");
+        barGradient.append("stop").attr("offset", "0%").attr("stop-color", "var(--line-end)");
+        barGradient.append("stop").attr("offset", "100%").attr("stop-color", "var(--line-start)");
 
         const filter = defs.append("filter").attr("id", "drop-shadow");
     filter.append("feDropShadow")

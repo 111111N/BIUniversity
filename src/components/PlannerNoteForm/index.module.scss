@@ -1,0 +1,27 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+.form { @include dashboard-card($color-dark-primary, 22px); width: min(540px, 100%); box-sizing: border-box; border-width: 1px; border-radius: 14px; box-shadow: 0 24px 70px $color-shadow; }
+.header { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.header > div { min-width: 0; }
+.header span { color: $color-accent-hover; font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; }
+.header h2 { margin: 5px 0 0; font-size: 1.2rem; }
+.close { width: 32px; height: 32px; flex: 0 0 32px; padding: 0; border-width: 1px; border-radius: 50%; background: transparent; font-size: 1.25rem; }
+.day { display: grid; gap: 5px; margin-bottom: 17px; padding: 12px 14px; border: 1px solid theme-alpha($color-accent-primary, .22); border-radius: 9px; background: $color-accent-background-hover; }
+.day strong { color: $color-text-light; font-size: .75rem; text-transform: capitalize; }
+.day span { color: $color-text-secondary; font-size: .62rem; line-height: 1.5; }
+.field { display: flex; flex-direction: column; gap: 7px; min-width: 0; margin-bottom: 14px; color: $color-text-secondary; font-size: .73rem; font-weight: 500; }
+.field input, .field textarea { @include input(12px, 10px); box-sizing: border-box; font: inherit; font-weight: 400; }
+.field textarea { min-height: 85px; resize: vertical; }
+.columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.metadata { margin-bottom: 14px; }
+.error { margin: 14px 0 0; color: $color-error; font-size: .72rem; line-height: 1.5; }
+.externalNotice { margin: 0 0 14px; padding: 10px 12px; border: 1px solid $color-border; border-radius: 8px; background: $color-ghost; color: $color-text-secondary; font-size: .7rem; line-height: 1.6; }
+.timeHint { margin: -3px 0 12px; color: $color-text-secondary; font-size: .65rem; line-height: 1.6; }
+.footer { display: grid; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid $color-border; }
+.saveHint { color: $color-text-secondary; font-size: .63rem; line-height: 1.5; }
+.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.actions button { padding: 10px 14px; border-width: 1px; font-size: .74rem; }
+.actions .save { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+.actions .save:hover { border-color: $color-accent-hover; background: $color-accent-hover; }
+@media (max-width: 620px) { .form { padding: 16px; } .columns { grid-template-columns: minmax(0, 1fr); gap: 0; } .columns > div { margin-bottom: 14px; } }

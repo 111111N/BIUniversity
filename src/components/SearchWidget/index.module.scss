@@ -3,11 +3,13 @@
 
 .input{
   @include input();
+  min-width: 0;
+  flex: 1;
 }
 
 .dashboardCard {
 
-  margin-bottom: 25px; 
+  margin-bottom: 0;
   padding: 0;
   border: none;
 }
@@ -51,6 +53,7 @@
   border-color: $color-accent-hover;
   box-shadow: inset 0px 2px 10px $color-ghost;
 }
+.toggleButton.active:hover { background: $color-dark-primary; color: $color-text-light; border-color: $color-accent-primary; }
 
 .searchRow {
   display: flex;
@@ -60,4 +63,12 @@
 
 .searchButton {
   padding: 8px 12px;
+  flex-shrink: 0;
 }
+
+:root[data-theme="light"] .dashboardCard { background: transparent; }
+:root[data-theme="light"] .toggleButton { border-color: $color-border; background: $color-dark-secondary; }
+:root[data-theme="light"] .toggleButton:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-accent-hover; }
+:root[data-theme="light"] .toggleButton.active, :root[data-theme="light"] .toggleButton.active:hover { border-color: $color-accent-primary; background: $color-dark-secondary; color: $color-accent-primary; }
+:root[data-theme="light"] .searchButton { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+:root[data-theme="light"] .searchButton:hover { border-color: $color-accent-hover; background: $color-accent-hover; color: $color-on-accent; }

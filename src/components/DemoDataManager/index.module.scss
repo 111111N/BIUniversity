@@ -1,0 +1,27 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+.trigger { width: 100%; margin-top: 7px; padding: 6px 4px; border: 0; background: transparent; color: $color-text-secondary; font-size: .6rem; font-weight: 400; }
+.trigger:hover { background: $color-accent-background-hover; color: $color-accent-hover; }
+.dialog { @include dashboard-card($color-dark-primary, 24px); width: min(520px, 100%); box-sizing: border-box; border-width: 1px; border-radius: 14px; }
+.dialog header > span { color: $color-accent-hover; font-size: .64rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.dialog h2 { margin: 7px 0 10px; font-size: 1.15rem; }
+.dialog header p, .hint { color: $color-text-secondary; font-size: .75rem; line-height: 1.65; }
+.localNotice { padding: 10px 12px; border: 1px dashed $color-border; border-radius: 8px; color: $color-text-secondary; font-size: .68rem; line-height: 1.6; }
+.journalOption { margin: 14px 0; padding: 12px; border: 1px solid $color-border; border-radius: 8px; }
+.journalOption p { margin: 8px 0 0; color: $color-text-secondary; font-size: .67rem; line-height: 1.65; }
+.progress { color: $color-accent-hover; font-size: .72rem; line-height: 1.6; }
+.scenarios { display: flex; flex-wrap: wrap; gap: 7px; margin: 16px 0; }
+.scenarios span { padding: 6px 8px; border: 1px solid $color-border; border-radius: 6px; color: $color-text-light; font-size: .65rem; }
+.result { padding: 14px; border: 1px solid $color-border; border-radius: 9px; }
+.result > strong { color: $color-text-light; font-size: .8rem; }
+.result dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+.result dl > div { display: grid; gap: 5px; }
+.result dt { color: $color-text-secondary; font-size: .65rem; }
+.result dd { margin: 0; color: $color-success; font-size: 1.1rem; font-weight: 600; }
+.error { color: $color-error; font-size: .72rem; line-height: 1.6; }
+.dialog footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.dialog footer button { padding: 9px 12px; border-width: 1px; font-size: .72rem; }
+.dialog footer .primary { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+@media (max-width: 420px) { .result dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .trigger { margin-top: 2px; padding: 3px; font-size: .55rem; } }

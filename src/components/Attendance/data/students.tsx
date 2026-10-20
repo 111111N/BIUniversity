@@ -1,7 +1,7 @@
 // src/data/students.ts
 import { eachDayOfInterval, getDay, format } from 'date-fns';
 
-export type AttendanceStatus = 'present' | 'sick' | 'absent';
+export type AttendanceStatus = 'unmarked' | 'present' | 'sick' | 'absent';
 export type Grade = 2 | 3 | 4 | 5 | null;
 
 export interface Student {
@@ -20,7 +20,7 @@ export const workDays = eachDayOfInterval({ start: START_DATE, end: END_DATE })
   .map(d => format(d, 'yyyy-MM-dd'));
 
 // --- Возможные статусы ---
-const STATUS: AttendanceStatus[] = ['present', 'sick','absent'];
+const STATUS: AttendanceStatus[] = ['present', 'sick', 'absent'];
 
 // --- Случайный выбор статуса ---
 const randomStatus = () => STATUS[Math.floor(Math.random() * STATUS.length)];

@@ -1,0 +1,4 @@
+@use "../../styles/variables" as *;
+.controls { display: flex; gap: 5px; }
+.controls button { width: 30px; height: 30px; padding: 0; border: 1px solid $color-border; background: transparent; color: $color-text-secondary; font-size: .9rem; }
+.controls button:hover, .controls .active { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }

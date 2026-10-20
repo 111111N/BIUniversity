@@ -1,0 +1,33 @@
+@use "../../../styles/variables" as *;
+
+.batch { overflow: hidden; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-secondary; }
+.batch summary { display: flex; align-items: center; gap: 11px; padding: 13px 14px; color: $color-text-light; cursor: pointer; list-style: none; }
+.batch summary::-webkit-details-marker { display: none; }
+.batch summary:hover { background: $color-ghost; }
+.batch summary:focus-visible { outline-offset: -3px; }
+.avatar { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid $color-border; border-radius: 10px; background: $color-ghost; color: $color-text-secondary; font-size: .65rem; font-weight: 500; }
+.identity { display: grid; flex: 1; min-width: 0; gap: 5px; }
+.identity strong { font-size: .78rem; font-weight: 500; overflow-wrap: anywhere; }
+.identity time { color: $color-text-secondary; font-size: .63rem; }
+.counter { color: $color-text-secondary; font-size: .63rem; white-space: nowrap; }
+.chevron { flex: 0 0 auto; width: 20px; height: 20px; color: $color-text-secondary; transition: transform $transition-speed; }
+.batch[open] .chevron { transform: rotate(180deg); }
+.batch ul { margin: 0; padding: 0 14px; list-style: none; border-top: 1px solid $color-border; }
+.batch li { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(250px, 1fr); align-items: center; gap: 20px; padding: 13px 0; border-bottom: 1px solid $color-border; }
+.batch li:last-child { border-bottom: 0; }
+.student { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.student > strong { color: $color-text-light; font-size: .77rem; font-weight: 500; overflow-wrap: anywhere; }
+.field { padding: 3px 6px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; font-size: .57rem; }
+.student small { display: block; flex-basis: 100%; color: $color-text-secondary; font-size: .62rem; line-height: 1.5; }
+.student small span { display: block; margin-top: 2px; }
+.diff { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
+.diff > div { display: grid; gap: 5px; min-width: 0; }
+.diff > div > span { color: $color-text-secondary; font-size: .58rem; }
+.diff strong { padding: 7px 9px; border: 1px solid $color-border; border-radius: 6px; font-size: .72rem; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.previous { color: $color-text-secondary; background: $color-ghost; }
+.next { color: $color-text-light; background: $color-accent-background-hover; }
+.next[data-value="present"], .next[data-value="5"] { color: $color-success; }
+.next[data-value="absent"], .next[data-value="removed"], .next[data-value="2"] { color: $color-error; }
+.next[data-value="sick"], .next[data-value="3"] { color: $color-warning; }
+.arrow { color: $color-text-secondary; }
+@media (max-width: 700px) { .batch li { grid-template-columns: 1fr; gap: 12px; }.batch summary { flex-wrap: wrap; }.counter { margin-left: auto; } }

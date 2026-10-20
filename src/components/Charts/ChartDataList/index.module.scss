@@ -1,0 +1,33 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+.details { margin-top: 12px; border: 1px solid $color-border; border-radius: 12px; color: $color-text-light; background: theme-alpha($color-text-secondary, .025); }
+.details summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 11px; list-style: none; cursor: pointer; user-select: none; }
+.details summary::-webkit-details-marker { display: none; }
+.details summary::marker { content: ""; }
+.details summary:hover { background: theme-alpha($color-text-secondary, .07); }
+.heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 10px; min-width: 0; }
+.heading strong { font-size: .74rem; font-weight: 500; }
+.heading > span { color: $color-text-secondary; font-size: .62rem; }
+.summaryEnd { display: flex; align-items: center; flex: 0 0 auto; gap: 9px; color: $color-text-secondary; font-size: .62rem; }
+.chevron { transition: transform .18s ease; }
+.details[open] .chevron { transform: rotate(180deg); }
+.details[open] summary { border-bottom: 1px solid $color-border; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.content { padding: 12px 10px 10px; }
+.hint { margin: 0 4px 12px; color: $color-text-secondary; font-size: .64rem; line-height: 1.6; }
+.columns { display: flex; justify-content: space-between; gap: 10px; padding: 0 37px 8px 12px; color: $color-text-secondary; font-size: .59rem; }
+.list { display: grid; gap: 4px; max-height: min(360px, 45dvh); margin: 0; padding: 2px; overflow-y: auto; overscroll-behavior: contain; list-style: none; @include scroll-bar(4px); }
+.list li { min-width: 0; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(60px, .5fr) minmax(64px, auto) 16px; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; min-height: 42px; padding: 9px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: $color-text-light; font-size: .72rem; font-weight: 400; line-height: 1.5; text-align: left; }
+button.row:hover { border-color: theme-alpha($color-text-secondary, .22); background: theme-alpha($color-text-secondary, .08); color: $color-text-light; }
+.row.active, button.row.active:hover { border-color: theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-text-light; }
+.period { min-width: 0; overflow-wrap: anywhere; }
+.track { display: block; height: 4px; overflow: hidden; border-radius: 5px; background: theme-alpha($color-text-secondary, .12); }
+.track > span { display: block; height: 100%; border-radius: inherit; background: theme-alpha($color-text-secondary, .55); }
+.active .track > span { background: $color-accent-primary; }
+.value { text-align: right; font-size: .74rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.state { display: grid; place-items: center; color: $color-accent-hover; }
+.unmarked .value { color: $color-text-secondary; font-size: .65rem; font-weight: 400; }
+.unmarked .track { visibility: hidden; }
+@media (max-width: 650px) { .summaryEnd { font-size: 0; gap: 0; } .row { grid-template-columns: minmax(0, 1fr) auto 16px; gap: 8px; } .track { display: none; } .columns { padding-right: 36px; } }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }

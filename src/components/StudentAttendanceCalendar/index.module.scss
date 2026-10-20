@@ -1,0 +1,17 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+.card { @include dashboard-card($color-dark-secondary, 20px); }
+.card header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 15px; }
+.card header span { color: $color-accent-hover; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.card h2 { margin: 5px 0 0; font-size: 1.05rem; }
+.card header strong { font-size: 1.4rem; }
+.weekdays, .days { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.weekdays { margin-bottom: 5px; color: $color-text-secondary; font-size: .6rem; text-align: center; }
+.days > div { position: relative; display: grid; place-items: center; aspect-ratio: 1.2; border: 1px solid $color-border; border-radius: 7px; background: $color-dark-tertiary; color: $color-text-secondary; font-size: .68rem; }
+.days > div i { position: absolute; right: 4px; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; }
+.days .present i, footer .present { background: $color-success; }
+.days .absent i, footer .absent { background: $color-error; }
+.days .sick i, footer .sick { background: $color-warning; }
+.card footer { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 13px; color: $color-text-secondary; font-size: .62rem; }
+.card footer span { display: flex; align-items: center; gap: 5px; }
+.card footer i { width: 7px; height: 7px; border-radius: 50%; }

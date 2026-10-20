@@ -1,0 +1,28 @@
+@use "../../styles/variables" as *;
+
+.agenda { display: grid; gap: 13px; }
+.agenda header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.agenda header > div > span { color: $color-accent-hover; font-size: .6rem; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
+.agenda h2 { margin: 4px 0 0; font-size: .93rem; }
+.agenda a { color: $color-accent-hover; text-decoration: none; }
+.agenda header a { display: inline-flex; align-items: center; gap: 3px; font-size: .66rem; }
+.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.actions button, .empty .planButton { padding: 7px 10px; border: 1px solid theme-alpha($color-accent-primary, .35); border-radius: 7px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: .65rem; }
+.actions button:hover, .empty .planButton:hover { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+.empty .planButton { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; flex-shrink: 0; }
+.tasks { display: grid; gap: 6px; }
+.task { display: grid; grid-template-columns: 16px minmax(0, 1fr) 28px; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid $color-border; border-radius: 9px; background: $color-dark-secondary; }
+.task:hover, .task:focus-visible { border-color: $color-accent-primary; background: $color-accent-background-hover; }
+.task > span:nth-child(2) { display: grid; min-width: 0; gap: 4px; }
+.task strong { color: $color-text-light; font-size: .73rem; font-weight: 500; overflow-wrap: anywhere; }
+.task small { color: $color-text-secondary; font-size: .61rem; }
+.marker { display: grid; place-items: center; width: 14px; height: 14px; border: 1px solid $color-border; border-radius: 4px; font-size: .6rem; }
+.marker.high { border-color: $color-error; }
+.completed .marker { border-color: $color-success; background: theme-alpha($color-success, .1); color: $color-success; }
+.completed strong { color: $color-text-secondary; text-decoration: line-through; }
+.empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 13px; border: 1px dashed $color-border; border-radius: 9px; }
+.empty strong { color: $color-text-light; font-size: .74rem; font-weight: 500; }
+.empty p { margin: 5px 0 0; color: $color-text-secondary; font-size: .63rem; line-height: 1.5; }
+.empty a { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; font-size: .64rem; }
+.error { margin: 0; color: $color-error; font-size: .7rem; line-height: 1.5; }
+@media (max-width: 620px) { .empty { align-items: start; flex-direction: column; } .agenda header { flex-wrap: wrap; } }

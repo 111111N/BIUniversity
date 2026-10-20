@@ -1,0 +1,1 @@
+@use "../../styles/variables" as *;@use "../../styles/mixins" as *;.page{position:relative;z-index:1;box-sizing:border-box}.back{display:inline-block;margin-bottom:18px;color:$color-text-secondary;text-decoration:none}.back:hover{color:$color-accent-hover}.empty{@include dashboard-card($color-dark-secondary,24px)}

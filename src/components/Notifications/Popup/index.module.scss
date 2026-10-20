@@ -1,0 +1,13 @@
+@use "../../../styles/variables" as *;
+
+.panel, .mobilePanel { width: min(460px, calc(100vw - 24px)); box-sizing: border-box; border: 1px solid color-mix(in srgb, #{$color-text-secondary} 22%, #{$color-border}); border-radius: 12px; background: $color-dark-primary; color: $color-text-light; box-shadow: 0 18px 55px theme-alpha($color-shadow, .6); }
+.panel { position: fixed; z-index: 1800; display: flex; flex-direction: column; overflow: hidden; }
+.mobilePanel.mobilePanel { display: flex; width: min(460px, calc(100vw - 40px)); max-height: min(640px, calc(100dvh - 40px)); overflow: hidden; }
+.mobileBody { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+:root[data-theme="light"] .panel, :root[data-theme="light"] .mobilePanel { background: $color-dark-secondary; }
+.heading { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px 4px; background: $color-dark-primary; }
+:root[data-theme="light"] .heading { background: $color-dark-secondary; }
+.heading h2 { margin: 0; font-size: 1rem; }
+.heading button { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: $color-text-secondary; }
+.heading button svg { width: 20px; height: 20px; }
+.heading button:hover { background: $color-accent-background-hover; color: $color-accent-hover; }

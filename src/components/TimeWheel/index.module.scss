@@ -1,0 +1,24 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+.timeWheel { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 8px minmax(0, 1fr); min-width: 0; align-items: center; gap: 2px; padding: 30px 8px 8px; border-left: 1px solid $color-border; }
+.selectedRail { position: absolute; top: calc(50% + 11px); transform: translateY(-50%); right: 7px; left: 7px; height: 38px; border: 1px solid $color-accent-secondary; border-radius: 7px; background: $color-accent-background-hover; pointer-events: none; }
+.columnWrap { position: relative; }
+.columnLabel { position: absolute; bottom: calc(100% + 10px); left: 0; width: 100%; color: $color-text-secondary; font-size: .6rem; font-weight: 700; letter-spacing: .06em; text-align: center; text-transform: uppercase; }
+.column { height: 206px; padding: 84px 0; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none; mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+.column::-webkit-scrollbar { display: none; }
+.column:focus-visible { outline: none; }
+.columnWrap:has(.column:focus-visible) { outline: 2px solid $color-accent-primary; outline-offset: 2px; border-radius: 6px; }
+.column button { width: 100%; height: 38px; padding: 0; border: 0; border-radius: 6px; scroll-snap-align: center; background: transparent; color: $color-text-secondary; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.column button:hover { background: transparent; color: $color-text-light; }
+.column .selected { color: $color-text-light; font-size: 1.1rem; }
+.separator { position: relative; z-index: 1; color: $color-text-secondary; font-size: 1rem; text-align: center; }
+
+@media(max-width: 520px) {
+  .timeWheel { padding-inline: 3px; }
+}
+
+@media(max-width: 430px) {
+  .timeWheel { grid-template-columns: 58px 10px 58px; justify-content: center; padding-top: 30px; border-top: 1px solid $color-border; border-left: 0; }
+  .selectedRail { right: calc(50% - 73px); left: calc(50% - 73px); }
+}

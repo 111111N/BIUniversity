@@ -1,74 +1,38 @@
 @use '../../styles/variables' as *;
-@use "../../styles/mixins" as *;
 
-.calendarContainer {
-  display: flex; // Располагаем два месяца рядом
-  gap: 20px; // Небольшой отступ между календарями
-  padding: 10px; // Внутренний отступ контейнера
-}
-
-.calendarMonth {
-  flex: 1 1 50%;
-  text-align: center;
-}
-
-.monthName {
-  font-size: 10px;
-  font-weight: bold;
-  color: $color-text-secondary;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
-.calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0; 
-}
-
-.calendarDayName {
-  font-size: 10px;
-  font-weight: 500;
-  color: $color-text-secondary;
-  padding: 5px 0;
-  text-transform: uppercase;
-}
-
-// Ячейка дня
-.calendarDay {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 20px; 
-  font-size: 15px;
-  font-weight: 300;
-  line-height: 1;
-  border-radius: 1px;
-  cursor: default;
-  // Стили для пустых дней (заполнение)
-  &:not(.activeDay) {
-    color: transparent; // Пустые ячейки невидимы
-  }
-}
-
-// Активные дни (с числом)
-.activeDay {
-  color: $color-text-secondary; // Белый/светлый цвет
-}
-
-.weekend {
-  color: $color-accent-hover;
-}
-
-// Выделение сегодняшнего дня (если нужно, на скриншоте не очень видно)
-.today {
-  background-color: $color-dark-tertiary;
-   color:$color-text-light;
-}
-
-.activeDay:hover{
-    background-color: $color-accent-hover;
-    cursor: pointer;
-    color:$color-text-light;
-}
+.calendarWidget { display: flex; flex-direction: column; gap: 13px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.calendarToolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.calendarToolbar strong { color: $color-text-secondary; font-size: .8rem; font-weight: 600; text-align: center; text-transform: capitalize; }
+.navButton { width: 32px; height: 32px; padding: 0; border: 0; background: transparent; color: $color-accent-primary; }
+.navButton:hover { background: transparent; color: $color-accent-hover; }
+.calendarContainer { display: grid; flex: 1; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.calendarMonth { display: flex; min-width: 0; }
+.calendarGrid { display: grid; flex: 1; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: 20px; grid-auto-rows: minmax(42px, 1fr); gap: 4px; }
+.calendarDayName { display: grid; place-items: center; min-height: 20px; color: $color-text-secondary; font-size: .61rem; font-weight: 700; text-transform: uppercase; }
+.calendarDay { position: relative; display: grid; place-items: center; width: 100%; min-width: 0; min-height: 42px; height: 100%; box-sizing: border-box; padding: 4px 0 9px; border: 1px solid $color-border; border-radius: 8px; background: $color-dark-tertiary; color: $color-text-light; font-size: .76rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.calendarDay:hover, .calendarDay:focus-visible { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }
+.calendarDay.selected { border-color: $color-accent-primary; box-shadow: inset 0 0 0 1px $color-accent-primary; }
+.calendarDay.today:hover, .calendarDay.today:focus-visible { background: $color-accent-hover; color: $color-on-accent; }
+.dots { position: absolute; bottom: 5px; display: flex; justify-content: center; gap: 4px; }
+.dots i, .legend i { width: 4px; height: 4px; border-radius: 50%; }
+.lessonDot { background: $color-accent-primary; }
+.taskDot { background: var(--ui-chart-blue); }
+.today .dots i { background: $color-on-accent; }
+.legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: $color-text-secondary; font-size: .62rem; }
+.legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.legend button { margin-left: auto; padding: 4px 8px; border-width: 1px; background: transparent; color: $color-accent-hover; font-size: .62rem; }
+.legend button:hover { border-color: theme-alpha($color-accent-primary, .4); background: $color-accent-background-hover; color: $color-accent-hover; }
+.daySummary { display: grid; gap: 6px; padding: 13px 14px; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-secondary; }
+.daySummary > span { color: $color-text-light; font-size: .74rem; font-weight: 600; text-transform: capitalize; }
+.daySummary strong { color: $color-text-secondary; font-size: .66rem; font-weight: 500; }
+.daySummary p { margin: 0; color: $color-text-secondary; font-size: .62rem; line-height: 1.45; }
+.outsideDay { opacity: .4; }
+.weekend { color: $color-accent-hover; }
+.today { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; font-weight: 800; box-shadow: 0 3px 9px theme-alpha($color-accent-primary, .2); }
+:root[data-theme="light"] .calendarDay { background: $color-dark-secondary; }
+:root[data-theme="light"] .outsideDay { background: $color-dark-primary; color: $color-text-secondary; opacity: .72; }
+:root[data-theme="light"] .weekend:not(.outsideDay):not(.today) { background: $color-accent-background-hover; }
+:root[data-theme="light"] .today { background: $color-accent-primary; color: $color-on-accent; }
+:root[data-theme="light"] .calendarDay:hover, :root[data-theme="light"] .calendarDay:focus-visible { background: $color-accent-background-hover; }
+:root[data-theme="light"] .calendarDay.today:hover, :root[data-theme="light"] .calendarDay.today:focus-visible { background: $color-accent-hover; color: $color-on-accent; }

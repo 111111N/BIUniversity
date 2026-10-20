@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
 import styles from "../../settingsCharts.module.scss";
+import { useTheme } from "../../../ThemeContext";
 
 interface BarChartProps {
     labels: string[];
@@ -20,6 +21,13 @@ interface ChartItem {
     fillRatios: number[];
 }
 
+const LIGHT_MODE_COLOR: Record<number, string> = {
+    2: "--ui-chart-amber",
+    7: "--ui-chart-green",
+    8: "--ui-chart-blue",
+    15: "--ui-chart-purple",
+};
+
 export default function BarChart({
     labels,
     values,
@@ -31,26 +39,19 @@ export default function BarChart({
     colorMode = 1,
 }: BarChartProps) {
     const svgRef = useRef<SVGSVGElement | null>(null);
+    const { theme } = useTheme();
 
     // Цвет сегментов
-    const activeColor = useMemo(() => {
-        const cssValue = getComputedStyle(document.documentElement)
-            .getPropertyValue("--bar-value-bg")
-            .trim();
-        const base = d3.color(cssValue) || d3.color("var(--bar-value-bg)");
-        const hsl = d3.hsl(base!);
-        if (colorMode === 1) return hsl.toString();
-        const hueShift = (colorMode - 1) * 22.5;
-        return d3.hsl((hsl.h + hueShift) % 360, hsl.s, hsl.l).toString();
-    }, [colorMode]);
+    const cssValue = getComputedStyle(document.documentElement)
+        .getPropertyValue(theme === "light" ? LIGHT_MODE_COLOR[colorMode] ?? "--ui-chart-red" : "--ui-accent-primary")
+        .trim();
+    const baseColor = d3.hsl(cssValue || "#f54c4c");
+    const activeColor = theme === "light" || colorMode === 1
+        ? baseColor.toString()
+        : d3.hsl((baseColor.h + (colorMode - 1) * 22.5) % 360, baseColor.s, baseColor.l).toString();
 
     // Glow цвет
-    const glowColor = useMemo(() => {
-        const c = d3.color(activeColor);
-        if (!c) return activeColor;
-        c.opacity = 0.35;
-        return c.toString();
-    }, [activeColor]);
+    const glowColor = d3.color(activeColor)?.copy({ opacity: theme === "light" ? .12 : .35 }).toString() ?? activeColor;
 
     // Подготовка данных и fillRatio
     const chartData: ChartItem[] = useMemo(() => {
@@ -79,6 +80,7 @@ export default function BarChart({
         if (!svgRef.current) return;
 
         const svg = d3.select(svgRef.current);
+        svg.attr("data-theme", theme);
         const containerWidth = svgRef.current.parentElement?.clientWidth ?? 400;
 
         const margin = { top: 15, right: 50, bottom: 10, left: 100 };
@@ -113,6 +115,7 @@ export default function BarChart({
                 <feMergeNode in="SourceGraphic"/>
             `);
         }
+        defs.select("feFlood").attr("flood-color", glowColor);
 
         const y = d3.scaleBand<string>()
             .domain(chartData.map(d => d.key))
@@ -159,7 +162,7 @@ export default function BarChart({
             .attr("height", y.bandwidth())
             .attr("rx", 2)
             .attr("fill", activeColor)
-            .attr("filter", "url(#glow)")
+            .attr("filter", theme === "light" ? null : "url(#glow)")
             .transition()
             .duration(700)
             .attr("width", d => (segmentWidth - segmentPadding) * d.fillRatio);
@@ -188,6 +191,8 @@ export default function BarChart({
         rows.attr("transform", d => `translate(0, ${y(d.key)})`);
         rows.selectAll<SVGRectElement, { fillRatio: number; i: number }>("rect.active")
             .data(d => d.fillRatios.map((r, i) => ({ fillRatio: r, i })))
+            .attr("fill", activeColor)
+            .attr("filter", theme === "light" ? null : "url(#glow)")
             .transition()
             .duration(400)
             .attr("width", d => (segmentWidth - segmentPadding) * d.fillRatio);
@@ -195,7 +200,7 @@ export default function BarChart({
         rows.select("text:last-of-type")
             .text(d => Number.isInteger(d.value) ? d.value : d.value.toFixed(2));
 
-    }, [chartData, activeColor, glowColor, segments, barHeight]);
+    }, [chartData, activeColor, glowColor, segments, barHeight, theme]);
 
     return (
         <div

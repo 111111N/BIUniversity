@@ -1,3 +1,10 @@
-export default function Stats() {
-  return <h1 className="title">Статистика</h1>;
-}
+import TeacherStatistics from "../../components/TeacherStatistics";
+import styles from "./index.module.scss";
+
+const Stats = () => (
+  <div className={`pageContainer ${styles.page}`}>
+    <TeacherStatistics />
+  </div>
+);
+
+export default Stats;

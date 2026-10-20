@@ -1,277 +1,93 @@
-import React, { useRef, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ScheduleItem, WeeklyScheduleData } from "../../types/sched";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import type { ScheduleItem, WeeklyScheduleData } from "../../types/sched";
+import { getAssignments, subscribeAssignmentStore } from "../../data/assignmentStore";
+import { getScheduleRange, getWeekDays, layoutScheduleDay, timeToMinutes } from "../../domain/scheduleLayout";
+import { toLocalDateKey } from "../../domain/schedule";
+import { formatCount } from "../../domain/formatCount";
+import { useRole } from "../RoleContext";
+import { isAcademicMembershipMatch } from "../../data/academicCatalog";
+import { canOpenScheduleLesson } from "../../domain/scheduleAccess";
+import ScheduleCard from "../ScheduleCard";
+import ArrowCircle from "../ArrowCircle";
+import LessonDetails from "./LessonDetails";
+import WeekList from "./WeekList";
+import useDragScroll from "../../hooks/useDragScroll";
+import useViewPreference from "../../hooks/useViewPreference";
 import styles from "./index.module.scss";
-import { EditIcon, PdfIcon } from "../ButtonIcons/Icons"; 
-import { startOfWeek, endOfWeek, isBefore, isAfter } from "date-fns";
 
-const START_HOUR = 8;
-const END_HOUR = 22;
-const SLOT_MINUTES = 90;
-const DAYS_OF_WEEK = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const MAX_SUBJECT_LENGTH = 35;
-const LESSON_TYPES = ['Лек.', 'Пр.', 'Лаб.', 'Экз.', 'Зач.'];
-
-const SCALE = 1.5;
-const getSlotHeight = () => window.innerHeight * 0.08 * SCALE;
-const getDayWidth = () => window.innerWidth * 0.10 * SCALE;
-const timeToMinutes = (time: string) => {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-};
-
-const calcGrid = (item: ScheduleItem, slotHeight: number) => {
-  const start = timeToMinutes(item.startTime);
-  const end = timeToMinutes(item.endTime);
-  const offset = start - START_HOUR * 60;
-  const duration = end - start;
-  return {
-    top: (offset / SLOT_MINUTES) * slotHeight,
-    height: (duration / SLOT_MINUTES) * slotHeight,
-  };
-};
-
-interface ScheduleCardProps {
-  item: ScheduleItem;
-  slotHeight: number;
-  onClick?: (item: ScheduleItem) => void;
-}
-
-const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, slotHeight, onClick }) => {
-  const { top, height } = calcGrid(item, slotHeight);
-
-  let baseSubject = item.subject;
-  let displayType = "";
-
-  const subjectParts = item.subject.split(" ").filter(p => p.length > 0);
-  const lastWord = subjectParts[subjectParts.length - 1];
-
-  if (lastWord && LESSON_TYPES.some(type => lastWord.replace(".", "").toLowerCase() === type.replace(".", "").toLowerCase())) {
-    displayType = lastWord;
-    baseSubject = item.subject.substring(0, item.subject.lastIndexOf(lastWord)).trim();
-  }
-
-  let displaySubject = baseSubject;
-  if (baseSubject.length > MAX_SUBJECT_LENGTH) {
-    displaySubject = baseSubject.substring(0, MAX_SUBJECT_LENGTH) + "...";
-  }
-
-  const formattedType = displayType ? ` (${displayType})` : "";
-
-  return (
-    <div
-      className={styles.scheduleItem}
-      style={{ top, height }}
-      role="button"
-      tabIndex={0}
-      onClick={() => onClick?.(item)}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick?.(item); }}
-    >
-      <div className={styles.scheduleInfo}>
-        <span className={styles.subject}>
-          {displaySubject}
-          <span className={styles.subjectType}>{formattedType}</span>
-        </span>
-        <span className={styles.time}>
-          {item.startTime} – {item.endTime}
-        </span>
-        <span className={styles.group}>{item.location}</span>
-        <span className={styles.teacher}>{item.teacher}</span>
-      </div>
-    </div>
-  );
-};
-
-interface WeeklyScheduleProps {
-  schedule: WeeklyScheduleData;
-  selectedWeek: Date;
-}
-
-const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({ schedule, selectedWeek }) => {
-  const navigate = useNavigate();
-  const [dimensions, setDimensions] = useState({
-    slotHeight: getSlotHeight(),
-    dayWidth: getDayWidth(),
-  });
-
-  const timeRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-
-  // --- grab scroll ---
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startY, setStartY] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [scrollTop, setScrollTop] = useState(0);
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (!bodyRef.current) return;
-    setIsDragging(true);
-    setStartX(e.pageX - bodyRef.current.offsetLeft);
-    setStartY(e.pageY - bodyRef.current.offsetTop);
-    setScrollLeft(bodyRef.current.scrollLeft);
-    setScrollTop(bodyRef.current.scrollTop);
-    bodyRef.current.style.cursor = "grabbing";
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !bodyRef.current) return;
-    const x = e.pageX - bodyRef.current.offsetLeft;
-    const y = e.pageY - bodyRef.current.offsetTop;
-    const walkX = x - startX;
-    const walkY = y - startY;
-    bodyRef.current.scrollLeft = scrollLeft - walkX;
-    bodyRef.current.scrollTop = scrollTop - walkY;
-  };
-
-  const onMouseUpOrLeave = () => {
-    setIsDragging(false);
-    if (bodyRef.current) bodyRef.current.style.cursor = "grab";
-  };
-
-  // --- resize ---
+const PIXELS_PER_MINUTE = 1.1;
+const TIME_COLUMN_WIDTH = 46;
+const MIN_DAY_WIDTH = 176;
+const VIEWS = ["grid", "list"] as const;
+interface Props { schedule: WeeklyScheduleData; selectedWeek: Date }
+const WeeklySchedule = ({ schedule, selectedWeek }: Props) => {
+  const { role, currentUser } = useRole();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(900);
+  const [view, setView] = useViewPreference(`bi-university-schedule-view:${currentUser.role}:${currentUser.id}`, VIEWS, "list");
+  const [opened, setOpened] = useState<ScheduleItem | null>(null);
+  const [assignments, setAssignments] = useState(getAssignments);
+  const [scrollState, setScrollState] = useState({ left: false, right: true });
+  useEffect(() => subscribeAssignmentStore(() => setAssignments(getAssignments())), []);
   useEffect(() => {
-    const handleResize = () =>
-      setDimensions({
-        slotHeight: getSlotHeight(),
-        dayWidth: getDayWidth(),
-      });
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    if (!rootRef.current) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    observer.observe(rootRef.current);
+    return () => observer.disconnect();
   }, []);
-
-  // --- фильтруем события по выбранной неделе ---
-  const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 });
-
-  const filteredSchedule = schedule.filter(item => {
-    const itemDate = item.date ? new Date(item.date) : new Date();
-    return !isBefore(itemDate, weekStart) && !isAfter(itemDate, weekEnd);
-  });
-
-  const grouped = filteredSchedule.reduce((acc, item) => {
-    if (!acc[item.dayOfWeek]) acc[item.dayOfWeek] = [];
-    acc[item.dayOfWeek].push(item);
-    return acc;
-  }, {} as Record<number, ScheduleItem[]>);
-
-  const totalSlots = Math.ceil(((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES);
-
-  // --- синхронизация скролла и прокрутка к текущему времени ---
+  const days = getWeekDays(selectedWeek);
+  const weekKey = days[0].key;
+  const dragScroll = useDragScroll(scrollRef, { axis: "both", enabled: view === "grid", resetKey: weekKey });
+  const weekKeys = new Set(days.map((entry) => entry.key));
+  const lessons = schedule.filter((item) => weekKeys.has(item.date)).sort((a, b) => a.date.localeCompare(b.date) || timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  const activeView = view;
+  const dayWidth = Math.max(MIN_DAY_WIDTH, (width - TIME_COLUMN_WIDTH) / Math.max(1, Math.min(7, Math.floor((width - TIME_COLUMN_WIDTH) / MIN_DAY_WIDTH))));
+  const range = getScheduleRange(lessons);
+  const height = (range.end - range.start) * PIXELS_PER_MINUTE;
+  const times = Array.from({ length: Math.ceil((range.end - range.start) / 60) + 1 }, (_, index) => range.start + index * 60);
+  const today = toLocalDateKey(new Date());
+  const canOpen = (item: ScheduleItem) => canOpenScheduleLesson(item, currentUser);
+  const openLesson = (item: ScheduleItem) => { if (canOpen(item)) setOpened(item); };
+  const lessonAssignments = (item: ScheduleItem) => canOpen(item) ? assignments.filter((assignment) => (assignment.status === "published" || (role === "teacher" && assignment.status === "draft")) && assignment.subject === item.subject && assignment.group === item.group && assignment.lessonDate.startsWith(item.date) && isAcademicMembershipMatch(currentUser.memberships, assignment.subject, assignment.group)) : [];
+  const syncScroll = () => {
+    const element = scrollRef.current;
+    if (element) setScrollState({ left: element.scrollLeft > 1, right: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 });
+  };
+  useEffect(() => { setOpened(null); scrollRef.current?.scrollTo({ top: 0, left: 0 }); }, [weekKey, schedule, currentUser.id]);
   useEffect(() => {
-    const body = bodyRef.current;
-    const header = headerRef.current;
-    const timeCol = timeRef.current;
-    if (!body || !header || !timeCol) return;
-
-    const { slotHeight, dayWidth } = dimensions;
-
-    const syncY = () => (timeCol.scrollTop = body.scrollTop);
-    const syncX = () => (header.style.transform = `translateX(-${body.scrollLeft}px)`);
-
-    body.addEventListener("scroll", syncY);
-    body.addEventListener("scroll", syncX);
-
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const offsetMinutes = Math.max(currentMinutes - START_HOUR * 60, 0);
-    const scrollY = (offsetMinutes / SLOT_MINUTES) * slotHeight;
-    const currentDay = now.getDay();
-    const mappedDay = currentDay === 0 ? 6 : currentDay - 1;
-    const scrollX = mappedDay * dayWidth;
-
-    body.scrollTo({ top: scrollY, left: scrollX, behavior: "smooth" });
-    header.style.transform = `translateX(-${scrollX}px)`;
-    timeCol.scrollTop = scrollY;
-
-    return () => {
-      body.removeEventListener("scroll", syncY);
-      body.removeEventListener("scroll", syncX);
-    };
-  }, [dimensions, selectedWeek]);
-
-  const handleCardClick = (item: ScheduleItem) => {
-    // Переход к профилю по имени преподавателя или группе
-    // Можно заменить на реальные маршруты
-    navigate(`/profile/${encodeURIComponent(item.teacher || item.location)}`);
+    const frame = requestAnimationFrame(() => {
+      const element = scrollRef.current;
+      if (element) setScrollState({ left: element.scrollLeft > 1, right: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [width, activeView, lessons.length]);
+  const move = (direction: number) => scrollRef.current?.scrollBy({ left: dayWidth * direction, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  const onGridKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); move(event.key === "ArrowRight" ? 1 : -1); }
   };
 
-  return (
-    <div className={styles.scheduleContainer}>
-      <div className={styles.scheduleGrid}>
-        <div className={styles.timeColumn}>
-          <div className={styles.timeColumnInner} ref={timeRef}>
-            {Array.from({ length: totalSlots }).map((_, i) => {
-              const hour = START_HOUR + Math.floor((i * SLOT_MINUTES) / 60);
-              const minutes = (i * SLOT_MINUTES) % 60;
-              const label = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-              return (
-                <div
-                  key={i}
-                  className={styles.timeSlot}
-                  style={{ height: `${dimensions.slotHeight}px`, lineHeight: `${dimensions.slotHeight}px` }}
-                >
-                  {label}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className={styles.rightSide}>
-          <div className={styles.dayHeader} ref={headerRef}>
-            {DAYS_OF_WEEK.map((d, i) => (
-              <div key={i} className={styles.dayName} style={{ width: `${dimensions.dayWidth}px` }}>
-                {d}
-              </div>
-            ))}
-          </div>
-
-          <div
-            className={styles.scheduleBodyWrapper}
-            ref={bodyRef}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUpOrLeave}
-            onMouseLeave={onMouseUpOrLeave}
-            style={{ cursor: "grab" }}
-          >
-            <div className={styles.scheduleBody}>
-              {DAYS_OF_WEEK.map((_, i) => {
-                const dayIndex = i + 1;
-                const events = grouped[dayIndex] || [];
-                return (
-                  <div key={i} className={styles.dayColumn} style={{ width: `${dimensions.dayWidth}px` }}>
-                    {Array.from({ length: totalSlots }).map((_, k) => (
-                      <div key={k} className={styles.hourSlot} style={{ height: `${dimensions.slotHeight}px` }} />
-                    ))}
-                    {events.map(e => (
-                      <ScheduleCard
-                        key={e.id}
-                        item={e}
-                        slotHeight={dimensions.slotHeight}
-                        onClick={handleCardClick}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+  return <div className={styles.container} ref={rootRef}>
+    <div className={styles.toolbar}><div className={styles.summary}><strong>{formatCount(lessons.length, ["занятие", "занятия", "занятий"])}</strong><span>{formatCount(new Set(lessons.map((item) => item.date)).size, ["учебный день", "учебных дня", "учебных дней"])}</span></div><div className={styles.actions}><div className={styles.views} aria-label="Вид расписания"><button type="button" aria-pressed={activeView === "grid"} onClick={() => setView("grid")}>Сетка</button><button type="button" aria-pressed={activeView === "list"} onClick={() => setView("list")}>Список</button></div><button type="button" className={styles.print} onClick={() => window.print()}>Печать / PDF</button></div></div>
+    {!lessons.length ? <div className={styles.empty} role="status"><strong>На этой неделе занятий нет</strong><span>Выберите другую неделю или измените запрос поиска.</span></div> : <>
+      <div className={`${styles.gridView} ${activeView !== "grid" ? styles.inactive : ""}`}>
+        <div className={styles.gridTools}><span>Зажмите мышь и перемещайте сетку · на сенсорном экране листайте пальцем</span><div><button type="button" disabled={!scrollState.left} onClick={() => move(-1)} aria-label="Предыдущие дни"><ArrowCircle direction="left" /></button><button type="button" disabled={!scrollState.right} onClick={() => move(1)} aria-label="Следующие дни"><ArrowCircle /></button></div></div>
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- A focusable scroll region supports keyboard scrolling; lessons remain native buttons. */}
+        <div className={`${styles.scroller} ${dragScroll.dragging ? styles.dragging : ""}`} ref={scrollRef} role="region" tabIndex={0} aria-label="Недельное расписание. Стрелки влево и вправо переключают дни. Зажмите мышь для перемещения сетки" onScroll={syncScroll} onKeyDown={onGridKey} onPointerDown={dragScroll.onPointerDown} onClickCapture={dragScroll.onClickCapture} onDragStartCapture={dragScroll.onDragStartCapture}>
+          <div className={styles.calendar} style={{ "--time-width": `${TIME_COLUMN_WIDTH}px`, "--day-width": `${dayWidth}px`, "--hour-height": `${60 * PIXELS_PER_MINUTE}px` } as CSSProperties}>
+            <div className={styles.corner}>Время</div>{days.map(({ date, key }) => <div className={`${styles.dayHeader} ${key === today ? styles.today : ""}`} key={key}><span>{date.toLocaleDateString("ru-RU", { weekday: "short" })}</span><time dateTime={key}>{date.getDate()} {date.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")}</time></div>)}
+            <div className={styles.timeColumn} style={{ height }}>{times.map((time) => <time key={time} style={{ top: (time - range.start) * PIXELS_PER_MINUTE }} aria-hidden="true">{String(Math.floor(time / 60)).padStart(2, "0")}:00</time>)}</div>
+            {days.map(({ key }) => <div className={`${styles.dayColumn} ${key === today ? styles.todayColumn : ""}`} key={key} style={{ height }}>{layoutScheduleDay(lessons.filter((item) => item.date === key), range.start, PIXELS_PER_MINUTE).map(({ item, top, height: cardHeight, lane, lanes }) => <ScheduleCard key={item.id} grid compact={lanes > 1} readOnly={!canOpen(item)} item={item} onOpen={openLesson} style={{ position: "absolute", top: top + 2, height: Math.max(24, cardHeight - 4), left: `calc(${lane / lanes * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)` }} />)}</div>)}
           </div>
         </div>
       </div>
-
-      <div className={styles.actionButtons}>
-        <button className={styles.editBtn} onClick={() => ""}>
-          <EditIcon size={40} />
-        </button>
-        <button className={styles.pdfBtn} onClick={() => ""}>
-          <PdfIcon size={40} textColor="var(--pdf-text-color)"/>
-        </button>
+      <div className={`${styles.listView} ${activeView !== "list" ? styles.inactive : ""}`}>
+        <WeekList lessons={lessons} selectedWeek={selectedWeek} canOpen={canOpen} onOpen={openLesson} />
       </div>
-    </div>
-  );
+    </>}
+    {opened && canOpen(opened) && lessons.some((item) => item.id === opened.id) && <LessonDetails item={opened} assignments={lessonAssignments(opened)} onClose={() => setOpened(null)} />}
+  </div>;
 };
 
 export default WeeklySchedule;

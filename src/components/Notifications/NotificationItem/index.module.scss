@@ -1,0 +1,26 @@
+@use "../../../styles/variables" as *;
+
+.row { position: relative; min-width: 0; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-secondary; transition: background-color $transition-speed, border-color $transition-speed; }
+.row:hover { border-color: theme-alpha($color-text-secondary, .45); background-image: linear-gradient($color-ghost, $color-ghost); }
+.unread { border-color: theme-alpha($color-accent-primary, .23); background: theme-alpha($color-accent-primary, .045); }
+.link { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; min-width: 0; padding: 13px 12px; border-radius: 9px; color: $color-text-light; text-decoration: none; }
+.link:focus-visible { outline-offset: -3px; }
+.icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: $color-ghost; color: $color-text-secondary; }
+.icon svg { width: 19px; height: 19px; }
+.assignment, .schedule { background: $color-accent-background-hover; color: $color-accent-hover; }
+.submission { background: theme-alpha($color-accent-added, .12); color: $color-accent-added; }
+.grade { background: theme-alpha($color-success, .1); color: $color-success; }
+.revision { background: theme-alpha($color-warning, .12); color: $color-warning; }
+.content { display: grid; align-content: start; min-width: 0; gap: 6px; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; color: $color-text-secondary; font-size: .64rem; line-height: 1.4; }
+.meta time { font-variant-numeric: tabular-nums; }
+.content strong { color: $color-text-light; font-size: .82rem; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.unreadDot { display: inline-block; width: 6px; height: 6px; margin: 0 6px 2px 0; border-radius: 50%; background: $color-accent-primary; }
+.content p { margin: 0; color: $color-text-secondary; font-size: .74rem; line-height: 1.55; overflow-wrap: anywhere; }
+.action { display: inline-flex; align-items: center; box-sizing: border-box; gap: 6px; min-height: 30px; margin-top: 3px; padding-right: 36px; color: $color-accent-hover; font-size: .68rem; font-weight: 500; line-height: 1.4; }
+.action svg { flex: 0 0 auto; width: 15px; height: 15px; }
+.readAction { position: absolute; right: 8px; bottom: 12px; }
+.readAction button { display: grid; place-items: center; box-sizing: border-box; width: 30px; height: 30px; padding: 6px; border: 0; border-radius: 7px; background: transparent; color: $color-text-secondary; }
+.readAction svg { width: 17px; height: 17px; }
+.readAction button:hover:not(:disabled) { background: theme-alpha($color-success, .12); color: $color-success; }
+.readAction button:disabled { color: $color-text-secondary; opacity: .45; cursor: not-allowed; }

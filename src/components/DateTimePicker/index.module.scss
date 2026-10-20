@@ -1,0 +1,201 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+.picker {
+  position: relative;
+}
+
+.trigger {
+  @include input(12px, 11px);
+  display: flex;
+  justify-content: space-between;
+  min-height: 45px;
+  box-sizing: border-box;
+  text-align: left;
+  text-transform: none;
+  gap: 10px;
+
+  &:hover,
+  &.triggerOpen {
+    border-color: $color-accent-primary;
+    background: $color-accent-background-hover;
+    color: $color-text-light;
+  }
+}
+
+.triggerValue {
+  color: $color-text-light;
+}
+
+.placeholder {
+  color: $color-text-secondary;
+}
+
+.calendarIcon {
+  position: relative;
+  width: 16px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  color: $color-text-secondary;
+  flex: 0 0 16px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 0;
+    width: 100%;
+    border-top: 2px solid currentColor;
+  }
+}
+
+.popover {
+  position: fixed;
+  z-index: 1100;
+  width: 446px;
+  padding: 12px;
+  border: 3px solid $color-border;
+  border-radius: 12px;
+  background: $color-dark-primary;
+  box-shadow: 0 22px 55px $color-shadow;
+  max-height: calc(100dvh - 20px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  @include scroll-bar(5px);
+}
+:root[data-theme="light"] .popover { background: $color-dark-secondary; }
+
+.calendarHeader,
+.footer,
+.footerActions {
+  display: flex;
+  align-items: center;
+}
+
+.calendarHeader {
+  justify-content: space-between;
+  margin-bottom: 8px;
+
+  strong {
+    font-size: 0.82rem;
+    text-transform: capitalize;
+  }
+}
+.pickerBody { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; }
+.calendarBody { min-width: 0; }
+.periodSelector { display: flex; align-items: center; justify-content: center; gap: 3px; }.periodSelector button { padding: 5px 4px; border: 0; background: transparent; color: $color-text-light; font-size: .82rem; text-transform: capitalize; }.periodSelector button:hover { color: $color-accent-hover; background: $color-accent-background-hover; }
+
+.arrowButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: $color-text-secondary;
+
+  &:hover { background: transparent; color: $color-accent-hover; }
+}
+
+.weekDays,
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.weekDays {
+  margin-bottom: 5px;
+
+  span {
+    color: $color-text-secondary;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+  }
+}
+
+.day {
+  width: 100%;
+  height: 35px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: $color-text-light;
+  font-size: 0.78rem;
+
+  &:hover {
+    border-color: $color-accent-secondary;
+    background: $color-accent-background-hover;
+    color: $color-text-light;
+  }
+}
+.monthsGrid, .yearsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; min-height: 230px; align-content: center; }.monthsGrid button, .yearsGrid button { padding: 11px 4px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: .72rem; }.monthsGrid button:hover, .yearsGrid button:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }.monthsGrid .selectedPeriod, .yearsGrid .selectedPeriod { border-color: $color-accent-primary; background: $gradient-color-logo; color: $color-on-accent; }
+.monthsGrid .selectedPeriod:hover, .yearsGrid .selectedPeriod:hover { background: $gradient-color-logo; color: $color-on-accent; }
+
+.outsideDay {
+  color: theme-alpha($color-text-secondary, 0.45);
+}
+
+.today {
+  border-color: $color-accent-primary;
+  color: $color-accent-hover;
+}
+
+.selectedDay,
+.selectedDay:hover {
+  border-color: $color-accent-primary;
+  background: $gradient-color-logo;
+  color: $color-on-accent;
+}
+
+.footer {
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 2px solid $color-border;
+}
+.timeHint { color: $color-text-secondary; font-size: .68rem; }
+
+.footerActions {
+  gap: 5px;
+
+  button {
+    padding: 8px 10px;
+    border-width: 2px;
+    font-size: 0.68rem;
+  }
+}
+
+.clearButton {
+  border-color: transparent;
+  background: transparent;
+}
+
+.doneButton {
+  border-color: $color-accent-primary;
+  background: $color-accent-primary;
+  color: $color-on-accent;
+}
+
+@media (max-width: 560px) {
+  .popover {
+    width: min(446px, calc(100vw - 32px));
+    padding: 9px;
+  }
+  .pickerBody { grid-template-columns: minmax(0, 1fr) 128px; gap: 3px; }
+  .day { height: 31px; }
+}
+
+@media (max-width: 430px) {
+  .popover { width: min(310px, calc(100vw - 24px)); }
+  .pickerBody { grid-template-columns: 1fr; }
+  .calendarBody { width: 100%; }
+}
+
+.dateOnly { width: 310px; max-width: calc(100vw - 24px); }
+.dateOnly .pickerBody { grid-template-columns: minmax(0, 1fr); }

@@ -1,0 +1,53 @@
+@use "../styles/variables" as *;
+@use "../styles/mixins" as *;
+
+.page { position: relative; z-index: 1; box-sizing: border-box; }
+.eyebrow { color: $color-accent-hover; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .85fr); gap: 18px; }
+.stack { display: grid; gap: 18px; align-content: start; }
+.card { @include dashboard-card($color-dark-secondary, 22px); }
+.cardHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 18px; }
+.cardHeader h2 { margin: 0; font-size: 1.05rem; }
+.cardHeader a { display: inline-flex; align-items: center; gap: 2px; color: $color-accent-hover; text-decoration: none; font-size: .78rem; }
+.scheduleList, .taskList, .subjectList { display: grid; gap: 8px; }
+.scheduleItem, .taskItem, .subjectItem { display: grid; align-items: center; gap: 14px; padding: 14px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
+.scheduleItem { grid-template-columns: 54px 1fr auto; }
+.scheduleItem strong, .taskItem strong, .subjectItem strong { color: $color-text-light; }
+.scheduleItem p, .taskItem p, .subjectItem p { margin: 4px 0 0; color: $color-text-secondary; font-size: .76rem; }
+.status { padding: 5px 8px; border-radius: 999px; color: $color-success; background: theme-alpha($color-success, .12); font-size: .68rem; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.metric { padding: 16px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
+.metric strong { display: block; margin-bottom: 5px; color: $color-text-light; font-size: 1.55rem; }
+.metric span { color: $color-text-secondary; font-size: .72rem; }
+.progressTrack { height: 6px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: $color-border; }
+.progressTrack span { display: block; height: 100%; border-radius: inherit; background: $gradient-color-logo; }
+.taskItem { grid-template-columns: minmax(0, 1fr) auto; }
+.taskTag { color: $color-accent-hover; font-size: .7rem; }
+.taskLink { color: $color-text-light; text-decoration: none; transition: border-color $transition-speed, background-color $transition-speed; }
+.taskLink:hover, .taskLink:focus-visible { border-color: $color-accent-primary; background: $color-accent-background-hover; }
+.taskLink strong { display: block; margin-top: 5px; overflow-wrap: anywhere; }
+.taskAside { display: grid; justify-items: end; gap: 8px; }
+.taskStatus { padding: 5px 8px; border-radius: 999px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: .64rem; }
+.taskRevision { background: theme-alpha($color-warning, .12); color: $color-warning; }
+.taskSubmitted { background: theme-alpha($color-success, .12); color: $color-success; }
+.taskAction { display: inline-flex; align-items: center; gap: 2px; color: $color-accent-hover; font-size: .68rem; }
+.notice { padding: 16px; border-left: 3px solid $color-warning; background: theme-alpha($color-warning, .07); }
+.notice strong { display: block; margin-bottom: 5px; }
+.notice p { margin: 0; color: $color-text-secondary; font-size: .78rem; line-height: 1.45; }
+.notice a { display: inline-flex; align-items: center; gap: 2px; margin-top: 10px; color: $color-accent-hover; text-decoration: none; font-size: .78rem; }
+.subjectItem { grid-template-columns: minmax(180px, 1fr) 100px 120px 72px; }
+.grade { font-size: 1.25rem; }
+.positive { color: $color-success; }
+.negative { color: $color-error; }
+.profile { display: flex; align-items: center; gap: 18px; }
+.avatar { display: grid; place-items: center; flex: 0 0 72px; height: 72px; border-radius: 20px; background: $gradient-color-logo; color: $color-on-accent; font-size: 1.35rem; font-weight: 800; }
+.profile h2 { margin: 0 0 5px; }
+.profile p { margin: 0; color: $color-text-secondary; }
+.profileAction { margin-top: 14px; }
+.detailGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.detail { padding: 14px; border: 1px solid $color-border; border-radius: $border-radius; }
+.detail span { display: block; margin-bottom: 6px; color: $color-text-secondary; font-size: .7rem; }
+.button { padding: 11px 16px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .subjectItem { grid-template-columns: 1fr 70px 90px 55px; } }
+@media (max-width: 620px) { .metrics { grid-template-columns: 1fr; } .subjectItem { grid-template-columns: 1fr 1fr; } .detailGrid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .taskItem { grid-template-columns: minmax(0, 1fr); } .taskAside { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; } .cardHeader { flex-wrap: wrap; } }

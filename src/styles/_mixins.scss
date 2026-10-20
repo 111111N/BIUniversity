@@ -1,10 +1,14 @@
 @use "variables" as *;
-@use "sass:color";
 @mixin dashboard-card($background: $color-dark-secondary, $padding: 20px) {
   background-color: $background;
   border-radius: $border-radius;
   padding: $padding;
   border: 3px solid $color-border;
+
+  :root[data-theme="light"] & {
+    background-color: $color-dark-secondary;
+    box-shadow: 0 8px 24px theme-alpha($color-shadow, .32);
+  }
 }
 @mixin scroll-bar(
   $size: 10px,
@@ -52,7 +56,7 @@
 
 @mixin accent-button($color: $color-accent-primary) {
   background-color: $color;
-  color: $color-text-light;
+  color: $color-on-accent;
   border: none;
   padding: 10px 20px;
   border-radius: 4px;
@@ -65,11 +69,11 @@
   &:hover {
     background-color: $color-accent-hover;
     transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba($color-accent-primary, 0.4);
+    box-shadow: 0 4px 10px theme-alpha($color-accent-primary, 0.4);
   }
 
   &:active {
-    background-color: color.adjust($color-accent-primary, $lightness:5%);
+    background-color: color-mix(in srgb, #{$color-accent-primary} 95%, white);
     transform: translateY(0);
     box-shadow: none;
   }
@@ -89,6 +93,7 @@
 @mixin input($padding-inline:10px,$padding-block:10px){
   @include border();
   width: 100%; 
+  box-sizing: border-box;
   padding-block: $padding-block;
   padding-inline: $padding-inline;
   background-color: $color-dark-tertiary; 
@@ -98,13 +103,55 @@
 
   transition: border-color $transition-speed;
 
+  :root[data-theme="light"] & {
+    background-color: $color-dark-secondary;
+  }
+
   &::placeholder {
     color: $color-text-secondary;
   }
 
   &:focus {
-    border-inline: 3px solid $color-accent-primary;
+    border-color: $color-accent-primary;
     color: $color-text-light;
     outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px theme-alpha($color-accent-primary, .18);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+  }
+}
+
+@mixin native-select($padding-inline: 12px, $padding-block: 10px) {
+  @include input($padding-inline, $padding-block);
+  appearance: none;
+  padding-right: 38px;
+  color-scheme: inherit;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, $color-text-secondary 50%),
+    linear-gradient(135deg, $color-text-secondary 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+
+  &:hover {
+    border-color: $color-accent-primary;
+    background-image:
+      linear-gradient(45deg, transparent 50%, $color-accent-hover 50%),
+      linear-gradient(135deg, $color-accent-hover 50%, transparent 50%);
+  }
+
+  option,
+  optgroup {
+    background: $color-dark-primary;
+    color: $color-text-light;
   }
 }

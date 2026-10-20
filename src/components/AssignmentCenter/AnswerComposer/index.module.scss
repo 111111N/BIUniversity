@@ -1,0 +1,42 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+.composer { display: grid; min-width: 0; gap: 16px; margin-top: 18px; padding: 20px; border: 1px solid $color-border; border-radius: 12px; background: $color-dark-secondary; }
+.header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.header > div { min-width: 0; }
+.header > div > span { color: $color-accent-hover; font-size: .61rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.header h3 { margin: 5px 0 0; font-size: .94rem; }
+.step { flex-shrink: 0; padding: 5px 8px; border: 1px solid $color-border; border-radius: 6px; color: $color-text-secondary; font-size: .65rem; }
+.composer form { display: grid; gap: 10px; min-width: 0; }
+.composer label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: $color-text-light; font-size: .75rem; }
+.composer label > span { color: $color-text-secondary; font-size: .62rem; }
+.composer textarea { @include input(12px, 11px); box-sizing: border-box; width: 100%; min-width: 0; min-height: 140px; resize: vertical; font-family: inherit; font-size: .81rem; line-height: 1.6; }
+.draftStatus { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; color: $color-text-secondary; font-size: .62rem; }
+.feedback { padding: 12px 14px; border-left: 3px solid $color-warning; border-radius: 0 8px 8px 0; background: theme-alpha($color-warning, .07); }
+.feedback strong { color: $color-warning; font-size: .72rem; }
+.feedback p { margin: 7px 0 0; color: $color-text-light; font-size: .77rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.preview { display: grid; min-width: 0; gap: 14px; }
+.preview h4 { margin: 0; font-size: .83rem; }
+.answerText { margin: 0; min-width: 0; max-height: 320px; padding: 14px; overflow-y: auto; border: 1px solid $color-border; border-radius: 8px; background: $color-ghost; color: $color-text-light; font-size: .81rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.attachment { display: grid; gap: 5px; padding: 10px 12px; border: 1px dashed $color-border; border-radius: 8px; overflow-wrap: anywhere; }
+.attachment > span { color: $color-text-secondary; font-size: .62rem; }
+.attachment strong { color: $color-text-light; font-size: .73rem; font-weight: 500; }
+.hint { margin: 0; color: $color-text-secondary; font-size: .67rem; line-height: 1.6; }
+.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.actions > .hint { flex: 1 1 200px; }
+.actions button, .fileReminder button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 9px 12px; border-width: 1px; font-size: .72rem; line-height: 1.4; }
+.actions .primary { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+.actions .primary:hover:not(:disabled) { border-color: $color-accent-hover; background: $color-accent-hover; }
+.actions button:disabled, .fileReminder button:disabled { cursor: not-allowed; }
+.fileReminder { display: grid; justify-items: start; gap: 8px; padding: 12px; border: 1px solid theme-alpha($color-warning, .3); border-radius: 8px; background: theme-alpha($color-warning, .06); color: $color-text-light; font-size: .72rem; line-height: 1.5; overflow-wrap: anywhere; }
+.fileReminder button { background: transparent; font-size: .66rem; }
+.error { margin: 0; color: $color-error; font-size: .73rem; line-height: 1.5; }
+.success { margin: 0; padding: 12px 14px; border: 1px solid theme-alpha($color-success, .3); border-radius: 8px; background: theme-alpha($color-success, .07); color: $color-text-light; font-size: .77rem; line-height: 1.6; }
+.preview h4:focus-visible, .answerText:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+@media (max-width: 650px) {
+  .composer { padding: 14px; }
+  .actions { align-items: stretch; }
+  .actions > .hint { flex-basis: 100%; }
+  .actions button { flex: 1 1 160px; }
+  .fileReminder button { width: 100%; }
+}

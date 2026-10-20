@@ -1,0 +1,7 @@
+.page { position: relative; z-index: 1; display: flex; flex-direction: column; box-sizing: border-box; height: 100dvh; min-height: 0; container-name: messenger; container-type: inline-size; }
+.page > div { flex: 1; box-sizing: border-box; height: auto; min-height: 0; }
+@media (max-width: 760px) {
+  // Верхняя панель 44px и нижняя навигация 66px остаются вне мессенджера.
+  .page { height: calc(100dvh - 110px); }
+  :global(.dashboard-layout):has(.page) { box-sizing: border-box; }
+}

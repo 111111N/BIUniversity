@@ -1,0 +1,5 @@
+@use "../../styles/variables" as *;
+
+.legend { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; color: $color-text-secondary; font-size: .68rem; list-style: none; }
+.legend li { display: flex; align-items: center; gap: 6px; min-height: 30px; box-sizing: border-box; padding: 4px 8px; border: 1px solid $color-border; border-radius: 7px; background: $color-dark-secondary; line-height: 1.4; }
+.legend li > span { display: inline-flex; flex-shrink: 0; }

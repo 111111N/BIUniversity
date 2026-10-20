@@ -10,7 +10,15 @@ export interface ScheduleItem {
   dayOfWeek: number; // 0=Воскресенье, 1=Понедельник, ..., 6=Суббота
   location: string;  // Например, "Ауд. 424/1"
   teacher?: string;  // Например, "Смирнова А.Б."
+  teacherId?: string;
+  group?: string;
   link?: string;
 }
 
 export type WeeklyScheduleData = ScheduleItem[];
+
+export interface ScheduleSlot {
+  number: number;
+  startTime: string;
+  endTime: string;
+}

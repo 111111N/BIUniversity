@@ -1,0 +1,14 @@
+@use "../../styles/variables" as *;
+
+.page {
+  min-height: calc(100vh - 80px);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+
+  > span { color: $color-accent-primary; font-size: clamp(72px, 15vw, 150px); font-weight: 800; line-height: .8; opacity: .22; }
+  h1 { margin: 24px 0 8px; font-size: clamp(26px, 4vw, 42px); }
+  p { margin: 0 0 28px; color: $color-text-secondary; }
+  a { border-radius: $border-radius; padding: 12px 20px; background: $color-accent-primary; color: $color-on-accent; text-decoration: none; }
+}

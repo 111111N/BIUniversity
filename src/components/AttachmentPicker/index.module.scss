@@ -1,0 +1,10 @@
+@use "../../styles/variables" as *;
+
+.picker { display: grid; min-width: 0; gap: 8px; padding: 12px; border: 1px dashed $color-border; border-radius: $border-radius; }
+.heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.heading strong { color: $color-text-light; font-size: .72rem; }
+.heading span, .picker small { color: $color-text-secondary; font-size: .62rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.controls button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border-width: 1px; font-size: .68rem; }
+.filename { color: $color-text-secondary; font-size: .68rem; overflow-wrap: anywhere; }
+.error { margin: 0; color: $color-error; font-size: .68rem; }
