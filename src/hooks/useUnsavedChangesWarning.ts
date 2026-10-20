@@ -1,13 +1,14 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
+import { useUnsavedChangesGuard } from "../components/UnsavedChangesProvider";
+import { changesLocation, type UnsavedNavigationCheck } from "../domain/unsavedNavigation";
 
-/** Browser reload/tab-close warning only; internal navigation needs its own guard. */
-const useUnsavedChangesWarning = (enabled: boolean) => {
-  useEffect(() => {
+const useUnsavedChangesWarning = (enabled: boolean, shouldBlockNavigation: UnsavedNavigationCheck = changesLocation, blockRoleChange = true) => {
+  const { register } = useUnsavedChangesGuard();
+  useLayoutEffect(() => {
     if (!enabled) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [enabled]);
+    // Each form owns its registration; saving or unmounting removes only that form.
+    return register((transition) => shouldBlockNavigation(transition), blockRoleChange);
+  }, [enabled, register, shouldBlockNavigation, blockRoleChange]);
 };
 
 export default useUnsavedChangesWarning;

@@ -25,4 +25,13 @@ describe("attempt history", () => {
     expect(renderToStaticMarkup(<AttemptHistory attempts={[attempt]} />)).not.toContain("<details");
     expect(renderToStaticMarkup(<AttemptHistory attempts={[]} />)).toBe("");
   });
+
+  it("can show only previous attempts after a separately rendered answer and result", () => {
+    const markup = renderToStaticMarkup(<AttemptHistory attempts={[attempt, { ...attempt, id: "second", number: 2, text: "Текущий ответ", status: "submitted" }]} hideCurrentAnswer />);
+    expect(markup).toContain("Предыдущие попытки");
+    expect(markup).toContain("Первый ответ");
+    expect(markup).not.toContain("Текущий ответ");
+    expect(markup).not.toContain("<details open");
+    expect(renderToStaticMarkup(<AttemptHistory attempts={[attempt]} hideCurrentAnswer />)).toBe("");
+  });
 });

@@ -12,11 +12,12 @@ import {
   CloseIcon,
 } from '../ButtonIcons/Icons';
 import { Student, AttendanceStatus, Grade } from './data/students';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import type { AcademicLesson } from '../../domain/academic';
 import { lessonTypeLabels } from '../../domain/academic';
 import { countJournalDraftChanges, mergeJournalDraft } from '../../domain/journalDraft';
 import useUnsavedChangesWarning from '../../hooks/useUnsavedChangesWarning';
+import { changesJournalSection } from '../../domain/unsavedNavigation';
 import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import ConfirmDialog from '../ConfirmDialog';
 import SearchField from '../SearchField';
@@ -277,6 +278,7 @@ interface AttendanceTableProps {
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setStudents, readOnly = false, dates, lessons }) => {
+  const { groupId } = useParams<{ groupId: string }>();
   // Мемоизированные значения
   const columns = useMemo(() => lessons ?? (dates ?? generateDates(START_DATE, END_DATE)).map((date) => ({ id: getDateKey(date), date: getDateKey(date) })), [dates, lessons]);
   const workDays = useMemo(() => columns.map((column) => new Date(`${column.date}T00:00:00`)), [columns]);
@@ -316,7 +318,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
   const onCellFocus = useCallback((studentId: string, lessonId: string) => setKeyboardCell({ studentId, lessonId }), []);
   const changeCount = isEditing ? countJournalDraftChanges(originalStudents, draftStudents) : 0;
   const externalChanges = isEditing && countJournalDraftChanges(originalStudents, students) > 0;
-  useUnsavedChangesWarning(isEditing && changeCount > 0);
+  useUnsavedChangesWarning(isEditing && changeCount > 0, changesJournalSection);
   useBodyScrollLock(isEditing);
 
   // Эффекты
@@ -637,7 +639,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
             ) : (
               <Link
                 className={styles.studentLink}
-                to={`/students/${student.id}?name=${encodeURIComponent(student.name)}`}
+                to={`/students/${student.id}?name=${encodeURIComponent(student.name)}${groupId ? `&groupId=${encodeURIComponent(groupId)}` : ""}`}
                 title={`Открыть профиль: ${student.name}`}
               >
                 {student.name}
@@ -655,6 +657,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
     });
   }, [
     visibleRows,
+    groupId,
     canReorder,
     readOnly,
     isEditing,

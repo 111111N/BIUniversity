@@ -15,6 +15,9 @@ export const changeJournalSection = (params: URLSearchParams, section: string) =
   else next.set("tab", section);
   next.delete("assignment");
   next.delete("submission");
+  next.delete("editor");
+  next.delete("publish");
+  next.delete("assignmentTab");
   return next;
 };
 

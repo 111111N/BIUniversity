@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useRole, UserRole } from "../RoleContext";
 import styles from "./index.module.scss";
 import DemoDataManager from "../DemoDataManager";
+import { useUnsavedChangesGuard } from "../UnsavedChangesProvider";
 
 const roles: Array<{ value: UserRole; label: string }> = [
   { value: "teacher", label: "Преподаватель" },
@@ -11,11 +12,14 @@ const roles: Array<{ value: UserRole; label: string }> = [
 const RoleSwitcher = () => {
   const { role, setRole } = useRole();
   const navigate = useNavigate();
+  const { requestAction } = useUnsavedChangesGuard();
 
   const selectRole = (nextRole: UserRole) => {
     if (nextRole === role) return;
-    setRole(nextRole);
-    navigate("/");
+    requestAction(() => {
+      setRole(nextRole);
+      navigate("/");
+    });
   };
 
   return (

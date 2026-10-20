@@ -1,0 +1,91 @@
+@use "../../../styles/variables" as *;
+@use "../ui";
+
+.editor {
+  width: 100%;
+  max-width: 1040px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: $color-text-light;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.editor button { min-height: 44px; padding: 11px 16px; border-width: 1px; font-size: 14px; line-height: 1.4; }
+.editor .back { width: fit-content; margin-bottom: 14px; justify-content: flex-start; gap: 9px; padding: 8px 0; border-color: transparent; background: transparent; color: $color-text-secondary; font-weight: 500; }
+.editor .back:hover { color: $color-text-light; background: transparent; border-color: transparent; }
+.back > span { font-size: 20px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 18px; padding: 0 0 24px; margin-bottom: 24px; border-bottom: 1px solid ui.$line; }
+.header > div { flex: 1 1 420px; min-width: 0; }
+.context { margin: 0 0 9px; color: $color-text-secondary; font-size: 14px; overflow-wrap: anywhere; }
+.header h2 { margin: 0 0 12px; font-size: clamp(24px, 2.5vw, 30px); font-weight: 650; line-height: 1.2; letter-spacing: -.025em; }
+.intro { max-width: 62ch; margin: 0; color: $color-text-secondary; font-size: 15px; line-height: 1.6; }
+.draftState { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; margin-top: 4px; padding: 6px 10px; border-radius: 6px; background: $color-ghost; color: $color-text-secondary; font-size: 13px; overflow-wrap: anywhere; }
+.section { @include ui.panel; min-width: 0; margin: 0 0 18px; padding: 26px; }
+.section legend { float: left; display: flex; align-items: center; gap: 12px; width: 100%; padding: 0; margin-bottom: 24px; color: $color-text-light; font-size: 18px; font-weight: 600; }
+.section legend > span { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid theme-alpha($color-accent-primary, .2); border-radius: 9px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sectionBody { clear: both; display: grid; gap: 24px; }
+.field { display: grid; min-width: 0; gap: 9px; }
+.field > label, .fieldLabel { color: $color-text-light; font-size: 14px; font-weight: 600; }
+.field > label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.required { color: $color-text-secondary; font-size: 12px; font-weight: 400; }
+.field > input, .field > textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: 13px 15px; @include ui.control; font: inherit; line-height: 1.65; }
+.field > textarea { min-height: 220px; resize: vertical; }
+.field > input::placeholder, .field > textarea::placeholder { color: $color-text-secondary; opacity: 1; }
+.field > [aria-invalid="true"] { border-color: $color-error; }
+.hint { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
+.fieldError { margin: 0; color: $color-error; font-size: 14px; line-height: 1.5; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.choice { min-width: 0; }
+.choice > label { margin-bottom: 9px; color: $color-text-light; font-size: 14px; }
+.editor .choice :global([class$="-control"]) { min-height: 48px; border-radius: 9px; }
+.editor .choice :global([class$="-singleValue"]), .editor .choice :global([class$="-placeholder"]) { font-size: 16px; }
+.dateField { display: grid; min-width: 0; align-content: start; gap: 9px; }
+.dateField button { min-height: 48px; border-width: 1px; font-size: 16px; font-weight: 400; }
+.deadline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: center; }
+.deadline > .hint { padding-top: 27px; }
+.attachment { padding-top: 2px; }
+.attachment strong { font-size: 14px; }
+.attachment span, .attachment small { font-size: 13px; }
+.attachment button { font-weight: 500; }
+.receipt { display: grid; gap: 10px; }
+.checkbox { min-height: 44px; align-items: center; }
+.checkbox > span:last-child { font-size: 16px; line-height: 1.5; }
+.advanced { border-top: 1px solid $color-border; }
+.advanced summary { padding: 18px 0; cursor: pointer; color: $color-text-secondary; font-size: 14px; font-weight: 600; }
+.advanced summary:hover { color: $color-text-light; }
+.advancedBody { display: grid; max-width: 460px; gap: 10px; padding: 0 0 5px; }
+.visibility { display: grid; gap: 7px; padding: 17px 20px; border-left: 3px solid $color-accent-primary; border-radius: 0 8px 8px 0; background: $color-ghost; }
+.visibility strong { font-size: 14px; font-weight: 600; }
+.visibility p { max-width: 75ch; margin: 0; color: $color-text-secondary; font-size: 14px; line-height: 1.6; }
+.error { margin: 0 0 24px; padding: 15px 18px; border: 1px solid theme-alpha($color-error, .35); border-radius: 9px; background: theme-alpha($color-error, .08); color: $color-error; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.footer { @include ui.panel; position: sticky; bottom: 16px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 20px; box-shadow: 0 6px 24px theme-alpha($color-shadow, .25); }
+.footer > p { flex: 1 1 160px; margin: 0; color: $color-text-secondary; font-size: 13px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.actions > button:first-child { margin-right: auto; }
+.editor .primary { @include ui.primary; gap: 16px; min-width: 180px; }
+.primary > span { font-size: 20px; line-height: 1; }
+.editor :disabled { cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .editor { padding: 0; }
+  .section, .footer { padding: 20px 18px; border-radius: 12px; }
+  .header { padding: 0 0 20px; }
+  .footer { position: static; display: grid; }
+  .header { gap: 14px; }
+  .header > div { flex-basis: 100%; }
+  .section { margin-bottom: 14px; }
+  .section legend { gap: 8px; font-size: 18px; }
+  .sectionBody { gap: 20px; }
+  .grid, .deadline { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .deadline > .hint { padding-top: 0; }
+  .field > input, .field > textarea { padding: 12px; }
+  .visibility { padding: 15px; }
+  .actions { flex-direction: column-reverse; align-items: stretch; }
+  .actions > button, .actions > button:first-child { width: 100%; margin: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) { .editor button { transition: none; } }

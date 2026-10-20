@@ -1,0 +1,48 @@
+@use "../../styles/variables" as *;
+
+$surface: color-mix(in srgb, #{$color-dark-primary} 96%, #{$color-text-light});
+$quiet: color-mix(in srgb, #{$color-dark-primary} 98%, #{$color-text-light});
+$line: color-mix(in srgb, #{$color-border} 78%, #{$color-text-secondary} 22%);
+$info: var(--assignment-info, #91baff);
+$radius: 12px;
+$control-radius: 8px;
+$gap: 20px;
+
+@mixin panel {
+  background: $surface;
+  border: 1px solid $line;
+  border-radius: $radius;
+  box-shadow: 0 2px 10px theme-alpha($color-shadow, .06);
+
+  :root[data-theme="light"] & {
+    background: $color-dark-secondary;
+    border-color: $color-border;
+  }
+}
+
+@mixin primary {
+  font-weight: 600;
+  border: 1px solid $color-accent-primary;
+  background: $color-accent-primary;
+  color: $color-on-accent;
+  box-shadow: 0 3px 10px theme-alpha($color-accent-primary, .16);
+
+  &:not(:disabled):hover {
+    border-color: $color-accent-hover;
+    background: $color-accent-hover;
+    color: $color-on-accent;
+  }
+}
+
+@mixin control {
+  border: 1px solid $line;
+  border-radius: $control-radius;
+  background: $quiet;
+  color: $color-text-light;
+
+  &:focus-visible {
+    border-color: $color-accent-primary;
+    outline: 2px solid theme-alpha($color-accent-primary, .4);
+    outline-offset: 2px;
+  }
+}

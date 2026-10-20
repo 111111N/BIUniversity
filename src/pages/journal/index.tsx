@@ -71,7 +71,7 @@ const Journal = () => {
 
   return (
     <div className={`pageContainer ${styles.page}`}>
-      <header className={styles.header}>
+      <header className={`${styles.header} ${activeSection === "assignments" ? styles.assignmentsHeader : ""}`}>
         <div>
           <nav className={styles.breadcrumbs} aria-label="Навигационная цепочка">
             <Link to="/journal">Журнал</Link>
@@ -83,7 +83,7 @@ const Journal = () => {
         {activeSection === "journal" && <button type="button" className={styles.exportButton} disabled={!students.length || !visibleLessons.length || Boolean(journal.error)} onClick={exportJournal}>Экспортировать CSV</button>}
       </header>
 
-      <Tabs ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Журнал и аналитика" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }, { value: "history", label: "История", count: journal.history.length }]} />
+      <Tabs className={activeSection === "assignments" ? styles.assignmentsTabs : undefined} ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Журнал и аналитика" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }, { value: "history", label: "История", count: journal.history.length }]} />
       {journal.historyError && activeSection !== "history" && <p className={styles.pageError} role="alert">{journal.historyError}</p>}
 
       {activeSection === "journal" && <section className={styles.tableSection}>
@@ -122,8 +122,7 @@ const Journal = () => {
         <JournalMaterials subject={{ id: subjectId, name: subjectName }} group={{ id: groupId, name: groupName }} />
       </div>}
 
-      {activeSection === "assignments" && <section className={styles.tableSection}>
-        <div className={styles.sectionHeading}><div><span>По датам занятий</span><h2>Задания и ответы</h2></div></div>
+      {activeSection === "assignments" && <section className={styles.assignmentsSection}>
         <AssignmentCenter key={`${subjectId}:${groupId}`} subject={subjectName} group={groupName} />
       </section>}
 

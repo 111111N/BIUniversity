@@ -1,0 +1,44 @@
+@use "../../../styles/variables" as *;
+@use "../ui";
+
+.workspace { display: grid; gap: 20px; min-width: 0; color: $color-text-light; font-size: 16px; line-height: 1.6; }
+.workspace h3 { margin: 0; color: $color-text-light; font-size: 18px; font-weight: 600; line-height: 1.4; }
+.workspace p { margin: 0; max-width: 78ch; overflow-wrap: anywhere; }
+.status, .brief, .myWork { display: grid; gap: 14px; min-width: 0; }
+.status { position: relative; padding: 18px 24px 18px 46px; border: 1px solid ui.$line; border-radius: 14px; background: ui.$quiet; }
+.status[data-status="submitted"]::before { background: ui.$info; box-shadow: 0 0 0 4px theme-alpha(ui.$info, .1); }
+.status::before { content: ""; position: absolute; top: 25px; left: 24px; width: 8px; height: 8px; border-radius: 50%; background: $color-accent-primary; box-shadow: 0 0 0 4px theme-alpha($color-accent-primary, .1); }
+.status[data-status="revision"]::before { background: $color-warning; box-shadow: 0 0 0 4px theme-alpha($color-warning, .1); }
+.status[data-status="graded"]::before { background: $color-success; box-shadow: 0 0 0 4px theme-alpha($color-success, .1); }
+.status h3 { font-size: 16px; }
+.status p { font-size: 14px; }
+.status p { color: $color-text-secondary; }
+.brief, .myWork { @include ui.panel; align-content: start; padding: 26px; }
+.brief h3 { padding-bottom: 18px; border-bottom: 1px solid $color-border; }
+.description { font-size: 16px; line-height: 1.85; }
+.status .late { color: $color-warning; font-size: 14px; }
+.feedback { display: grid; gap: 10px; padding: 16px 20px; border-left: 3px solid $color-warning; border-radius: 12px; background: theme-alpha($color-warning, .07); }
+.feedback h3 { color: $color-warning; }
+.feedback p, .description { white-space: pre-wrap; }
+.feedback time { color: $color-text-secondary; font-size: 13px; }
+.attachment { display: grid; justify-items: start; min-width: 0; gap: 8px; }
+.attachment > span { color: $color-text-secondary; font-size: 13px; }
+.attachment .file { min-height: 44px; max-width: 100%; border-width: 1px; font-size: 14px; text-align: left; overflow-wrap: anywhere; }
+.myWork { min-width: 0; }
+.previousAnswer { min-width: 0; }
+.previousAnswer summary { min-height: 44px; padding: 8px 0; color: $color-text-secondary; cursor: pointer; font-size: 14px; }
+.previousAnswer > div { padding: 12px 0; }
+.previousAnswer summary:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+.empty { color: $color-text-secondary; }
+@media (max-width: 650px) {
+  .workspace { gap: 16px; }
+  .brief, .myWork { padding: 20px 18px; }
+  .status { padding: 18px 18px 18px 38px; }
+  .status::before { top: 25px; left: 18px; }
+  .feedback { padding: 14px; }
+}
+
+@media (min-width: 1100px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; }
+  .workspace > :not(.brief):not(.myWork) { grid-column: 1 / -1; }
+}

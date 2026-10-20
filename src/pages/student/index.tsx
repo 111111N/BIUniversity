@@ -1,14 +1,17 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import StudentProfile from "../../components/StudentProfile";
 import { getStudentProfile } from "../../data/studentProfiles";
 import { getAcademicGroupByName } from "../../data/academicCatalog";
 import { useRole } from "../../components/RoleContext";
+import { useDashboardUpdate } from "../../data/studentDashboard";
 import styles from "./index.module.scss";
 
 const StudentPage = () => {
   const { studentId } = useParams();
+  const [searchParams] = useSearchParams();
+  useDashboardUpdate();
   const { role, currentUser } = useRole();
-  const student = getStudentProfile(studentId);
+  const student = getStudentProfile(studentId, searchParams.get("groupId") ?? undefined);
   const groupId = getAcademicGroupByName(student?.group)?.id;
   const canView = role === "teacher" || Boolean(groupId && currentUser.memberships.some((membership) => membership.groupIds.includes(groupId)));
   const backHref = role === "student" ? "/cabinet?tab=group" : "/journal";

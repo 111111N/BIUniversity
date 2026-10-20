@@ -14,6 +14,7 @@ const STATUS_LABELS: Record<SubmissionAttempt["status"], string> = {
 interface Props {
   attempts: SubmissionAttempt[];
   hideCurrentResult?: boolean;
+  hideCurrentAnswer?: boolean;
   label?: string;
 }
 
@@ -27,11 +28,12 @@ const AnswerText = ({ text }: { text: string }) => {
   </div>;
 };
 
-const AttemptHistory = ({ attempts, hideCurrentResult = false, label = "Мой ответ" }: Props) => {
+const AttemptHistory = ({ attempts, hideCurrentResult = false, hideCurrentAnswer = false, label = "Мой ответ" }: Props) => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const current = attempts[attempts.length - 1];
   if (!current) return null;
   const previous = attempts.slice(0, -1).reverse();
+  if (hideCurrentAnswer && previous.length === 0) return null;
   const renderAttempt = (attempt: SubmissionAttempt, latest = false) => <article className={styles.attempt} key={attempt.id}>
     <header className={styles.attemptHeading}>
       <strong>{latest ? label : `Попытка ${attempt.number}`}</strong>
@@ -44,7 +46,7 @@ const AttemptHistory = ({ attempts, hideCurrentResult = false, label = "Мой �
   </article>;
 
   return <div className={styles.history}>
-    {renderAttempt(current, true)}
+    {!hideCurrentAnswer && renderAttempt(current, true)}
     {previous.length > 0 && <details className={styles.previous} onToggle={(event) => setHistoryOpen(event.currentTarget.open)}><summary><span>Предыдущие попытки <b>{previous.length}</b></span><ArrowCircle direction={historyOpen ? "up" : "down"} /></summary><div className={styles.timeline}>{previous.map((attempt) => renderAttempt(attempt))}</div></details>}
   </div>;
 };

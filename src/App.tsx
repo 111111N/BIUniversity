@@ -1,10 +1,11 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Nav from "./components/Navigation";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { RoleProvider, useRole } from "./components/RoleContext";
 import { ThemeProvider } from "./components/ThemeContext";
 import RoleRoute from "./components/RoleRoute";
+import { UnsavedChangesProvider } from "./components/UnsavedChangesProvider";
 import './styles/global.scss';
 
 const Home = lazy(() => import("./pages/home"));
@@ -71,14 +72,20 @@ const LayoutWithNav = () => {
     );
 };
 
-export default function App() {
+const AppProviders = () => {
     return (
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-            <ThemeProvider>
-                <RoleProvider>
+        <ThemeProvider>
+            <RoleProvider>
+                <UnsavedChangesProvider>
                     <LayoutWithNav />
-                </RoleProvider>
-            </ThemeProvider>
-        </BrowserRouter>
+                </UnsavedChangesProvider>
+            </RoleProvider>
+        </ThemeProvider>
     );
+};
+
+const router = createBrowserRouter([{ path: "*", element: <AppProviders /> }], { basename: import.meta.env.BASE_URL });
+
+export default function App() {
+    return <RouterProvider router={router} />;
 }

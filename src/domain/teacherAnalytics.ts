@@ -1,7 +1,7 @@
 import { isPerformanceLesson, type AcademicLesson } from "./academic";
 import type { Student } from "../components/Attendance/data/students";
-import type { Assignment, Submission } from "../data/assignmentStore";
-import { getCurrentSubmissionAttempt, getSubmissionAttempts } from "./assignments";
+import type { Assignment, Submission, SubmissionAttempt, SubmissionStatus } from "../data/assignmentStore";
+import { getSubmissionAttempts } from "./assignments";
 import { getJournalMetrics } from "./journal";
 import { isPerformanceGrade, normalizeGradeShares, PERFORMANCE_GRADES } from "./gradeDistribution";
 import { createCsv } from "./csv";
@@ -35,6 +35,27 @@ export const getAnalyticsRange = (period: AnalyticsPeriod, now: Date, selectedWe
 const inRange = (date: string, range: AnalyticsRange) => {
   const timestamp = new Date(date).getTime();
   return Number.isFinite(timestamp) && timestamp >= range.start.getTime() && timestamp <= range.end.getTime();
+};
+const getSubmissionAtEnd = (submission: Submission | undefined, end: number) => {
+  let current: SubmissionAttempt | undefined;
+  let currentSentAt = -Infinity;
+  let firstSentAt = Infinity;
+  for (const attempt of getSubmissionAttempts(submission)) {
+    const sentAt = Date.parse(attempt.sentAt);
+    if (!Number.isFinite(sentAt) || sentAt > end) continue;
+    firstSentAt = Math.min(firstSentAt, sentAt);
+    if (sentAt > currentSentAt || (sentAt === currentSentAt && attempt.number > (current?.number ?? 0))) {
+      current = attempt;
+      currentSentAt = sentAt;
+    }
+  }
+  if (!current) return undefined;
+
+  // Legacy records have no review timestamp; updatedAt is the only known status-change date.
+  const reviewedAt = Date.parse(current.reviewedAt ?? current.updatedAt);
+  const reviewExisted = Number.isFinite(reviewedAt) && reviewedAt >= currentSentAt && reviewedAt <= end;
+  const status: SubmissionStatus = reviewExisted ? current.status : "submitted";
+  return { firstSentAt, status };
 };
 const journalId = (subjectId: string, groupId: string) => `${subjectId}:${groupId}`;
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("");
@@ -94,11 +115,10 @@ export const calculateTeacherAnalytics = (journals: AnalyticsJournal[], assignme
     journal.students.forEach((student) => {
       work.expected += 1;
       const answer = answers.get(`${assignment.id}:${student.id}`);
-      const attempt = getCurrentSubmissionAttempt(answer);
-      if (attempt && new Date(attempt.sentAt).getTime() <= range.end.getTime()) {
+      const attempt = getSubmissionAtEnd(answer, range.end.getTime());
+      if (attempt) {
         work.received += 1;
-        const firstAttempt = getSubmissionAttempts(answer)[0];
-        if (firstAttempt && Date.parse(firstAttempt.sentAt) <= Date.parse(assignment.deadline)) work.onTime += 1;
+        if (attempt.firstSentAt <= Date.parse(assignment.deadline)) work.onTime += 1;
         if (attempt.status === "submitted") work.waiting += 1;
         if (attempt.status === "revision") work.revision += 1;
         if (attempt.status === "graded") work.graded += 1;

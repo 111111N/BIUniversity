@@ -1,18 +1,19 @@
 @use "../../../styles/variables" as *;
+@use "../ui";
 
-.result { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 18px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
-.eyebrow { color: $color-text-secondary; font-size: .66rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.result { @include ui.panel; display: grid; align-content: start; gap: 16px; min-width: 0; padding: 24px; }
+.eyebrow { color: $color-text-secondary; font-size: 12px; font-weight: 500; }
 .heading { display: flex; align-items: center; gap: 14px; }
 .heading > div { display: grid; gap: 5px; min-width: 0; }
-.heading > div > strong { color: $color-text-light; font-size: .86rem; }
-.heading span { color: $color-text-secondary; font-size: .72rem; line-height: 1.45; }
-.grade { --grade-color: #{$color-success}; display: grid; place-items: center; flex: 0 0 56px; width: 56px; height: 60px; border-radius: $border-radius; color: var(--grade-color); background: color-mix(in srgb, var(--grade-color) 12%, transparent); border: 1px solid color-mix(in srgb, var(--grade-color) 28%, transparent); font-size: 2rem; font-weight: 800; line-height: 1; }
+.heading > div > strong { color: $color-text-light; font-size: 16px; }
+.heading span { color: $color-text-secondary; font-size: 13px; line-height: 1.45; }
+.grade { --grade-color: #{$color-success}; display: grid; place-items: center; flex: 0 0 56px; width: 56px; height: 60px; border-radius: 12px; color: var(--grade-color); background: color-mix(in srgb, var(--grade-color) 12%, transparent); border: 1px solid color-mix(in srgb, var(--grade-color) 28%, transparent); font-size: 2rem; font-weight: 800; line-height: 1; }
 .grade_4 { --grade-color: #{$color-accent-added}; }
 .grade_3 { --grade-color: #{$color-warning}; }
 .grade_2 { --grade-color: #{$color-error}; }
 .revision { border-left: 3px solid $color-warning; }
 .revision .heading > div > strong { color: $color-warning; }
 .comment { display: grid; gap: 7px; padding-top: 12px; border-top: 1px solid $color-border; }
-.comment > span { color: $color-text-secondary; font-size: .7rem; }
-.comment p { margin: 0; color: $color-text-light; font-size: .8rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-.date { color: $color-text-secondary; font-size: .68rem; }
+.comment > span { color: $color-text-secondary; font-size: 13px; }
+.comment p { margin: 0; max-width: 78ch; color: $color-text-light; font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.date { color: $color-text-secondary; font-size: 13px; }

@@ -1,121 +1,51 @@
 @use "../../styles/variables" as *;
-@use "../../styles/mixins" as *;
-.layout { display: grid; gap: 14px; }
-.overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.overview > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 15px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
-.overview span { color: $color-text-secondary; font-size: .7rem; }
-.overview strong { color: $color-text-light; font-size: 1.15rem; }
-.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; color: $color-text-secondary; }
-.toolbar strong { color: $color-text-light; }
-.operationError { margin: 0; padding: 10px 12px; border: 1px solid theme-alpha($color-error, .45); border-radius: $border-radius; background: theme-alpha($color-error, .08); color: $color-error; }
-.operationMessage { margin: 0; padding: 10px 12px; border: 1px solid theme-alpha($color-success, .35); border-radius: $border-radius; background: theme-alpha($color-success, .08); color: $color-success; font-size: .76rem; }
-.unavailable { display: grid; gap: 7px; padding: 16px; border: 1px dashed $color-border; border-radius: $border-radius; color: $color-text-secondary; font-size: .76rem; }
-.unavailable strong { color: $color-text-light; }
-.unavailable button { justify-self: start; padding: 8px 12px; }
-.assignmentFilters { display: flex; flex-wrap: wrap; gap: 5px; }
-.assignmentFilters button { padding: 7px 10px; border-width: 1px; background: transparent; font-size: .66rem; }
-.assignmentFilters .filterActive { border-color: $color-accent-primary; background: $color-accent-background; color: $color-text-light; }
-.primary { padding: 10px 15px; border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
-.createForm, .card { @include dashboard-card($color-dark-secondary, 20px); }
-.createForm { scroll-margin-top: 20px; }
-.editorHeader { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid $color-border; }
-.editorHeader > div { min-width: 0; }
-.editorHeader > div > span { color: $color-accent-hover; font-size: .62rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.editorHeader h2 { margin: 6px 0; color: $color-text-light; font-size: 1.12rem; }
-.editorHeader p { margin: 0; color: $color-text-secondary; font-size: .72rem; line-height: 1.5; overflow-wrap: anywhere; }
-.editorState { padding: 5px 8px; border: 1px solid $color-border; border-radius: 6px; color: $color-text-secondary; font-size: .64rem; }
-.formFields { min-width: 0; margin: 0; padding: 0; border: 0; }
-.visibilityHint { display: grid; gap: 4px; margin: 16px 0; padding: 11px 13px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-ghost; color: $color-text-secondary; font-size: .72rem; line-height: 1.6; }
-.visibilityHint strong { color: $color-text-light; font-size: .68rem; }
-.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.formGrid > label { display: grid; gap: 7px; color: $color-text-secondary; font-size: .72rem; }
-.dateField { display: grid; gap: 7px; color: $color-text-secondary; font-size: .72rem; }
-.formGrid > label > input, .formGrid > label > textarea { @include input; box-sizing: border-box; width: 100%; color-scheme: inherit; }
-.formGrid textarea { min-height: 90px; resize: vertical; }
-.formGrid > .checkboxField { display: flex; align-items: center; align-self: end; box-sizing: border-box; min-height: 45px; gap: 10px; padding: 10px 12px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-secondary; }
-.wide { grid-column: 1 / -1; }
-.formActions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.formActions > span { flex: 1 1 220px; color: $color-text-secondary; font-size: .66rem; line-height: 1.5; }
-.formActions button { padding: 10px 15px; }
-.list { display: grid; gap: 16px; }
-.card { position: relative; padding: 0; border-width: 1px; overflow: hidden; background-color: $color-dark-primary; }
-.targetCard { border-color: color-mix(in srgb, #{$color-text-secondary} 30%, #{$color-border}); scroll-margin-top: 20px; }
-.targetCard > .cardHeader { background: $color-dark-secondary; }
-.card::before { position: absolute; inset: 0 auto 0 0; width: 3px; content: ""; background: $color-border; }
-.card_published::before, .card_submitted::before, .card_resubmitted::before { background: $color-accent-primary; }
-.card_graded::before { background: var(--assignment-grade-color, #{$color-success}); }
-.grade_5 { --assignment-grade-color: #{$color-success}; }
-.grade_4 { --assignment-grade-color: #{$color-accent-added}; }
-.grade_3 { --assignment-grade-color: #{$color-warning}; }
-.grade_2 { --assignment-grade-color: #{$color-error}; }
-.card_revision::before { background: $color-warning; }
-.card_overdue::before { background: $color-error; }
-.card_overdue .answerCounts > b { color: $color-error; }
-.card_graded .answerCounts > b { color: var(--assignment-grade-color, #{$color-success}); }
-.card_revision .answerCounts > b { color: $color-warning; }
-.cardHeader { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto 28px; align-items: center; gap: 24px; padding: 22px 24px; border: 0; border-radius: 0; background: transparent; text-align: left; }
-.cardHeader:hover { background: $color-ghost; }
-.cardHeader:focus-visible { outline: 2px solid theme-alpha($color-accent-primary, .65); outline-offset: -5px; }
-.cardIntro { display: flex; align-items: center; gap: 16px; min-width: 0; }
-.lessonDate { color: $color-text-secondary; font-size: .68rem; font-variant-numeric: tabular-nums; }
-.cardIntro > .assignmentStatus { flex: 0 0 auto; max-width: 110px; text-align: center; line-height: 1.4; }
-.cardIdentity { display: grid; gap: 8px; min-width: 0; }
-.cardTitle { color: $color-text-light; font-size: 1.06rem; line-height: 1.4; overflow-wrap: anywhere; }
-.cardIdentity small { color: $color-text-secondary; font-size: .74rem; }
-.meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
-.lessonType { color: $color-text-secondary; font-size: .68rem; }
-.assignmentStatus { padding: 4px 7px; border-radius: 999px; color: $color-accent-hover; background: $color-accent-background-hover; font-size: .63rem; font-weight: 600; }
-.assignmentStatus_draft, .assignmentStatus_archived { color: $color-text-secondary; background: $color-ghost; }
-.assignmentStatus_closed { color: $color-text-secondary; background: $color-ghost; }
-.headerAside { display: grid; justify-items: end; gap: 6px; }
-.deadlineLabel { color: $color-text-secondary; font-size: .66rem; }
-.deadline { color: $color-text-light; font-size: .8rem; font-weight: 600; }
-.answerCounts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px 12px; margin-top: 5px; color: $color-text-secondary; font-size: .68rem; }
-.answerCounts > span { display: inline-flex; align-items: center; gap: 6px; }
-.answerCounts b { color: $color-text-light; font-size: .72rem; }
-.answerCounts .waitingCount, .waitingCount b { color: $color-accent-hover; }
-.cardArrow { color: $color-text-secondary; }
-.deadlineOverdue { color: $color-error; }
-.details { display: grid; gap: 22px; min-width: 0; padding: 24px; border-top: 1px solid $color-border; background: $color-dark-primary; }
-.assignmentBrief { display: grid; min-width: 0; gap: 18px; padding: 20px; border: 1px solid color-mix(in srgb, #{$color-text-secondary} 18%, #{$color-border}); border-radius: $border-radius; background: $color-dark-secondary; }
-.briefHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid $color-border; }
-.briefHeading h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: .93rem; color: $color-text-light; }
-.briefHeading h3::before { content: ""; width: 3px; height: 17px; border-radius: 3px; background: $color-accent-primary; }
-.assignmentBrief > p { max-width: 82ch; margin: 0; color: $color-text-light; font-size: .84rem; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
-.taskAttachment { display: grid; justify-items: start; gap: 9px; padding-top: 14px; border-top: 1px solid $color-border; }
-.taskAttachment > span { color: $color-text-secondary; font-size: .68rem; }
-.fileButton { padding: 9px 12px; border-width: 1px; color: $color-text-light; font-size: .74rem; text-align: left; }
-.detailActions { display: flex; flex-wrap: wrap; gap: 6px; }
-.detailActions button { padding: 7px 10px; border-width: 1px; background: transparent; font-size: .67rem; }
-.dangerButton:hover { border-color: $color-error !important; background: $color-error !important; color: $color-on-accent !important; }
-.workflowStatus { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
-.workflowStatus > div { display: grid; gap: 3px; }
-.workflowStatus strong { color: $color-text-light; font-size: .75rem; }
-.workflowStatus span:not(.workflowDot) { color: $color-text-secondary; font-size: .66rem; line-height: 1.4; }
-.workflowDot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: $color-border; box-shadow: 0 0 0 4px theme-alpha($color-border, .18); }
-.workflowDot_submitted, .workflowDot_resubmitted { background: $color-accent-primary; box-shadow: 0 0 0 4px $color-accent-background; }
-.workflowDot_revision { background: $color-warning; box-shadow: 0 0 0 4px theme-alpha($color-warning, .12); }
-.workflowDot_graded { background: $color-success; box-shadow: 0 0 0 4px theme-alpha($color-success, .12); }
-.workflowDot_overdue { background: $color-error; box-shadow: 0 0 0 4px theme-alpha($color-error, .12); }
-.studentHistory { min-width: 0; padding: 20px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-secondary; }
-.emptyState { display: grid; place-items: center; gap: 6px; min-height: 130px; padding: 20px; border: 2px dashed $color-border; border-radius: $border-radius; color: $color-text-secondary; text-align: center; }
-.emptyState strong { color: $color-text-light; }
-.emptyState button { margin-top: 8px; padding: 9px 13px; }
-@media(max-width: 850px) { .overview { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 650px) {
-  .toolbar { align-items: stretch; flex-direction: column; }
-  .formGrid { grid-template-columns: 1fr; }
-  .wide { grid-column: auto; }
-  .cardHeader { grid-template-columns: minmax(0, 1fr) 28px; gap: 16px 10px; padding: 18px 16px; }
-  .cardIntro { grid-column: 1 / -1; align-items: flex-start; gap: 12px; }
-  .cardIntro { flex-wrap: wrap; }
-  .cardIntro > .assignmentStatus { max-width: 100%; }
-  .cardIdentity { flex: 1 1 180px; }
-  .cardTitle { font-size: .94rem; }
-  .headerAside { justify-items: start; }
-  .answerCounts { justify-content: flex-start; }
-  .details { gap: 18px; padding: 14px; }
-  .assignmentBrief, .studentHistory { padding: 14px; }
-  .briefHeading { align-items: flex-start; }
-  .formActions > span { flex-basis: 100%; }
+@use "ui";
+
+.layout { --assignment-info: #91baff; display: grid; gap: ui.$gap; min-width: 0; max-width: 1440px; margin-inline: auto; font-size: 16px; }
+:root[data-theme="light"] .layout { --assignment-info: #28659b; }
+:where(.layout) button { min-height: 44px; border-width: 1px; border-radius: ui.$control-radius; font-family: inherit; font-size: 14px; font-weight: 500; letter-spacing: 0; }
+:where(.layout) button:where(:not(:disabled):hover) { background: $color-ghost; border-color: ui.$line; color: $color-text-light; }
+.layout :where(input, textarea, select) { font-family: inherit; }
+.layout :where(button, input, textarea, select, summary):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+.error, .notice, .unavailable { margin: 0; padding: 14px 18px; border: 1px solid ui.$line; border-radius: ui.$radius; font-size: 14px; line-height: 1.6; }
+.error { border-color: theme-alpha($color-error, .4); color: $color-error; background: theme-alpha($color-error, .06); }
+.notice { border-color: theme-alpha($color-success, .3); color: $color-text-light; background: theme-alpha($color-success, .06); }
+.unavailable { @include ui.panel; padding: 28px; }
+.unavailable h3 { margin: 0 0 8px; }
+.unavailable p { color: $color-text-secondary; }
+.unavailable button { padding: 10px 14px; }
+.primary { @include ui.primary; display: inline-flex; gap: 10px; min-height: 44px; padding: 12px 16px; }
+.detailNavigation { display: flex; align-items: start; gap: 16px; min-width: 0; }
+.segments { display: flex; flex-shrink: 0; gap: 4px; padding: 3px; border: 1px solid ui.$line; border-radius: 10px; background: ui.$quiet; }
+.segments button { display: inline-flex; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; background: transparent; }
+.segments button[aria-pressed=true] { border-color: ui.$line; background: ui.$surface; color: $color-text-light; }
+.segments span { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 3px; border-radius: 5px; background: $color-ghost; font-size: 12px; }
+.condition { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, .8fr); align-items: start; gap: 20px; }
+.condition h3, .parameters h3 { margin: 0 0 18px; font-size: 17px; }
+.conditionBody, .parameters { @include ui.panel; padding: 24px; min-width: 0; }
+.conditionBody > p, .conditionPeek > p { max-width: 78ch; margin: 0; font-size: 16px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.parameters p { margin: 0; font-size: 14px; line-height: 1.7; color: $color-text-secondary; }
+.parameters dl { display: grid; gap: 18px; margin: 24px 0; }
+.parameters dl > div { padding-bottom: 16px; border-bottom: 1px solid $color-border; }
+.parameters dt { margin-bottom: 5px; color: $color-text-secondary; font-size: 13px; }
+.parameters dd { margin: 0; font-size: 14px; line-height: 1.5; }
+.parameters button { width: 100%; }
+.attachment { display: grid; gap: 12px; justify-items: start; margin-top: 28px; padding-top: 22px; border-top: 1px solid $color-border; }
+.attachment > span { font-size: 13px; color: $color-text-secondary; }
+.conditionPeek { flex: 1; min-width: 0; padding: 0 16px; border: 1px solid transparent; border-radius: 10px; }
+.conditionPeek summary { min-height: 50px; align-content: center; color: $color-text-secondary; font-size: 14px; cursor: pointer; }
+.conditionPeek[open] { border-color: ui.$line; background: ui.$quiet; }
+.conditionPeek[open] summary { color: $color-text-light; border-bottom: 1px solid ui.$line; }
+.conditionPeek > p { margin: 16px 0; }
+.conditionPeek > button { margin-bottom: 16px; }
+@media(max-width: 900px) { .condition { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 600px) {
+  .layout { gap: 16px; }
+  .detailNavigation { flex-direction: column; gap: 6px; }
+  .conditionPeek { box-sizing: border-box; width: 100%; padding-inline: 12px; }
+  .conditionPeek summary { min-height: 44px; }
+  .segments { box-sizing: border-box; width: 100%; }
+  .segments button { flex: 1; }
+  .conditionBody, .parameters { padding: 20px; }
 }
+@media(prefers-reduced-motion: reduce) { .layout :is(button, input, textarea) { transition: none; } }

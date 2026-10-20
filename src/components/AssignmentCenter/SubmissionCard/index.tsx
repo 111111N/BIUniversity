@@ -1,13 +1,11 @@
 import { useId, type Ref } from "react";
-import type { Submission } from "../../../data/assignmentStore";
+import { downloadAssignmentFile, type Submission, type SubmissionAttempt } from "../../../data/assignmentStore";
 import { getCurrentSubmissionAttempt, getSubmissionAttempts, getSubmissionStatus } from "../../../domain/assignments";
-import Dropdown from "../../Dropdown";
-import ArrowCircle from "../../ArrowCircle";
-import AttemptHistory from "../AttemptHistory";
+import DownloadButton from "../../DownloadButton";
 import SubmissionResult from "../SubmissionResult";
 import styles from "./index.module.scss";
 
-const STATUS_LABELS = { submitted: "Ждёт проверки", revision: "На доработке", graded: "Проверено" };
+const STATUS_LABELS = { submitted: "На проверке", revision: "На доработке", graded: "Проверено" };
 
 interface Props {
   submission: Submission;
@@ -25,38 +23,54 @@ interface Props {
   hasNext?: boolean;
 }
 
-const SubmissionCard = ({ submission, selected = false, targetRef, expanded = false, onToggle, comment, grade, saving, onCommentChange, onGradeChange, onReview, onReviewNext, hasNext = false }: Props) => {
-  const bodyId = useId();
+const dateLabel = (value: string) => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Дата не указана";
+};
+
+const AnswerBody = ({ attempt }: { attempt: SubmissionAttempt }) => <div className={styles.answer}>
+  <p>{attempt.text || "Ответ без текста"}</p>
+  {attempt.attachmentId && <DownloadButton name={attempt.attachmentName || "Вложение к ответу"} className={styles.file} onDownload={async () => {
+    try { await downloadAssignmentFile(attempt.attachmentId!, attempt.attachmentName || "Вложение"); }
+    catch (error) {
+      console.error("Не удалось скачать вложение ответа студента", error);
+      throw error;
+    }
+  }} />}
+</div>;
+
+const SubmissionCard = ({ submission, targetRef, comment, grade, saving, onCommentChange, onGradeChange, onReview, onReviewNext, hasNext = false }: Props) => {
+  const commentId = useId();
+  const gradeId = useId();
   const status = getSubmissionStatus(submission) ?? "submitted";
   const attempt = getCurrentSubmissionAttempt(submission);
-  const initials = submission.studentName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("");
+  const previous = getSubmissionAttempts(submission).slice(0, -1).reverse();
   const hasDraft = Boolean(comment.trim() || grade);
   const canGrade = ["5", "4", "3", "2"].includes(grade);
   const sentAt = attempt?.sentAt ?? submission.sentAt;
-  const sentDate = new Date(sentAt);
-  const dateLabel = Number.isFinite(sentDate.getTime()) ? sentDate.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Дата не указана";
-  const savedGrade = status === "graded" && attempt?.grade;
 
-  return <div ref={targetRef} data-submission-id={submission.id} tabIndex={selected ? -1 : undefined} aria-label={`Ответ: ${submission.studentName}`} className={`${styles.card} ${expanded ? styles.expanded : ""}`}>
+  return <div ref={targetRef} data-submission-id={submission.id} data-status={status} tabIndex={-1} aria-label={`Ответ: ${submission.studentName}`} className={styles.card}>
     <header className={styles.header}>
-      <button type="button" className={styles.toggle} onClick={(event) => onToggle?.(event.currentTarget)} aria-expanded={expanded} aria-controls={expanded ? bodyId : undefined} aria-label={`${expanded ? "Свернуть" : "Раскрыть"} ответ: ${submission.studentName}`}>
-      <span className={styles.avatar} aria-hidden="true">{initials}</span>
-      <span className={styles.identity}><strong>{submission.studentName}</strong><span className={styles.meta}><time dateTime={sentAt}>{dateLabel}</time><span>Попытка {attempt?.number ?? 1}</span>{attempt?.attachmentId && <span>Есть файл</span>}{attempt?.submittedLate && <span className={styles.late}>После дедлайна</span>}{status === "submitted" && hasDraft && <span className={styles.draftMark}>Есть черновик проверки</span>}</span></span>
-      <span className={styles.summarySide}>{savedGrade && <strong className={`${styles.gradeBadge} ${styles[`grade_${savedGrade}`] ?? ""}`} aria-label={`Оценка ${savedGrade}`}>{savedGrade}</strong>}<span className={`${styles.status} ${styles[status]}`}>{STATUS_LABELS[status]}</span></span>
-      <svg className={styles.chevron} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m5 7 5 5 5-5" /></svg>
-      </button>
+      <div><h4>{submission.studentName}</h4><div className={styles.meta}><time dateTime={sentAt}>{dateLabel(sentAt)}</time><span>Попытка {attempt?.number ?? 1}</span>{attempt?.submittedLate && <span className={styles.late}>После дедлайна</span>}</div></div>
+      <span className={styles.status}>{STATUS_LABELS[status]}</span>
     </header>
-    {expanded && <div id={bodyId} className={`${styles.body} ${status !== "submitted" ? styles.reviewed : ""}`}>
-      <AttemptHistory attempts={getSubmissionAttempts(submission)} hideCurrentResult label="Ответ студента" />
-      {status === "submitted" ? <section className={styles.reviewPanel} aria-label={`Проверка работы ${submission.studentName}`} aria-busy={saving}>
-        <div className={styles.panelHeading}><span>Обратная связь</span><h4>Проверка работы</h4></div>
-        <p className={`${styles.draftHint} ${hasDraft ? styles.unsaved : ""}`} role="status">{saving ? "Сохраняем решение…" : hasDraft ? "Решение ещё не сохранено. Студент пока его не видит." : "Студент увидит оценку и комментарий после сохранения."}</p>
-        <label>Комментарий<textarea disabled={saving} aria-label={`Комментарий для ${submission.studentName}`} placeholder="Что получилось и что улучшить" value={comment} onChange={(event) => onCommentChange(event.target.value)} /></label>
-        <Dropdown label={`Оценка для ${submission.studentName}`} value={grade} placeholder="Выберите оценку" disabled={saving} onChange={onGradeChange} options={["5", "4", "3", "2"].map((value) => ({ value, label: value }))} />
-        <div className={styles.gradeActions}><button type="button" className={styles.primary} disabled={saving || !canGrade} onClick={() => onReview("graded")}>{saving ? "Сохраняем…" : "Сохранить оценку"}</button>{onReviewNext && <button type="button" disabled={saving || !canGrade} aria-label={hasNext ? "Сохранить оценку и открыть следующий ответ" : "Сохранить оценку и завершить очередь"} onClick={onReviewNext}>{hasNext ? "Сохранить и далее" : "Сохранить и завершить"}<ArrowCircle /></button>}</div>
-        <div className={styles.revisionAction}><button type="button" disabled={saving || !comment.trim()} onClick={() => onReview("revision")}>Вернуть на доработку</button><small>Для возврата укажите, что нужно исправить.</small></div>
-      </section> : attempt && <SubmissionResult attempt={attempt} />}
-    </div>}
+    <div className={styles.body}>
+    <div className={styles.answerContent}><h5 className={styles.sectionLabel}>Ответ студента</h5>
+    {attempt && <AnswerBody attempt={attempt} />}
+    {previous.length > 0 && <details className={styles.previous}><summary>Предыдущие попытки · {previous.length}</summary><div className={styles.history}>{previous.map((item) => <article key={item.id}><header><strong>Попытка {item.number}</strong><time dateTime={item.sentAt}>{dateLabel(item.sentAt)}</time></header><AnswerBody attempt={item} />{item.status !== "submitted" && <div className={styles.result}><SubmissionResult attempt={item} /></div>}</article>)}</div></details>}
+    </div>
+    {status === "submitted" ? <section className={styles.reviewPanel} aria-label={`Проверка работы ${submission.studentName}`} aria-busy={saving}>
+      <h4>Решение преподавателя</h4>
+      <fieldset disabled={saving} className={styles.gradeField}><legend>Оценка</legend><div className={styles.grades}>{["5", "4", "3", "2"].map((value) => <label key={value} className={grade === value ? styles.chosenGrade : ""}><input type="radio" name={gradeId} value={value} checked={grade === value} aria-label={`Оценка ${value} для ${submission.studentName}`} onChange={() => onGradeChange(value)} /><span>{value}</span></label>)}</div></fieldset>
+      <div className={styles.comment}><label htmlFor={commentId}>Комментарий</label><textarea id={commentId} disabled={saving} aria-label={`Комментарий для ${submission.studentName}`} placeholder="Что получилось и что улучшить" value={comment} onChange={(event) => onCommentChange(event.target.value)} /></div>
+      <p className={styles.draftHint} role="status">{saving ? "Сохраняем решение…" : hasDraft ? "Решение ещё не сохранено. Студент пока его не видит." : "Студент увидит решение после сохранения."}</p>
+      <div className={styles.gradeActions}>
+        {onReviewNext && <button type="button" className={styles.primary} disabled={saving || !canGrade} aria-label={hasNext ? "Сохранить и далее: следующий ответ" : "Сохранить и далее: завершить очередь"} onClick={onReviewNext}>{saving ? "Сохраняем…" : "Сохранить и далее"}</button>}
+        <button type="button" className={!onReviewNext ? styles.primary : ""} disabled={saving || !canGrade} onClick={() => onReview("graded")}>Сохранить</button>
+      </div>
+      <div className={styles.revisionAction}><button type="button" disabled={saving || !comment.trim()} onClick={() => onReview("revision")}>Вернуть на доработку</button><p>Для возврата нужен комментарий с описанием исправлений.</p></div>
+    </section> : attempt && <div className={styles.result}><SubmissionResult attempt={attempt} /></div>}
+    </div>
   </div>;
 };
 

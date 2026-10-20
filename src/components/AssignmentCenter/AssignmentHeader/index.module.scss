@@ -1,0 +1,31 @@
+@use "../../../styles/variables" as *;
+@use "../ui";
+
+.header { min-width: 0; padding-bottom: 20px; border-bottom: 1px solid ui.$line; }
+.topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+.back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 0; border: 0; background: transparent; color: $color-text-secondary; }
+.back:not(:disabled):hover { background: transparent; color: $color-text-light; }
+.header h2 { max-width: 48ch; margin: 0 0 14px; font-size: clamp(24px, 2.4vw, 30px); font-weight: 650; line-height: 1.25; letter-spacing: -.03em; overflow-wrap: anywhere; }
+.header h2:focus { outline: none; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
+.meta > span { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.meta svg { flex-shrink: 0; }
+.meta strong { color: $color-text-light; font-weight: 500; }
+.meta .badge { gap: 6px; padding: 3px 8px; border-radius: 5px; background: $color-ghost; font-size: 12px; }
+.badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.badge[data-status=published] { color: $color-success; background: theme-alpha($color-success, .08); }
+.badge[data-status=draft] { color: $color-warning; background: theme-alpha($color-warning, .08); }
+.actions { position: relative; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.actions > button { display: inline-flex; gap: 8px; min-height: 44px; padding: 8px 12px; border-color: transparent; background: transparent; color: $color-text-secondary; }
+.actions .primary { @include ui.primary; }
+.menu { @include ui.panel; position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; display: grid; min-width: 230px; padding: 6px; background: $color-dark-primary; box-shadow: 0 12px 32px theme-alpha($color-shadow, .5); }
+.menu button { justify-content: start; min-height: 44px; padding: 10px 12px; border: 0; background: transparent; text-align: left; }
+.menu .danger { color: $color-error; }
+@media(max-width: 600px) {
+  .header { padding-bottom: 18px; }
+  .topline { gap: 8px; margin-bottom: 12px; }
+  .meta { gap: 10px; font-size: 13px; }
+  .meta > span:not(.badge) { flex-basis: 100%; }
+  .meta .deadline { align-items: start; flex-wrap: wrap; gap: 5px; }
+  .meta .deadline svg { margin-top: 2px; }
+}

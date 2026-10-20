@@ -5,6 +5,7 @@ import { formatPlannerTime } from "../../domain/planner";
 import { samePlannerNote } from "../../domain/plannerDraft";
 import { toLocalDateKey } from "../../domain/schedule";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
+import { changesPlannerTask } from "../../domain/unsavedNavigation";
 import ConfirmDialog from "../ConfirmDialog";
 import DateTimePicker from "../DateTimePicker";
 import Dropdown from "../Dropdown";
@@ -31,7 +32,7 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
   const dirty = title !== initialNote.title || text !== initialNote.text || priority !== initialNote.priority || category !== initialNote.category || startAt?.getTime() !== initialNote.startAt?.getTime() || endAt?.getTime() !== initialNote.endAt?.getTime() || toLocalDateKey(day) !== toLocalDateKey(initialNote.startAt ?? initialNote.createdAt);
   const duration = startAt && endAt ? differenceInMinutes(endAt, startAt) : 0;
   const durationLabel = duration > 0 ? [Math.floor(duration / 60) ? `${Math.floor(duration / 60)} ч` : "", duration % 60 ? `${duration % 60} мин` : ""].filter(Boolean).join(" ") : "";
-  useUnsavedChangesWarning(dirty);
+  useUnsavedChangesWarning(dirty, changesPlannerTask);
   const requestClose = () => { if (dirty) setConfirmDiscard(true); else onClose(); };
   const changeDay = (date?: Date) => {
     if (!date) return;

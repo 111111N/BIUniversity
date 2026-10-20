@@ -9,6 +9,7 @@ import { getAttachmentError } from "../../domain/files";
 import { matchesSearchText } from "../../domain/search";
 import type { MessagingContact } from "../../domain/messaging";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
+import { changesMessageContact } from "../../domain/unsavedNavigation";
 import useMessageDrafts from "../../hooks/useMessageDrafts";
 import { useRole } from "../RoleContext";
 import Checkbox from "../Checkbox";
@@ -107,7 +108,7 @@ const Messages = ({ initialContactId }: { initialContactId?: string | null }) =>
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const filesButtonRef = useRef<HTMLButtonElement>(null);
   const threadPositions = useRef(new Map<string, ThreadPosition>());
-  useUnsavedChangesWarning(hasUnsavedText || Object.values(draftFiles).some((files) => files.length > 0));
+  useUnsavedChangesWarning(hasUnsavedText || Object.values(draftFiles).some((files) => files.length > 0), changesMessageContact);
   const selected = directory.find((contact) => contact.id === selectedId);
   const selectedGroup = selected?.kind === "group" ? groups.find((group) => group.id === selected.id) : undefined;
   const thread = selected ? state.messages[selected.id] ?? [] : [];

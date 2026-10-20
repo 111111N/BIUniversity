@@ -6,6 +6,10 @@
 .header > div { min-width: 0; }
 .header h1 { margin: 10px 0 7px; color: $color-text-light; font-size: clamp(1.8rem, 3vw, 2.7rem); line-height: 1.2; overflow-wrap: anywhere; }
 .header p { margin: 0; color: $color-text-secondary; }
+.assignmentsHeader { margin-bottom: 12px; }
+.assignmentsHeader h1 { margin: 7px 0 4px; font-size: clamp(1.2rem, 2vw, 1.5rem); }
+.assignmentsHeader p { font-size: 14px; }
+.assignmentsSection { min-width: 0; padding-top: 12px; padding-bottom: 24px; }
 .breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: .72rem; text-transform: capitalize; }
 .breadcrumbs a { color: $color-accent-primary; text-decoration: none; }
 .exportButton { padding: 11px 17px; white-space: nowrap; }
@@ -39,3 +43,10 @@
   color: $color-success;
   font-size: .75rem;
 }
+
+.page .assignmentsTabs { gap: 20px; padding: 0; margin-bottom: 16px; border: 0; border-bottom: 1px solid $color-border; border-radius: 0; background: transparent; scrollbar-width: none; }
+.page .assignmentsTabs::-webkit-scrollbar { display: none; }
+.page .assignmentsTabs button { min-height: 46px; padding: 12px 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; font-size: 14px; font-weight: 500; }
+.page .assignmentsTabs button[aria-selected=true], .page .assignmentsTabs button[aria-selected=true]:hover { border-bottom-color: $color-accent-primary; background: transparent; color: $color-text-light; }
+.page .assignmentsTabs button[aria-selected=true] span { background: $color-ghost; color: $color-text-light; }
+@media(max-width: 600px) { .page .assignmentsTabs { gap: 18px; } .page .assignmentsTabs button { font-size: 13px; } }

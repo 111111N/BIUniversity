@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useId, useRef, useState } from "react";
-import { materialRepository, type StoredMaterial } from "../../data/materialRepository";
+import { getPersonalMaterialScope, materialRepository, type StoredMaterial } from "../../data/materialRepository";
 import { formatFileSize, MAX_ATTACHMENT_SIZE } from "../../domain/files";
 import { matchesSearchText } from "../../domain/search";
 import Checkbox from "../Checkbox";
@@ -9,6 +9,7 @@ import SearchField from "../SearchField";
 import ArrowIcon from "../ArrowIcon";
 import MaterialCard from "./MaterialCard";
 import FilePreview from "../FilePreview";
+import { useRole } from "../RoleContext";
 import styles from "./index.module.scss";
 
 interface FileStorageProps {
@@ -25,7 +26,7 @@ const FILE_CATEGORIES = ["Книга", "Конспект", "Сборник за�
 const sameFile = (a: File, b: File) => a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
 
 const FileStorage = ({
-  storageKey = "cabinet",
+  storageKey: requestedStorageKey,
   title = "Мои файлы",
   description = "Материалы сохраняются в этом браузере до подключения серверного хранилища.",
   eyebrow = "Локальное хранилище",
@@ -33,6 +34,8 @@ const FileStorage = ({
   emptyDescription,
   readOnly = false,
 }: FileStorageProps) => {
+  const { currentUser } = useRole();
+  const storageKey = requestedStorageKey ?? getPersonalMaterialScope(currentUser.id);
   const headingId = useId();
   const uploadId = useId();
   const descriptionId = useId();
@@ -95,7 +98,10 @@ const FileStorage = ({
       setLoadError("");
       materialRepository.list(storageKey)
         .then((items) => { if (active && request === requestId) setFiles(items); })
-        .catch(() => { if (active && request === requestId) setLoadError("Не удалось открыть материалы. Проверьте доступ к хранилищу браузера."); })
+        .catch((error: unknown) => {
+          console.error("Не удалось загрузить материалы выбранного раздела:", error);
+          if (active && request === requestId) setLoadError("Не удалось открыть материалы. Проверьте доступ к хранилищу браузера; если открыты другие вкладки сайта, закройте их и повторите загрузку.");
+        })
         .finally(() => { if (active && request === requestId) setLoading(false); });
     };
     reloadRef.current = load;
@@ -137,11 +143,14 @@ const FileStorage = ({
         const storedFile: StoredMaterial = {
           id: crypto.randomUUID(), name: file.name, type: file.type, size: file.size,
           createdAt: Date.now(), blob: file, scope: storageKey, category,
-          uploadedBy: "Преподаватель", description: materialDescription.trim() || undefined, pinned,
+          uploadedBy: currentUser.name, description: materialDescription.trim() || undefined, pinned,
         };
         await materialRepository.save(storedFile);
       }));
       if (version !== scopeVersion.current) return;
+      results.forEach((result, index) => {
+        if (result.status === "rejected") console.error("Не удалось сохранить материал:", queue[index].name, result.reason);
+      });
       const failed = queue.filter((_, index) => results[index].status === "rejected");
       const saved = queue.length - failed.length;
       setSelectedFiles(failed);
@@ -165,14 +174,15 @@ const FileStorage = ({
     setDeleting(true);
     setDeleteError("");
     try {
-      await materialRepository.remove(id);
+      await materialRepository.remove(id, storageKey);
       if (version !== scopeVersion.current) return;
       setFiles((current) => current.filter((item) => item.id !== id));
       setPendingDelete(null);
       setMessage("Материал удалён.");
       setError("");
       reloadRef.current();
-    } catch {
+    } catch (error) {
+      console.error("Не удалось удалить выбранный материал:", error);
       if (version === scopeVersion.current) setDeleteError("Не удалось удалить материал. Повторите попытку.");
     } finally {
       if (version === scopeVersion.current) { setDeleting(false); mutationLock.current = false; }
@@ -186,11 +196,12 @@ const FileStorage = ({
     setPinningId(file.id);
     setError("");
     try {
-      const updated = await materialRepository.setPinned(file.id, !file.pinned);
+      const updated = await materialRepository.setPinned(file.id, !file.pinned, storageKey);
       if (version !== scopeVersion.current) return;
       setFiles((current) => current.map((item) => item.id === file.id ? updated : item));
       setMessage(updated.pinned ? "Материал закреплён в начале списка." : "Материал откреплён.");
-    } catch {
+    } catch (error) {
+      console.error("Не удалось изменить закрепление выбранного материала:", error);
       if (version === scopeVersion.current) setError("Не удалось изменить закрепление материала. Повторите действие на карточке.");
     } finally {
       if (version === scopeVersion.current) { setPinningId(null); mutationLock.current = false; }

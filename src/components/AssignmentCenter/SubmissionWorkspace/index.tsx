@@ -1,12 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import type { Submission } from "../../../data/assignmentStore";
 import type { Student } from "../../Attendance/data/students";
 import { getCurrentSubmissionAttempt, getSubmissionStatus } from "../../../domain/assignments";
 import { getNextReviewSubmission, getReviewSubmissions, type ReviewDraft, type ReviewFilter, type ReviewSort } from "../../../domain/submissionReview";
-import ArrowCircle from "../../ArrowCircle";
-import Dropdown from "../../Dropdown";
-import SearchField from "../../SearchField";
+import { matchesSearchText } from "../../../domain/search";
 import SubmissionCard from "../SubmissionCard";
+import AssignmentIcon from "../AssignmentIcon";
 import styles from "./index.module.scss";
 
 interface Props {
@@ -17,109 +16,133 @@ interface Props {
   targetRef: RefObject<HTMLDivElement | null>;
   saving: boolean;
   drafts: Record<string, ReviewDraft>;
+  initialFilter?: ReviewFilter;
   onDraftChange(attemptId: string, values: Partial<ReviewDraft>): void;
   onSelect(id: string): void;
   onReview(answer: Submission, status: "revision" | "graded", comment: string, grade: string): boolean;
 }
 
-const FILTERS = [["all", "Все"], ["submitted", "Ждут проверки"], ["revision", "На доработке"], ["graded", "Проверено"]] as const;
+const FILTERS = [["submitted", "На проверке"], ["revision", "На доработке"], ["graded", "Проверены"], ["all", "Все"]] as const;
+const STATUS_LABELS = { submitted: "На проверке", revision: "На доработке", graded: "Проверена" };
+const dateLabel = (value: string) => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "Дата не указана";
+};
 
-const SubmissionWorkspace = ({ answers, students, rosterError, currentId, targetRef, saving, drafts, onDraftChange, onSelect, onReview }: Props) => {
-  const [filter, setFilter] = useState<ReviewFilter>("all");
+const SubmissionWorkspace = ({ answers, students, rosterError, currentId, targetRef, saving, drafts, initialFilter = "all", onDraftChange, onSelect, onReview }: Props) => {
+  const [filter, setFilter] = useState<ReviewFilter | "missing">(initialFilter);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ReviewSort>("queue");
-  const [missingOpen, setMissingOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(() => currentId ?? getReviewSubmissions(answers, "submitted")[0]?.id ?? getReviewSubmissions(answers)[0]?.id ?? null);
+  const [answerOpen, setAnswerOpen] = useState(Boolean(currentId));
   const [reviewNotice, setReviewNotice] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(currentId);
-  const listId = useId();
+  const [saveError, setSaveError] = useState("");
+  const searchId = useId();
+  const orderId = useId();
   const listRef = useRef<HTMLDivElement>(null);
-  const toggleAnchor = useRef<{ button: HTMLButtonElement; top: number } | null>(null);
-  const filtered = getReviewSubmissions(answers, filter, query, sort);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const matching = getReviewSubmissions(answers, "all", query, sort);
   const queue = getReviewSubmissions(answers, "submitted", query, sort);
-  const matching = getReviewSubmissions(answers, "all", query);
-  const missing = students.filter((student) => !answers.some((answer) => answer.studentId === student.id));
-  const considered = matching.filter((answer) => getSubmissionStatus(answer) !== "submitted").length;
-  const queuePosition = queue.findIndex((answer) => answer.id === expandedId);
-  const selectedHidden = expandedId && answers.some((answer) => answer.id === expandedId) && !filtered.some((answer) => answer.id === expandedId);
-  const expandedVisible = filtered.some((answer) => answer.id === expandedId);
-  useEffect(() => { setExpandedId(currentId); }, [currentId]);
-  useLayoutEffect(() => {
-    const anchor = toggleAnchor.current;
-    toggleAnchor.current = null;
-    if (!anchor?.button.isConnected) return;
-    // Closing a preceding answer must not move the clicked heading in the viewport.
-    const shift = anchor.button.getBoundingClientRect().top - anchor.top;
-    if (Math.abs(shift) > .5) window.scrollBy({ top: shift, behavior: "auto" });
-  }, [expandedId]);
-  const resetFilters = () => { setQuery(""); setFilter("all"); };
+  const filtered = filter === "missing" ? [] : matching.filter((answer) => filter === "all" || getSubmissionStatus(answer) === filter);
+  const submittedStudents = new Set(answers.map((answer) => answer.studentId));
+  const missing = rosterError ? [] : students.filter((student) => !submittedStudents.has(student.id) && matchesSearchText(student.name, query));
+  const counts = { all: matching.length, submitted: 0, revision: 0, graded: 0 };
+  matching.forEach((answer) => { counts[getSubmissionStatus(answer) ?? "submitted"] += 1; });
+  const considered = counts.graded + counts.revision;
+  // Selection is independent of the list filter so links and saved work stay visible.
+  const selected = answers.find((answer) => answer.id === selectedId) ?? queue[0] ?? filtered[0] ?? answers[0];
+  const selectedHidden = selected && filter !== "missing" && !filtered.some((answer) => answer.id === selected.id);
+  const key = selected ? getCurrentSubmissionAttempt(selected)?.id ?? selected.id : "";
+  const draft = drafts[key] ?? { comment: "", grade: "" };
+
+  useEffect(() => {
+    if (!currentId) return;
+    setSelectedId(currentId);
+    setAnswerOpen(true);
+    requestAnimationFrame(() => {
+      if (window.matchMedia("(max-width: 850px)").matches) detailRef.current?.scrollIntoView({ block: "start" });
+    });
+  }, [currentId]);
+  useEffect(() => {
+    if (!selectedId && selected) setSelectedId(selected.id);
+  }, [selectedId, selected]);
+
+  const focusAnswer = () => requestAnimationFrame(() => {
+    targetRef.current?.focus({ preventScroll: true });
+    if (window.matchMedia("(max-width: 850px)").matches) detailRef.current?.scrollIntoView({ block: "start" });
+  });
   const selectAnswer = (id: string) => {
-    setExpandedId(id);
+    setSelectedId(id);
+    setAnswerOpen(true);
+    setSaveError("");
     onSelect(id);
+    focusAnswer();
+  };
+  const returnToList = () => {
+    setAnswerOpen(false);
     requestAnimationFrame(() => {
-      targetRef.current?.focus({ preventScroll: true });
-      targetRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      listRef.current?.querySelector<HTMLButtonElement>('[aria-current="true"]')?.focus({ preventScroll: true });
+      if (window.matchMedia("(max-width: 850px)").matches) listRef.current?.scrollIntoView({ block: "start" });
     });
-  };
-  const toggleAnswer = (id: string, button: HTMLButtonElement) => {
-    toggleAnchor.current = { button, top: button.getBoundingClientRect().top };
-    setExpandedId((current) => current === id ? null : id);
-  };
-  const showHiddenAnswer = () => {
-    resetFilters();
-    requestAnimationFrame(() => {
-      const target = Array.from(listRef.current?.querySelectorAll<HTMLDivElement>("[data-submission-id]") ?? []).find((node) => node.dataset.submissionId === expandedId);
-      target?.focus({ preventScroll: true });
-      target?.scrollIntoView({ block: "nearest", behavior: "auto" });
-    });
-  };
-  const selectNext = () => {
-    const next = getNextReviewSubmission(answers, expandedId, query, sort) ?? queue[0];
-    if (!next) return;
-    setReviewNotice("");
-    setFilter("submitted");
-    selectAnswer(next.id);
   };
   const review = (answer: Submission, status: "revision" | "graded", advance = false) => {
-    const key = getCurrentSubmissionAttempt(answer)?.id ?? answer.id;
-    const draft = drafts[key] ?? { comment: "", grade: "" };
+    const attemptId = getCurrentSubmissionAttempt(answer)?.id ?? answer.id;
+    const values = drafts[attemptId] ?? { comment: "", grade: "" };
     const next = getNextReviewSubmission(answers, answer.id, query, sort);
-    if (!onReview(answer, status, draft.comment, draft.grade)) return;
-    const result = status === "graded" ? `оценка ${draft.grade} сохранена` : "работа возвращена на доработку";
-    const nextNotice = !advance ? "" : next ? ` Далее — ${next.studentName}.` : query.trim() ? " Очередь по текущему поиску завершена." : " Очередь проверки завершена.";
-    setReviewNotice(`${answer.studentName}: ${result}.${nextNotice}`);
-    if (advance) {
-      setFilter(next ? "submitted" : "all");
-      selectAnswer(next?.id ?? answer.id);
-      if (!next) requestAnimationFrame(() => targetRef.current?.focus({ preventScroll: true }));
+    setSelectedId(answer.id);
+    setSaveError("");
+    try {
+      if (!onReview(answer, status, values.comment, values.grade)) {
+        setSaveError("Решение не сохранено. Проверьте сообщение об ошибке и попробуйте ещё раз.");
+        return;
+      }
+      const result = status === "graded" ? `Оценка ${values.grade} сохранена.` : "Работа возвращена на доработку.";
+      const completion = advance && !next ? query.trim() ? " Очередь по текущему поиску завершена." : " Очередь проверки завершена." : "";
+      setReviewNotice(`${answer.studentName}: ${result}${completion}`);
+      if (advance && next) selectAnswer(next.id);
+      else focusAnswer();
+    } catch (error) {
+      console.error("Не удалось сохранить решение по работе студента", error);
+      setSaveError("Не удалось сохранить решение. Ваш комментарий и оценка сохранены в черновике.");
     }
   };
 
-  return <section className={styles.workspace} aria-label="Работы студентов">
-    <div className={styles.controlPanel}>
-    <header className={styles.header}><div><h3>Работы студентов</h3><p>Ответы, история сдачи и обратная связь</p></div><span className={styles.total}>Всего ответов <b>{answers.length}</b></span></header>
-    {answers.length > 0 && <>
-      <div className={styles.tools}><SearchField label="Поиск по студентам" placeholder="Имя или фамилия" value={query} onChange={setQuery} /><Dropdown label="Порядок работ" value={sort} onChange={(value) => setSort(value as ReviewSort)} options={[{ value: "queue", label: "Сначала на проверку" }, { value: "newest", label: "Сначала новые" }, { value: "oldest", label: "Сначала ранние" }, { value: "name", label: "По имени" }]} /></div>
-      <div className={styles.filters} role="group" aria-label="Статусы ответов">{FILTERS.map(([value, label]) => <button type="button" className={filter === value ? styles.activeFilter : ""} aria-pressed={filter === value} key={value} onClick={() => setFilter(value)}><span>{label}</span><b>{getReviewSubmissions(answers, value, query).length}</b></button>)}<span className={styles.matchCount} role="status">Показано {filtered.length} из {answers.length}</span></div>
-      <div className={styles.queue}>
-        <div className={styles.queueHeading}><span>{query.trim() ? "По текущему поиску" : "Очередь проверки"}</span><strong>{queue.length ? `Ожидают проверки: ${queue.length}` : matching.length ? "Новых работ для проверки нет" : "Нет ответов по этому поиску"}</strong>{queuePosition >= 0 && <small>Открыта работа {queuePosition + 1} из {queue.length}</small>}</div>
-        {matching.length > 0 && <div className={styles.progress}><div><span>Рассмотрено</span><b>{considered} / {matching.length}</b></div><progress max={matching.length} value={considered} aria-label="Оценены или возвращены на доработку" /></div>}
-        {queue.length > 0 && <button type="button" disabled={saving} className={styles.nextButton} onClick={selectNext}>{queuePosition < 0 ? "Начать проверку" : queue.length > 1 ? "Следующий ответ" : "Открыть ответ"}<ArrowCircle /></button>}
+  return <section className={`${styles.workspace} ${answerOpen && filter !== "missing" ? styles.answerOpen : ""}`} aria-label="Работы студентов">
+    <header className={styles.header}>
+      <h3>Работы студентов</h3>
+      {answers.length > 0 && <div className={styles.summary}>
+        <span>{queue.length ? `На проверке: ${queue.length}` : "Новых работ для проверки нет"}</span>
+        {matching.length > 0 && <span className={styles.progress}><span>Рассмотрено {considered} / {matching.length}</span><progress max={matching.length} value={considered} aria-label="Оценены или возвращены на доработку" /></span>}
+      </div>}
+    </header>
+    <div className={styles.layout}>
+      <aside className={styles.sidebar} aria-label="Выбор студента">
+        <div className={styles.search}><label htmlFor={searchId}>Поиск по студентам</label><input id={searchId} type="search" placeholder="Имя или фамилия" value={query} disabled={saving} onChange={(event) => setQuery(event.target.value)} /></div>
+        <div className={styles.filters} role="group" aria-label="Статусы ответов">
+          {FILTERS.map(([value, label]) => <button type="button" key={value} disabled={saving} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}<span>{counts[value]}</span></button>)}
+          <button type="button" disabled={saving} aria-pressed={filter === "missing"} onClick={() => setFilter("missing")}>Не сдали<span>{rosterError ? "—" : missing.length}</span></button>
+        </div>
+        {rosterError && filter !== "missing" && <p role="alert" className={styles.error}>Список несдавших временно недоступен: не удалось прочитать состав группы.</p>}
+        {filter !== "missing" && <div className={styles.order}><label htmlFor={orderId}>Порядок работ</label><select id={orderId} value={sort} disabled={saving} onChange={(event) => setSort(event.target.value as ReviewSort)}><option value="queue">Сначала на проверку</option><option value="newest">Сначала новые</option><option value="oldest">Сначала ранние</option><option value="name">По имени</option></select></div>}
+        <div className={styles.list} ref={listRef}>
+          {filter === "missing" ? rosterError ? <p role="alert" className={styles.error}>Не удалось прочитать состав группы. Список несдавших временно недоступен.</p> : <><h4>Не сдали · {missing.length}</h4>{missing.length ? <ul className={styles.missing}>{missing.map((student) => <li key={student.id}>{student.name}</li>)}</ul> : <p className={styles.empty}>{query.trim() ? "Несдавшие по этому поиску не найдены." : "Все студенты из журнала отправили ответы."}</p>}</> : filtered.length ? <ul className={styles.students}>{filtered.map((answer) => {
+            const attempt = getCurrentSubmissionAttempt(answer);
+            const status = getSubmissionStatus(answer) ?? "submitted";
+            const values = drafts[attempt?.id ?? answer.id];
+            return <li key={answer.id}><button type="button" disabled={saving} data-status={status} aria-current={selected?.id === answer.id ? "true" : undefined} onClick={() => selectAnswer(answer.id)}><span className={styles.avatar} aria-hidden="true">{answer.studentName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("")}</span><span className={styles.studentBody}><strong>{answer.studentName}</strong><span className={styles.rowMeta}><span>{STATUS_LABELS[status]}{status === "graded" && attempt?.grade ? ` · ${attempt.grade}` : ""}</span><time dateTime={attempt?.sentAt ?? answer.sentAt}>{dateLabel(attempt?.sentAt ?? answer.sentAt)}</time></span>{status === "submitted" && (values?.comment.trim() || values?.grade) && <span className={styles.draftMark}>Есть черновик</span>}</span></button></li>;
+          })}</ul> : <div className={styles.empty}><strong>{!answers.length ? "Ответов пока нет" : query.trim() ? "Ответы не найдены" : "В этой категории работ нет"}</strong><p>{!answers.length ? "Когда студенты отправят ответы, они появятся здесь." : "Измените поиск или выберите другой статус."}</p></div>}
+        </div>
+      </aside>
+      <div className={styles.detail} ref={detailRef}>
+        {filter !== "missing" && selected ? <>
+          <button type="button" className={styles.back} onClick={returnToList}><AssignmentIcon name="arrowLeft" />К списку работ</button>
+          {selectedHidden && <p className={styles.context}>Выбранная работа вне текущего списка. Поиск и фильтры сохранены.</p>}
+          {reviewNotice && <p className={styles.notice} role="status">{reviewNotice}</p>}
+          {saveError && <p className={styles.error} role="alert">{saveError}</p>}
+          <SubmissionCard key={selected.id} submission={selected} selected expanded targetRef={targetRef} comment={draft.comment} grade={draft.grade} saving={saving} onCommentChange={(comment) => onDraftChange(key, { comment })} onGradeChange={(grade) => onDraftChange(key, { grade })} onReview={(status) => review(selected, status)} onReviewNext={() => review(selected, "graded", true)} hasNext={Boolean(getNextReviewSubmission(answers, selected.id, query, sort))} />
+        </> : <p className={styles.placeholder}>{filter === "missing" ? "Выберите статус ответов, чтобы продолжить проверку." : "Здесь появится выбранный ответ студента."}</p>}
       </div>
-    </>}
     </div>
-    {reviewNotice && <div className={styles.reviewNotice}><span role="status">{reviewNotice}</span><button type="button" onClick={() => setReviewNotice("")} aria-label="Скрыть сообщение о проверке">Понятно</button></div>}
-    {selectedHidden && <div className={styles.hiddenTarget} role="status"><span>Открытый ответ скрыт текущими фильтрами.</span><button type="button" onClick={showHiddenAnswer}>Показать выбранный ответ</button></div>}
-    <section className={styles.answers} aria-label="Список ответов студентов">
-    {filtered.length > 0 && <div className={styles.listHeading}><div><h4>Ответы студентов</h4><span>{filter === "all" ? "Все статусы" : FILTERS.find(([value]) => value === filter)?.[1]} · {filtered.length} · Нажмите на студента, чтобы открыть ответ</span></div>{expandedVisible && <button type="button" disabled={saving} aria-controls={listId} onClick={() => setExpandedId(null)}>Свернуть ответ</button>}</div>}
-    <div id={listId} ref={listRef} className={styles.list}>{filtered.length ? filtered.map((answer) => {
-      const key = getCurrentSubmissionAttempt(answer)?.id ?? answer.id;
-      const draft = drafts[key] ?? { comment: "", grade: "" };
-      const updateDraft = (values: Partial<ReviewDraft>) => onDraftChange(key, values);
-      const next = getNextReviewSubmission(answers, answer.id, query, sort);
-      return <SubmissionCard key={answer.id} submission={answer} selected={expandedId === answer.id} expanded={expandedId === answer.id} onToggle={(button) => toggleAnswer(answer.id, button)} targetRef={currentId === answer.id ? targetRef : undefined} comment={draft.comment} grade={draft.grade} saving={saving} onCommentChange={(comment) => updateDraft({ comment })} onGradeChange={(grade) => updateDraft({ grade })} onReview={(status) => review(answer, status)} onReviewNext={() => review(answer, "graded", true)} hasNext={Boolean(next)} />;
-    }) : <div className={styles.empty}><strong>{!answers.length ? "Ответов пока нет" : query.trim() ? "Ответы не найдены" : "В этой категории работ нет"}</strong><span>{!answers.length ? "Когда студенты отправят ответы, они появятся здесь." : query.trim() ? "Проверьте имя или фамилию либо сбросьте фильтры." : "Выберите другой статус, чтобы посмотреть работы."}</span>{answers.length > 0 && <button type="button" onClick={resetFilters}>Сбросить фильтры</button>}</div>}</div>
-    </section>
-    {rosterError ? <p className={styles.error} role="alert">Не удалось прочитать состав группы. Список несдавших временно недоступен.</p> : <details className={styles.missing} onToggle={(event) => setMissingOpen(event.currentTarget.open)}><summary><span>Ещё не сдали</span><b>{missing.length}</b><ArrowCircle direction={missingOpen ? "up" : "down"} /></summary><div>{missing.map((student) => <span key={student.id}>{student.name}</span>)}{!missing.length && <span>Все студенты из журнала отправили ответы.</span>}</div></details>}
   </section>;
 };
 
