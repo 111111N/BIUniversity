@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { Link } from "react-router-dom";
 import type { Submission } from "../../../data/assignmentStore";
 import type { Student } from "../../Attendance/data/students";
 import { getCurrentSubmissionAttempt, getSubmissionStatus } from "../../../domain/assignments";
@@ -11,6 +12,7 @@ import styles from "./index.module.scss";
 interface Props {
   answers: Submission[];
   students: Student[];
+  groupId?: string;
   rosterError: string;
   currentId: string | null;
   targetRef: RefObject<HTMLDivElement | null>;
@@ -29,7 +31,7 @@ const dateLabel = (value: string) => {
   return Number.isFinite(date.getTime()) ? date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "Дата не указана";
 };
 
-const SubmissionWorkspace = ({ answers, students, rosterError, currentId, targetRef, saving, drafts, initialFilter = "all", onDraftChange, onSelect, onReview }: Props) => {
+const SubmissionWorkspace = ({ answers, students, groupId, rosterError, currentId, targetRef, saving, drafts, initialFilter = "all", onDraftChange, onSelect, onReview }: Props) => {
   const [filter, setFilter] = useState<ReviewFilter | "missing">(initialFilter);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ReviewSort>("queue");
@@ -125,7 +127,10 @@ const SubmissionWorkspace = ({ answers, students, rosterError, currentId, target
         {rosterError && filter !== "missing" && <p role="alert" className={styles.error}>Список несдавших временно недоступен: не удалось прочитать состав группы.</p>}
         {filter !== "missing" && <div className={styles.order}><label htmlFor={orderId}>Порядок работ</label><select id={orderId} value={sort} disabled={saving} onChange={(event) => setSort(event.target.value as ReviewSort)}><option value="queue">Сначала на проверку</option><option value="newest">Сначала новые</option><option value="oldest">Сначала ранние</option><option value="name">По имени</option></select></div>}
         <div className={styles.list} ref={listRef}>
-          {filter === "missing" ? rosterError ? <p role="alert" className={styles.error}>Не удалось прочитать состав группы. Список несдавших временно недоступен.</p> : <><h4>Не сдали · {missing.length}</h4>{missing.length ? <ul className={styles.missing}>{missing.map((student) => <li key={student.id}>{student.name}</li>)}</ul> : <p className={styles.empty}>{query.trim() ? "Несдавшие по этому поиску не найдены." : "Все студенты из журнала отправили ответы."}</p>}</> : filtered.length ? <ul className={styles.students}>{filtered.map((answer) => {
+          {filter === "missing" ? rosterError ? <p role="alert" className={styles.error}>Не удалось прочитать состав группы. Список несдавших временно недоступен.</p> : <><h4>Не сдали · {missing.length}</h4>{missing.length ? <ul className={styles.missing}>{missing.map((student) => {
+            const search = new URLSearchParams({ name: student.name, ...(groupId ? { groupId } : {}) });
+            return <li key={student.id}><Link className={styles.studentLink} to={`/students/${encodeURIComponent(student.id)}?${search}`} aria-label={`Открыть профиль: ${student.name}`}><span className={styles.avatar} aria-hidden="true">{student.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("")}</span><span className={styles.studentBody}><strong>{student.name}</strong><span className={styles.rowMeta}>Открыть профиль</span></span><AssignmentIcon name="arrowRight" size={16} /></Link></li>;
+          })}</ul> : <p className={styles.empty}>{query.trim() ? "Несдавшие по этому поиску не найдены." : "Все студенты из журнала отправили ответы."}</p>}</> : filtered.length ? <ul className={styles.students}>{filtered.map((answer) => {
             const attempt = getCurrentSubmissionAttempt(answer);
             const status = getSubmissionStatus(answer) ?? "submitted";
             const values = drafts[attempt?.id ?? answer.id];

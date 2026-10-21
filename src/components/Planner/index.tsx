@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { PlusIcon } from "../ButtonIcons/Icons";
@@ -22,6 +22,7 @@ const VIEW_KEY = "bi-university-planner-view";
 const matchesFilter = (note: PlannerNote, filter: TaskFilter) => filter === "all" || (filter === "active" ? !note.completed : filter === "completed" ? note.completed : note.category === filter);
 
 interface PlannerProps {
+  weekNavigation?: ReactNode;
   selectedWeekStart: Date;
   selectedDate?: Date;
   selectedTaskId?: string | null;
@@ -29,7 +30,7 @@ interface PlannerProps {
   onSaved?(note: PlannerNote): void;
 }
 
-const Planner = ({ selectedWeekStart, selectedDate, selectedTaskId, onClearTask, onSaved }: PlannerProps) => {
+const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTaskId, onClearTask, onSaved }: PlannerProps) => {
   const { notes, setNotes, refreshNotes, error: storageError } = usePlannerNotes();
   const [editingNote, setEditingNote] = useState<PlannerNote | null>(null);
   const [filter, setFilter] = useState<TaskFilter>("all");
@@ -57,11 +58,23 @@ const Planner = ({ selectedWeekStart, selectedDate, selectedTaskId, onClearTask,
   useLayoutEffect(() => {
     if (view !== "board") return;
     const grid = gridRef.current;
-    const target = grid?.querySelector<HTMLElement>(`[data-date="${focusedDay}"]`);
-    if (!grid || !target) return;
-    const bounds = grid.getBoundingClientRect(), dayBounds = target.getBoundingClientRect();
-    if (dayBounds.left < bounds.left) grid.scrollBy({ left: dayBounds.left - bounds.left, behavior: "auto" });
-    else if (dayBounds.right > bounds.right) grid.scrollBy({ left: dayBounds.right - bounds.right, behavior: "auto" });
+    if (!grid) return;
+    const revealDay = () => {
+      const target = grid.querySelector<HTMLElement>(`[data-date="${focusedDay}"]`);
+      if (!target) return;
+      const bounds = grid.getBoundingClientRect(), dayBounds = target.getBoundingClientRect();
+      if (dayBounds.left < bounds.left) grid.scrollBy({ left: dayBounds.left - bounds.left, behavior: "auto" });
+      else if (dayBounds.right > bounds.right) grid.scrollBy({ left: dayBounds.right - bounds.right, behavior: "auto" });
+    };
+    revealDay();
+    let width = grid.clientWidth;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+      if (grid.clientWidth === width) return;
+      width = grid.clientWidth;
+      revealDay();
+    });
+    observer?.observe(grid);
+    return () => observer?.disconnect();
   }, [focusedDay, view]);
 
   const days = useMemo(
@@ -73,6 +86,11 @@ const Planner = ({ selectedWeekStart, selectedDate, selectedTaskId, onClearTask,
     const key = toLocalDateKey(day);
     setFocusedDay(key);
     if (view === "list") gridRef.current?.querySelector<HTMLElement>(`[data-date="${key}"]`)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    else requestAnimationFrame(() => {
+      const grid = gridRef.current;
+      const target = grid?.querySelector<HTMLElement>(`[data-date="${key}"]`);
+      if (grid && target) grid.scrollBy({ left: target.getBoundingClientRect().left - grid.getBoundingClientRect().left, behavior: "auto" });
+    });
   };
 
   const saveNote = (note: PlannerNote, original: PlannerNote) => {
@@ -163,15 +181,17 @@ const Planner = ({ selectedWeekStart, selectedDate, selectedTaskId, onClearTask,
 
   return (
     <section className={styles.planner} aria-label="Задачи на неделю">
+      {weekNavigation && <div className={styles.weekNavigation}>{weekNavigation}</div>}
       <p className={styles.srOnly} role="status">{completionMessage}</p>
       {storageError && <div className={styles.storageError} role="alert"><span>{storageError}</span><button type="button" onClick={refreshNotes}>Повторить чтение</button></div>}
       {selectedTaskId && !requestedNote && !storageError && <div className={styles.actionNotice} role="status"><span>Задача не найдена. Возможно, она уже удалена.</span><button type="button" onClick={onClearTask}>Показать неделю</button></div>}
       {(deletedNote || saveMessage) && <div className={styles.actionNotice} role="status"><span>{deletedNote ? `Задача «${deletedNote.title}» удалена` : saveMessage}</span>{deletedNote && <button type="button" onClick={restoreNote}>Отменить удаление</button>}<button type="button" className={styles.dismissNotice} aria-label="Скрыть сообщение" onClick={() => { setDeletedNote(null); setSaveMessage(""); }}>×</button></div>}
       <div className={styles.plannerToolbar}>
-        <div className={styles.tools}><SearchField label="Поиск по неделе" value={query} onChange={setQuery} placeholder="Название или описание задачи" /><div className={styles.filters} role="group" aria-label="Фильтр задач">{FILTERS.map(([value, label]) => <button type="button" aria-pressed={filter === value} className={filter === value ? styles.filterActive : ""} onClick={() => setFilter(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilter(note, value)).length}</span></button>)}</div><button type="button" className={styles.createButton} onClick={() => createNoteForDay(activeDay)}><PlusIcon size={14} />Добавить задачу</button></div>
-        <div className={styles.toolbarBottom}><div className={styles.weekSummary}><div><span><strong>{weekNotes.length - completedCount}</strong> к выполнению</span><span><strong>{completedCount}</strong> готово</span></div><div className={styles.progress} role="progressbar" aria-label="Задачи за неделю выполнены" aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={weekNotes.length || 1}><span style={{ width: `${weekNotes.length ? completedCount / weekNotes.length * 100 : 0}%` }} /></div></div><div className={styles.viewSwitch} role="group" aria-label="Вид планировщика"><button type="button" aria-pressed={view === "board"} onClick={() => changeView("board")}>Неделя</button><button type="button" aria-pressed={view === "list"} onClick={() => changeView("list")}>Список</button></div></div>
+        <div className={styles.toolbarTop}><div className={styles.filters} role="group" aria-label="Фильтр задач">{FILTERS.map(([value, label]) => <button type="button" aria-pressed={filter === value} className={filter === value ? styles.filterActive : ""} onClick={() => setFilter(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilter(note, value)).length}</span></button>)}</div><div className={styles.toolbarActions}><button type="button" className={styles.createButton} aria-label="Создать задачу" onClick={() => createNoteForDay(activeDay)}><PlusIcon size={16} />Создать</button><div className={styles.viewSwitch} role="group" aria-label="Вид планировщика"><button type="button" aria-pressed={view === "board"} onClick={() => changeView("board")}>Неделя</button><button type="button" aria-pressed={view === "list"} onClick={() => changeView("list")}>Список</button></div></div></div>
+        <div className={styles.tools}><div className={styles.search}><SearchField label="Поиск по неделе" value={query} onChange={setQuery} placeholder="Название или описание задачи" /></div><div className={styles.weekSummary}>{weekNotes.length ? <><span>Выполнено <strong>{completedCount} из {weekNotes.length}</strong></span><div className={styles.progress} role="progressbar" aria-label="Задачи за неделю выполнены" aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={weekNotes.length}><span style={{ width: `${completedCount / weekNotes.length * 100}%` }} /></div></> : <span>На этой неделе пока нет задач</span>}</div></div>
         {hasFilters && <div className={styles.filterResult} role="status"><span>{filteredNotes.length ? `Показано ${filteredNotes.length} из ${weekNotes.length} задач` : "По этим условиям задач нет"}</span><button type="button" onClick={resetFilters}>Сбросить фильтры</button></div>}
       </div>
+      {!weekNotes.length && !storageError && <div className={styles.emptyWeek}><div><strong>Спланируйте свою неделю</strong><p>Добавьте учебную задачу или личное дело на подходящий день.</p></div><button type="button" onClick={() => createNoteForDay(activeDay)}><PlusIcon size={16} />Первая задача</button></div>}
       <WeekNavigation days={days} counts={days.map((day) => getPlannerDayNotes(weekNotes, day).length)} selectedKey={focusedDay} boardRef={gridRef} view={view} onSelect={selectDay} />
       <div className={`${styles.weekGrid} ${view === "list" ? styles.listView : ""} ${dragScroll.dragging ? styles.dragging : ""}`} ref={gridRef} onPointerDown={dragScroll.onPointerDown} onClickCapture={dragScroll.onClickCapture} onDragStartCapture={dragScroll.onDragStartCapture} tabIndex={view === "board" ? 0 : undefined} role="region" aria-label={view === "board" ? "Задачи по дням недели. Листайте, зажав левую кнопку мыши, или прокручивайте по горизонтали" : "Задачи списком по дням недели"}>
         {days.map((day) => {
@@ -186,7 +206,7 @@ const Planner = ({ selectedWeekStart, selectedDate, selectedTaskId, onClearTask,
             <article className={`${styles.dayColumn} ${toLocalDateKey(day) === focusedDay ? styles.selectedDay : ""}`} key={day.toISOString()} data-date={toLocalDateKey(day)}>
               <header className={styles.dayHeader}>
                 <div className={styles.dayIdentity}>
-                  <span className={styles.weekday}>{format(day, "EEEE", { locale: ru })}</span>
+                  <span className={styles.weekday}>{format(day, "EEEE", { locale: ru })}<small aria-label={`Задач за день: ${allDayNotes.length}`}>{allDayNotes.length}</small></span>
                   <div className={styles.dayDate}><time dateTime={toLocalDateKey(day)} className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{format(day, "d")}</time><span>{isToday ? "Сегодня" : format(day, "MMM", { locale: ru })}</span></div>
                 </div>
                 <button type="button" className={styles.addButton} onClick={() => createNoteForDay(day)} title="Добавить задачу" aria-label={`Добавить задачу на ${format(day, "d MMMM", { locale: ru })}`}><PlusIcon size={14} /></button>
@@ -195,14 +215,12 @@ const Planner = ({ selectedWeekStart, selectedDate, selectedTaskId, onClearTask,
               <div className={styles.notesList}>
                 {dayNotes.length === 0 && (
                   <button type="button" className={styles.emptyState} onClick={() => hasHiddenNotes ? resetFilters() : createNoteForDay(day)}>
-                    <span className={styles.emptyIcon} aria-hidden="true">{hasHiddenNotes ? "—" : <PlusIcon size={14} />}</span>
-                    <strong>{hasHiddenNotes ? "Нет совпадений" : "Пока без задач"}</strong>
-                    <span>{hasHiddenNotes ? "Сбросить фильтры" : "Запланировать день"}</span>
+                    {hasHiddenNotes ? <>Нет совпадений<span>Сбросить фильтры</span></> : <><PlusIcon size={16} />Добавить задачу</>}
                   </button>
                 )}
 
-                {(filter === "completed" ? doneNotes : activeNotes).map((note) => <PlannerTaskCard key={note.id} note={note} onToggle={toggleCompleted} onEdit={setEditingNote} onDelete={deleteNote} />)}
-                {filter !== "completed" && doneNotes.length > 0 && <details className={styles.completedGroup} open={Boolean(query.trim())}><summary><span>✓ Выполнено</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></summary><div>{doneNotes.map((note) => <PlannerTaskCard key={note.id} note={note} onToggle={toggleCompleted} onEdit={setEditingNote} onDelete={deleteNote} />)}</div></details>}
+                {(filter === "completed" ? doneNotes : activeNotes).map((note) => <PlannerTaskCard key={note.id} note={note} layout={view} onToggle={toggleCompleted} onEdit={setEditingNote} onDelete={deleteNote} />)}
+                {filter !== "completed" && doneNotes.length > 0 && <details className={styles.completedGroup} open={Boolean(query.trim())}><summary><span>Выполнено · {doneNotes.length}</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></summary><div>{doneNotes.map((note) => <PlannerTaskCard key={note.id} note={note} layout={view} onToggle={toggleCompleted} onEdit={setEditingNote} onDelete={deleteNote} />)}</div></details>}
               </div>
               {dayNotes.length > 0 && <button type="button" className={styles.addAnother} onClick={() => createNoteForDay(day)}><PlusIcon size={12} />Добавить ещё</button>}
             </article>

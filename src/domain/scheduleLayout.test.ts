@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { filterSchedule, getScheduleDayRows, getScheduleRange, getScheduleSuggestions, getWeekDays, layoutScheduleDay } from "./scheduleLayout";
-import { getDemoWeekSchedule } from "../data/schedule";
 import { DEMO_SCHEDULE_SLOTS } from "../data/scheduleSlots";
 import type { ScheduleItem } from "../types/sched";
 
-const schedule = getDemoWeekSchedule(new Date(2026, 9, 5));
+const schedule: ScheduleItem[] = Array.from({ length: 5 }, (_, day) => Array.from({ length: 4 }, (_, slot) => ({
+  id: day * 4 + slot, date: `2026-10-0${day + 5}`, dayOfWeek: day + 1,
+  subject: "Теория вероятностей", type: "Лек." as const,
+  startTime: DEMO_SCHEDULE_SLOTS[slot].startTime, endTime: DEMO_SCHEDULE_SLOTS[slot].endTime,
+  group: slot === 3 ? "113-МКо" : "112-МКо",
+  teacher: slot === 3 ? "Петров П.П." : "Волкова Е.В.",
+  location: `Ауд. ${[101, 202, 101, 303][slot]}`,
+}))).flat();
 const item = (id: number, startTime: string, endTime: string): ScheduleItem => ({ ...schedule[0], id, startTime, endTime });
 describe("schedule layout and search", () => {
-  it("creates all seven local dates across a month boundary", () => {
-    expect(getWeekDays(new Date(2026, 10, 1)).map((day) => day.key)).toEqual(["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01"]);
+  it.each([
+    { week: new Date(2026, 10, 1), dates: ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31"] },
+    { week: new Date(2027, 0, 3), dates: ["2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"] },
+  ])("keeps Monday through Saturday when the selected Sunday crosses a month or year ($week)", ({ week, dates }) => {
+    expect(getWeekDays(week).map((day) => day.key)).toEqual(dates);
   });
   it("derives suggestions and counts from actual lessons", () => {
     expect(getScheduleSuggestions(schedule, "group")).toEqual([{ title: "112-МКо", count: 15 }, { title: "113-МКо", count: 5 }]);

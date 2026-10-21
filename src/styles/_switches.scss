@@ -1,0 +1,91 @@
+@use "variables" as *;
+
+@mixin selected($navigation: false) {
+  border-color: $color-border;
+  background: $color-dark-secondary;
+  color: $color-text-light;
+  box-shadow: none;
+
+  @if $navigation {
+    border-color: $color-accent-primary;
+    background: $gradient-color-logo;
+    color: $color-on-accent;
+  }
+}
+
+@mixin button($navigation: false) {
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: $border-radius;
+  background: transparent;
+  color: $color-text-secondary;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: none;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+
+  &:not(:disabled):hover {
+    border-color: $color-border;
+    background: $color-ghost;
+    color: $color-text-light;
+  }
+
+  &[aria-pressed="true"], &[aria-selected="true"] {
+    @include selected($navigation);
+    &:not(:disabled):hover { @include selected($navigation); }
+  }
+
+  &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+  &:disabled { cursor: not-allowed; opacity: .45; }
+  @media(prefers-reduced-motion: reduce) { transition: none; }
+}
+
+@mixin counter {
+  display: inline-grid;
+  box-sizing: border-box;
+  place-items: center;
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: $color-ghost;
+  color: $color-text-secondary;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@mixin active-counter($navigation: false) {
+  background: $color-accent-background-hover;
+  color: $color-accent-hover;
+  @if $navigation {
+    background: theme-alpha($color-on-accent, .18);
+    color: $color-on-accent;
+  }
+}
+
+@mixin group($navigation: false, $counter: null) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  > button { @include button($navigation); }
+
+  @if $counter {
+    > button #{$counter} { @include counter; }
+    > button:is([aria-pressed="true"], [aria-selected="true"]) #{$counter} { @include active-counter($navigation); }
+  }
+}

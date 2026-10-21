@@ -1,5 +1,9 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
+
+.filters { @include switches.group(false, "> span"); }
+.filters .activeFilter { @include switches.selected(false); }
 
 .panel { @include dashboard-card($color-dark-secondary, 22px); min-width: 0; }
 .panel.compact { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
@@ -20,12 +24,6 @@
 .readAll:disabled { color: $color-text-secondary; opacity: .5; cursor: not-allowed; text-decoration: none; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .filters { display: inline-flex; min-width: 0; gap: 3px; padding: 3px; border: 1px solid $color-border; border-radius: 9px; background: $color-ghost; }
-.filters button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: $color-text-secondary; font-size: .68rem; font-weight: 500; line-height: 1.4; white-space: nowrap; }
-.filters button:hover { background: $color-ghost; color: $color-text-light; }
-.filters .activeFilter { background: $color-dark-primary; color: $color-text-light; box-shadow: 0 1px 3px theme-alpha($color-shadow, .25); }
-:root[data-theme="light"] .filters .activeFilter { background: $color-dark-secondary; }
-.filters button span { display: grid; place-items: center; box-sizing: border-box; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; font-size: .55rem; font-variant-numeric: tabular-nums; }
-.filters .activeFilter span { background: $color-accent-background-hover; color: $color-accent-hover; }
 .searchToggle { display: grid; place-items: center; flex: 0 0 32px; box-sizing: border-box; width: 32px; height: 32px; padding: 6px; border: 0; border-radius: 7px; background: transparent; color: $color-text-secondary; }
 .searchToggle svg { width: 19px; height: 19px; }
 .searchToggle:hover, .searchActive { background: $color-accent-background-hover; color: $color-accent-hover; }
@@ -55,5 +53,9 @@
 @media (max-width: 380px) {
   .compact .tools { padding-right: 10px; padding-left: 10px; }
   .compact .list { padding-right: 8px; padding-left: 8px; }
-  .filters button { gap: 4px; padding: 5px 6px; font-size: .64rem; }
 }
+
+
+.filters { padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+.filters > button { padding-inline: 10px; font-size: 13px; }

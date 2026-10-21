@@ -1,5 +1,8 @@
+@use "../../../styles/switches" as switches;
 @use "../../../styles/variables" as *;
 @use "../../../styles/mixins" as *;
+
+.filters { @include switches.group(false); }
 .dialog { display: flex; flex-direction: column; box-sizing: border-box; width: min(500px, 100%); max-height: 85dvh; padding: 22px; gap: 16px; border: 1px solid $color-border; border-radius: 18px; background: $color-dark-primary; box-shadow: 0 24px 70px $color-shadow; }
 .dialog header { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
 .dialog header span { color: $color-text-secondary; font-size: .65rem; }
@@ -12,10 +15,6 @@
 .createGroup strong { font-size: .77rem; font-weight: 600; }
 .createGroup small { color: $color-text-secondary; font-size: .63rem; }
 .filters { display: flex; gap: 7px; }
-.filters button { flex: 1; min-height: 34px; padding: 7px 9px; border: 1px solid $color-border; background: transparent; color: $color-text-secondary; font-size: .7rem; }
-.filters button:hover { background: theme-alpha($color-text-secondary, .1); border-color: theme-alpha($color-text-secondary, .35); color: $color-text-light; }
-.filters button[aria-pressed="true"] { background: $color-accent-background-hover; color: $color-accent-hover; border-color: theme-alpha($color-accent-primary, .3); }
-.filters button[aria-pressed="true"]:hover { background: theme-alpha($color-accent-primary, .16); border-color: theme-alpha($color-accent-primary, .4); color: $color-accent-hover; }
 .hint { margin: 0; color: $color-text-secondary; font-size: .64rem; }
 .list { min-height: 120px; overflow-y: auto; @include scroll-bar(5px); }
 .empty { padding: 20px; color: $color-text-secondary; font-size: .74rem; line-height: 1.6; text-align: center; }

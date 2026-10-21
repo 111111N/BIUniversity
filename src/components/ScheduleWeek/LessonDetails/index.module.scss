@@ -1,44 +1,48 @@
-@use "../../../styles/variables" as *;
-@use "../../../styles/mixins" as *;
-.dialog { @include dashboard-card($color-dark-primary, 22px); display: grid; gap: 16px; width: min(560px, 100%); border-width: 1px; border-radius: 16px; box-sizing: border-box; }
-.header { display: flex; align-items: start; gap: 14px; }
-.header > div { min-width: 0; flex: 1; }
-.type { display: inline-flex; padding: 4px 8px; border-radius: 6px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: .62rem; font-weight: 600; }
-.dialog h2 { margin: 9px 0 0; font-size: 1.16rem; line-height: 1.3; overflow-wrap: anywhere; }
-.close { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; border-width: 1px; border-radius: 50%; background: transparent; color: $color-text-secondary; font-size: 1.2rem; line-height: 1; }
-.date { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; border: 1px solid theme-alpha($color-accent-primary, .18); border-radius: 10px; background: $color-accent-background-hover; }
-.date > span { display: grid; gap: 5px; min-width: 0; }
-.date small { color: $color-text-secondary; font-size: .62rem; }
+﻿@use "../../../styles/variables" as *;
+
+.dialog { display: grid; gap: 24px; box-sizing: border-box; width: min(640px, 100%); padding: 24px; border: 1px solid $color-border; border-radius: 16px; background: $color-dark-primary; color: $color-text-light; }
+.header { display: flex; align-items: start; gap: 16px; }
+.header > div { flex: 1; min-width: 0; }
+.type { display: inline-flex; padding: 4px 8px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; font-size: 13px; font-weight: 500; }
+.dialog h2 { margin: 12px 0 0; font-size: 26px; line-height: 1.35; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.close { display: grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 1px solid $color-border; border-radius: 8px; background: transparent; font-size: 26px; font-weight: 400; }
+.date { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding-bottom: 20px; border-bottom: 1px solid $color-border; }
+.date > span { display: grid; gap: 6px; min-width: 0; }
+.date small { color: $color-text-secondary; font-size: 13px; }
 .date > span:first-child small { text-transform: capitalize; }
-.date strong { color: $color-text-light; font-size: .85rem; }
+.date strong { color: $color-text-light; font-size: 17px; font-weight: 600; }
 .date .time { text-align: right; }
-.time strong { color: $color-accent-hover; white-space: nowrap; }
-.details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
-.details > div { min-width: 0; padding: 10px 12px; border: 1px solid $color-border; border-radius: 9px; background: $color-dark-secondary; }
+.time strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin: 0; }
+.details > div { min-width: 0; }
 .details > div:last-child { grid-column: 1 / -1; }
-.details dt { color: $color-text-secondary; font-size: .62rem; }
-.details dd { margin: 5px 0 0; color: $color-text-light; font-size: .77rem; font-weight: 500; overflow-wrap: anywhere; }
-.links { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 9px; }
-.links a { cursor: pointer; box-shadow: 0 2px 4px theme-alpha($color-shadow, .1); }
-.links a, .assignmentList a { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 11px 12px; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-secondary; color: $color-text-light; text-decoration: none; transition: background .18s ease, border-color .18s ease; }
-.links a:hover, .assignmentList a:hover, .links a:focus-visible, .assignmentList a:focus-visible { border-color: $color-accent-primary; background: $color-accent-background-hover; }
+.details dt { color: $color-text-secondary; font-size: 13px; }
+.details dd { margin: 7px 0 0; color: $color-text-light; font-size: 15px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.links { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.links a, .assignmentList a { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; min-height: 44px; padding: 12px; border: 1px solid $color-border; border-radius: 10px; background: $color-ghost; color: $color-text-light; text-decoration: none; transition: border-color .15s ease, background .15s ease; }
+.links a:hover, .assignmentList a:hover { border-color: theme-alpha($color-text-secondary, .4); background: $color-ghost; }
 .links a > span:first-child, .assignmentList a > span:first-child { display: grid; gap: 5px; min-width: 0; }
-.links strong, .assignmentList strong { font-size: .74rem; line-height: 1.4; overflow-wrap: anywhere; }
-.links small, .assignmentList small { color: $color-text-secondary; font-size: .6rem; line-height: 1.4; }
+.links strong, .assignmentList strong { font-size: 14px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.links small, .assignmentList small { color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
 .links .journalLink { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
 .journalLink strong, .journalLink small { color: $color-on-accent; }
-.journalLink small { opacity: .85; }
-.links .journalLink:hover, .links .journalLink:focus-visible { border-color: $color-accent-hover; background: $color-accent-hover; }
+.links .journalLink:hover { border-color: $color-accent-hover; background: $color-accent-hover; }
 .links .journalLink { --arrow-circle-hover-background: #{theme-alpha($color-on-accent, .18)}; }
-.assignments { display: grid; gap: 12px; padding-top: 15px; border-top: 1px solid $color-border; }
-.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.sectionHeading h3 { margin: 0; font-size: .84rem; }
-.sectionHeading > span { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px; background: $color-dark-tertiary; color: $color-text-secondary; font-size: .66rem; font-weight: 600; }
+.assignments { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid $color-border; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sectionHeading h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.sectionHeading > span { display: grid; place-items: center; min-width: 20px; height: 20px; padding-inline: 4px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; font-size: 12px; }
 .assignmentList { display: grid; gap: 8px; }
-.empty { display: grid; gap: 6px; padding: 13px 14px; border: 1px dashed $color-border; border-radius: 10px; }
-.empty strong { color: $color-text-light; font-size: .73rem; font-weight: 500; }
-.empty p { margin: 0; color: $color-text-secondary; font-size: .65rem; line-height: 1.55; }
-.allAssignments { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 38px; padding: 5px 11px; border: 1px solid theme-alpha($color-accent-primary, .3); border-radius: 8px; background: $color-dark-secondary; color: $color-accent-hover; text-decoration: none; font-size: .7rem; }
-.allAssignments:hover, .allAssignments:focus-visible { border-color: $color-accent-hover; background: $color-accent-background-hover; color: $color-accent-hover; }
-@media (max-width: 480px) { .dialog { padding: 16px; gap: 14px; } .dialog h2 { font-size: 1.03rem; } .links { grid-template-columns: minmax(0, 1fr); } .date { padding: 11px 12px; } .date strong { font-size: .76rem; } }
-@media (prefers-reduced-motion: reduce) { .links a, .assignmentList a { transition: none; } }
+.empty { display: grid; gap: 6px; padding: 16px; border-radius: 10px; background: $color-ghost; }
+.empty strong { color: $color-text-light; font-size: 14px; font-weight: 500; }
+.empty p { margin: 0; color: $color-text-secondary; font-size: 14px; line-height: 1.6; }
+.allAssignments { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 12px; border: 1px solid $color-border; border-radius: 8px; color: $color-text-light; text-decoration: none; font-size: 14px; }
+.allAssignments:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; }
+.dialog :is(button, a):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+@media(max-width: 480px) {
+  .dialog { padding: 20px 16px; gap: 20px; }
+  .dialog h2 { font-size: 23px; }
+  .links { grid-template-columns: minmax(0, 1fr); }
+  .date strong { font-size: 16px; }
+}
+@media(prefers-reduced-motion: reduce) { .links a, .assignmentList a { transition: none; } }

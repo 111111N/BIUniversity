@@ -16,8 +16,7 @@ const PlannerPage = () => {
 
   return (
     <div className={`pageContainer ${styles.page}`}>
-      <WeekPicker value={selectedDate} onWeekChange={(date) => setParams({ date: toLocalDateKey(date) })} />
-      <Planner selectedWeekStart={selectedWeekStart} selectedDate={selectedDate} selectedTaskId={params.get("task")} onClearTask={() => { if (params.has("task")) setParams((current) => { const next = new URLSearchParams(current); next.delete("task"); return next; }, { replace: true }); }} onSaved={(note) => setParams({ date: toLocalDateKey(getPlannerNoteDate(note)) }, { replace: true })} />
+      <Planner weekNavigation={<WeekPicker value={selectedDate} onWeekChange={(date) => setParams({ date: toLocalDateKey(date) })} />} selectedWeekStart={selectedWeekStart} selectedDate={selectedDate} selectedTaskId={params.get("task")} onClearTask={() => { if (params.has("task")) setParams((current) => { const next = new URLSearchParams(current); next.delete("task"); return next; }, { replace: true }); }} onSaved={(note) => setParams({ date: toLocalDateKey(getPlannerNoteDate(note)) }, { replace: true })} />
     </div>
   );
 };

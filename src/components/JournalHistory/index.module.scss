@@ -1,5 +1,9 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
+
+.filters { @include switches.group(false, "> span"); }
+.filters .activeFilter { @include switches.selected(false); }
 
 .history { @include dashboard-card($color-dark-secondary, 22px); }
 .history > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid $color-border; }
@@ -17,9 +21,6 @@
 .history > header > button { display: inline-flex; align-items: center; gap: 12px; min-height: 36px; padding: 8px 12px; border-width: 1px; background: transparent; color: $color-text-secondary; font-size: .7rem; white-space: nowrap; }
 .tools { display: grid; gap: 14px; padding: 18px 0 0; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; }
-.filters button { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 9px; border: 1px solid $color-border; background: transparent; color: $color-text-secondary; font-size: .66rem; }
-.filters button span { padding: 2px 5px; border-radius: 4px; background: $color-ghost; font-size: .56rem; }
-.filters button:hover, .filters .activeFilter { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-hover; }
 .resultLine { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 16px 0; color: $color-text-secondary; font-size: .65rem; }
 .resultLine button { padding: 5px 7px; border: 0; background: transparent; color: $color-accent-hover; font-size: .65rem; }
 .batchList { display: grid; gap: 10px; }

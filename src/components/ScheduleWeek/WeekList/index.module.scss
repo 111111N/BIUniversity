@@ -1,52 +1,57 @@
-@use "../../../styles/variables" as *;
-@use "../../../styles/mixins" as *;
+﻿@use "../../../styles/variables" as *;
+@use "../../../styles/switches" as switches;
 
 .list { min-width: 0; }
-.jumpNav { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 16px; }
-.jumpNav > span { color: $color-text-secondary; font-size: .68rem; }
-.jumpNav > div { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; padding: 3px; @include scroll-bar(4px); }
-.jumpNav button { display: inline-flex; align-items: center; flex-shrink: 0; gap: 7px; padding: 8px 10px; border-width: 1px; background: $color-dark-secondary; font-size: .72rem; text-transform: capitalize; }
-.jumpNav b { color: $color-text-secondary; font-size: .68rem; font-weight: 500; }
-.jumpNav button[aria-current="date"] { border-color: theme-alpha($color-accent-primary, .45); background: $color-accent-background-hover; color: $color-accent-hover; }
-.columns { display: grid; grid-template-columns: 130px 30px 94px minmax(0, 1fr); padding: 0 0 9px; color: $color-text-secondary; font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.columns > span:first-child { padding-left: 16px; }
-.columns > span:nth-child(2) { text-align: center; }
-.columns > span:nth-child(3) { padding-left: 14px; }
-.days { display: grid; gap: 22px; }
-.day { display: grid; grid-template-columns: 130px minmax(0, 1fr); border: 1px solid theme-alpha($color-text-secondary, .32); border-top: 2px solid theme-alpha($color-accent-primary, .4); border-radius: 12px; background: $color-dark-secondary; scroll-margin-top: 20px; box-shadow: 0 3px 10px theme-alpha($color-shadow, .08); }
-.dayHeading { min-width: 0; padding: 16px; border-right: 1px solid theme-alpha($color-text-secondary, .25); border-radius: 11px 0 0 11px; background: $color-ghost; }
-.dayHeadingContent { position: sticky; top: 20px; display: grid; gap: 14px; }
-.dayIdentity { min-width: 0; }
-.dayHeading h3 { margin: 0 0 7px; font-size: .77rem; text-transform: capitalize; overflow-wrap: anywhere; }
-.dayHeading time { color: $color-text-secondary; font-size: .7rem; }
-.daySummary { display: grid; gap: 7px; font-size: .62rem; color: $color-text-secondary; }
-.today { border-color: theme-alpha($color-accent-primary, .4); }
-.today .dayHeading { background: $color-accent-background-hover; border-radius: 11px 0 0 11px; }
-.todayBadge { justify-self: start; padding: 4px 6px; border-radius: 5px; background: $color-accent-background-hover; color: $color-accent-hover; font-weight: 600; }
-.rows { min-width: 0; overflow: hidden; border-radius: 0 10px 10px 0; }
-.slotRow { display: grid; grid-template-columns: 30px minmax(0, 1fr); min-width: 0; border-bottom: 1px solid theme-alpha($color-text-secondary, .18); }
+.jumpNav { margin-bottom: 16px; }
+.jumpNav > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.jumpNav button { @include switches.button; position: relative; text-transform: capitalize; padding-inline: 12px; gap: 6px; }
+.jumpNav button[aria-pressed="true"] { border-color: theme-alpha($color-text-secondary, .5); background: $color-ghost; color: $color-text-light; }
+.jumpNav button[aria-current="date"]::after { content: ""; position: absolute; bottom: 3px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: $color-accent-primary; }
+.jumpNav b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.columns { display: grid; grid-template-columns: 44px 112px minmax(0, 1fr); padding: 0 16px 10px; color: $color-text-secondary; font-size: 12px; font-weight: 500; }
+.columns > span:first-child { text-align: center; }
+.columns > span:nth-child(2) { padding-left: 16px; }
+.days { display: grid; gap: 24px; }
+.day { min-width: 0; border: 1px solid $color-border; border-radius: 14px; background: $color-dark-primary; scroll-margin-top: 16px; }
+.today { border-color: theme-alpha($color-text-secondary, .4); }
+.free .dayHeading { padding-block: 12px; }
+.dayHeading { position: sticky; top: 0; z-index: 2; padding: 16px; border-bottom: 1px solid $color-border; border-radius: 13px 13px 0 0; background: $color-dark-primary; }
+:root[data-theme="light"] .dayHeading { background: $color-dark-secondary; }
+.dayHeadingContent { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.dayIdentity { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+.dayHeading h3 { margin: 0; color: $color-text-light; font-size: 16px; font-weight: 600; text-transform: capitalize; }
+.dayHeading time { color: $color-text-secondary; font-size: 14px; }
+.daySummary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: 13px; }
+.todayBadge { padding: 4px 7px; border-radius: 5px; background: $color-accent-primary; color: $color-on-accent; font-size: 12px; font-weight: 500; }
+:root[data-theme="dark"] .todayBadge { background: color-mix(in srgb, #{$color-accent-primary} 80%, #000); }
+.rows { min-width: 0; overflow: hidden; border-radius: 0 0 13px 13px; }
+.slotRow { display: grid; grid-template-columns: 44px minmax(0, 1fr); min-width: 0; border-bottom: 1px solid $color-border; }
 .slotRow:last-child { border-bottom: 0; }
-.slotNumber { display: grid; place-items: center; border-right: 1px solid $color-border; color: $color-text-secondary; font-size: .63rem; font-weight: 600; }
+.slotNumber { display: grid; place-items: center; color: $color-text-secondary; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .slotContent { min-width: 0; }
-.specialTime { margin: 0; padding: 6px 14px 0; color: $color-warning; font-size: .6rem; }
-.emptySlot .slotNumber { background: theme-alpha($color-text-secondary, .025); font-weight: 400; }
-.free .dayHeadingContent { gap: 8px; }
-.free .dayHeading h3 { margin-bottom: 4px; }
-@media (max-width: 800px) { .columns { grid-template-columns: 110px 30px 94px minmax(0, 1fr); } .day { grid-template-columns: 110px minmax(0, 1fr); } .dayHeading { padding: 14px 12px; } .dayHeading h3 { font-size: .72rem; } }
-@media (max-width: 650px) {
+.specialTime { margin: 0; padding: 10px 16px 0; color: $color-text-secondary; font-size: 12px; line-height: 1.5; }
+.emptySlot .slotNumber { color: $color-text-secondary; font-weight: 400; }
+@media(max-width: 650px) {
+  .jumpNav > div { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+  .jumpNav button { flex-direction: column; padding: 8px 2px; gap: 3px; font-size: 12px; }
+  .jumpNav b { font-size: 14px; }
   .columns { display: none; }
-  .day { grid-template-columns: minmax(0, 1fr); scroll-margin-top: 55px; }
-  .dayHeading { padding: 12px; border-right: 0; border-bottom: 1px solid $color-border; background: $color-dark-tertiary; border-radius: 11px 11px 0 0; }
-  .dayHeadingContent { position: static; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .dayIdentity { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 9px; }
-  .dayHeading h3 { margin: 0; font-size: .75rem; }
-  .dayHeading time { font-size: .66rem; }
-  .daySummary { justify-items: end; flex-shrink: 0; }
-  .today .dayHeading { border-radius: 11px 11px 0 0; }
-  .jumpNav > div { width: 100%; }
-  .days { gap: 20px; }
-  .slotRow { grid-template-columns: 24px minmax(0, 1fr); }
-  .slotNumber { font-size: .58rem; }
-  .rows { border-radius: 0 0 10px 10px; }
+  .day { scroll-margin-top: 68px; }
+  .dayHeading { position: static; padding: 12px; }
+  .dayHeading h3 { font-size: 15px; }
+  .dayHeading time { font-size: 13px; }
+  .daySummary { gap: 6px; font-size: 12px; }
+  .slotRow { grid-template-columns: 28px minmax(0, 1fr); }
+  .slotNumber { font-size: 12px; }
+  .specialTime { padding-inline: 10px; }
 }
-@media print { .jumpNav { display: none; } .dayHeadingContent { position: static; } .day { break-inside: auto; } .dayHeading { break-after: avoid; } .days { gap: 10px; } .columns { display: none; } .rows { overflow: visible; } .slotRow { break-inside: avoid; } }
+@media print {
+  .jumpNav, .columns { display: none; }
+  .days { gap: 16px; }
+  .day { background: transparent; break-inside: auto; }
+  .dayHeading { position: static; padding: 10px; break-after: avoid; }
+  .rows { overflow: visible; }
+  .slotRow { break-inside: avoid; }
+  .dayHeading h3 { font-size: 14px; }
+  .dayHeading time, .daySummary { font-size: 12px; }
+}

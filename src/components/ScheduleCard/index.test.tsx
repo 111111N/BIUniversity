@@ -13,6 +13,7 @@ describe("schedule card", () => {
     expect(html).toContain("08:30–10:00");
     expect(html).not.toContain("Задания");
     expect(html.match(/<button/g)).toHaveLength(1);
+    expect(html).toMatch(/aria-label="[^"]*преподаватель Волкова Е\.В\./);
   });
   it.each([false, true])("renders foreign lessons as non-interactive public information (list: %s)", (list) => {
     const item = getDemoWeekSchedule(new Date(2026, 9, 5))[0];
@@ -20,6 +21,7 @@ describe("schedule card", () => {
     expect(html).toContain("<article");
     expect(html).toContain(item.subject);
     expect(html).toContain(item.teacher);
+    expect(html).toMatch(/aria-label="[^"]*преподаватель Волкова Е\.В\./);
     expect(html).toContain("Только просмотр расписания");
     expect(html).not.toContain("<button");
     expect(html).not.toContain("Задания");

@@ -1,7 +1,10 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "ui";
 
-.layout { --assignment-info: #91baff; display: grid; gap: ui.$gap; min-width: 0; max-width: 1440px; margin-inline: auto; font-size: 16px; }
+.segments { @include switches.group(true, "> span"); }
+
+.layout { --assignment-info: #91baff; display: grid; gap: ui.$gap; min-width: 0; width: 100%; box-sizing: border-box; font-size: 16px; }
 :root[data-theme="light"] .layout { --assignment-info: #28659b; }
 :where(.layout) button { min-height: 44px; border-width: 1px; border-radius: ui.$control-radius; font-family: inherit; font-size: 14px; font-weight: 500; letter-spacing: 0; }
 :where(.layout) button:where(:not(:disabled):hover) { background: $color-ghost; border-color: ui.$line; color: $color-text-light; }
@@ -17,23 +20,25 @@
 .primary { @include ui.primary; display: inline-flex; gap: 10px; min-height: 44px; padding: 12px 16px; }
 .detailNavigation { display: flex; align-items: start; gap: 16px; min-width: 0; }
 .segments { display: flex; flex-shrink: 0; gap: 4px; padding: 3px; border: 1px solid ui.$line; border-radius: 10px; background: ui.$quiet; }
-.segments button { display: inline-flex; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; background: transparent; }
-.segments button[aria-pressed=true] { border-color: ui.$line; background: ui.$surface; color: $color-text-light; }
 .segments span { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 3px; border-radius: 5px; background: $color-ghost; font-size: 12px; }
-.condition { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, .8fr); align-items: start; gap: 20px; }
+.condition { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, .8fr); align-items: stretch; gap: 20px; }
 .condition h3, .parameters h3 { margin: 0 0 18px; font-size: 17px; }
 .conditionBody, .parameters { @include ui.panel; padding: 24px; min-width: 0; }
+.parameters { display: flex; flex-direction: column; }
 .conditionBody > p, .conditionPeek > p { max-width: 78ch; margin: 0; font-size: 16px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
 .parameters p { margin: 0; font-size: 14px; line-height: 1.7; color: $color-text-secondary; }
 .parameters dl { display: grid; gap: 18px; margin: 24px 0; }
 .parameters dl > div { padding-bottom: 16px; border-bottom: 1px solid $color-border; }
 .parameters dt { margin-bottom: 5px; color: $color-text-secondary; font-size: 13px; }
 .parameters dd { margin: 0; font-size: 14px; line-height: 1.5; }
-.parameters button { width: 100%; }
+.parameters button { width: 100%; margin-top: auto; }
 .attachment { display: grid; gap: 12px; justify-items: start; margin-top: 28px; padding-top: 22px; border-top: 1px solid $color-border; }
 .attachment > span { font-size: 13px; color: $color-text-secondary; }
 .conditionPeek { flex: 1; min-width: 0; padding: 0 16px; border: 1px solid transparent; border-radius: 10px; }
-.conditionPeek summary { min-height: 50px; align-content: center; color: $color-text-secondary; font-size: 14px; cursor: pointer; }
+.conditionPeek summary { display: flex; align-items: center; gap: 10px; box-sizing: border-box; min-height: 42px; list-style: none; color: $color-text-secondary; font-size: 14px; line-height: 1.4; cursor: pointer; }
+.conditionPeek summary::-webkit-details-marker { display: none; }
+.conditionPeek summary::before { content: ""; flex: 0 0 6px; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.conditionPeek[open] summary::before { transform: rotate(45deg); }
 .conditionPeek[open] { border-color: ui.$line; background: ui.$quiet; }
 .conditionPeek[open] summary { color: $color-text-light; border-bottom: 1px solid ui.$line; }
 .conditionPeek > p { margin: 16px 0; }
@@ -43,9 +48,10 @@
   .layout { gap: 16px; }
   .detailNavigation { flex-direction: column; gap: 6px; }
   .conditionPeek { box-sizing: border-box; width: 100%; padding-inline: 12px; }
-  .conditionPeek summary { min-height: 44px; }
   .segments { box-sizing: border-box; width: 100%; }
-  .segments button { flex: 1; }
   .conditionBody, .parameters { padding: 20px; }
 }
 @media(prefers-reduced-motion: reduce) { .layout :is(button, input, textarea) { transition: none; } }
+
+
+.segments { padding: 0; border: 0; border-radius: 0; background: transparent; }

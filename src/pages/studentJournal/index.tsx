@@ -75,14 +75,14 @@ const StudentJournal = () => {
 
   return (
     <div className={`pageContainer ${styles.page}`}>
-      <header className={`${styles.header} ${activeSection === "assignments" ? styles.assignmentsHeader : ""}`}>
+      <header className={styles.header}>
         <div>
           <nav className={styles.breadcrumbs} aria-label="Навигационная цепочка"><Link to="/journal">Журнал</Link><span>/</span><span>{subject.name}</span><span>/</span><span aria-current="page">{group.name}</span></nav>
           <h1>{subject.name}</h1>
           <p>Группа {group.name}</p>
         </div>
       </header>
-      <Tabs className={activeSection === "assignments" ? styles.assignmentsTabs : undefined} ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Журнал и прогресс" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }]} />
+      <Tabs ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Журнал и прогресс" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }]} />
       {activeSection === "journal" && <section className={styles.tableSection}>
         <div className={styles.sectionHeading}><div><span>Электронный журнал</span><h2>Мои результаты</h2></div><strong>{JOURNAL_PERIOD}</strong></div>
         {journal.error && <p className={styles.pageError} role="alert">{journal.error}</p>}
@@ -93,7 +93,7 @@ const StudentJournal = () => {
           <JournalSummary students={[student]} lessons={visibleLessons} period={JOURNAL_PERIOD} />
         </div>}
       </section>}
-      {activeSection === "assignments" && <section className={styles.assignmentsSection}>
+      {activeSection === "assignments" && <section className={styles.tableSection}>
         <AssignmentCenter key={`${subject.id}:${group.id}`} subject={subject.name} group={group.name} />
       </section>}
       {activeSection === "materials" && <div className={styles.groupMaterials}>

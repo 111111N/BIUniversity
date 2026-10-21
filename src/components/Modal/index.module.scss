@@ -23,6 +23,10 @@
   @include scroll-bar(6px);
 }
 
+.overlay > .dialog {
+  background-color: $color-dark-primary;
+}
+
 @media (max-width: 620px) {
   .overlay { padding: 12px; }
   .dialog { max-height: calc(100dvh - 24px); }

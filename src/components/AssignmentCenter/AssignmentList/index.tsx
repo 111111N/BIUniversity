@@ -30,18 +30,16 @@ const studentAction = (answer?: Submission) => getSubmissionStatus(answer) === "
 export default function AssignmentList({ assignments, indexes, role, view, query, sort, now, showContext, onView, onQuery, onSort, onOpen, onCreate }: Props) {
   const views = role === "teacher" ? teacherAssignmentViews : studentAssignmentViews;
   const items = selectAssignmentList(assignments, indexes, view, query, sort, now);
-  const pending = assignments.reduce((total, item) => total + (indexes.pending.get(item.id) ?? 0), 0);
   return <section className={styles.list} aria-label={role === "teacher" ? "Задания группы" : "Мои задания"}>
-    <header className={styles.heading}>
-      <div><h2>{role === "teacher" ? "Задания" : "Мои задания"}</h2><p>{role === "teacher" ? `${formatCount(assignments.length, ["задание", "задания", "заданий"])}${pending ? ` · ${formatCount(pending, ["работа", "работы", "работ"])} на проверке` : " · очередь проверки пуста"}` : "Условия, ваши ответы и результаты проверки"}</p></div>
-      {role === "teacher" && <button type="button" className={styles.primary} onClick={onCreate}><AssignmentIcon name="plus" />Создать задание</button>}
-    </header>
     <div className={styles.controlPanel}>
+    <div className={styles.toolbar}>
     <div className={styles.views} role="group" aria-label="Представления заданий">{views.map((option) => {
       const count = assignments.filter((item) => matchesAssignmentView(item, option.value, indexes.pending.get(item.id) ?? 0, indexes.mine.get(item.id), now)).length;
       return <button type="button" aria-pressed={view === option.value} className={view === option.value ? styles.active : ""} key={option.value} onClick={() => onView(option.value)}>{option.label}<span>{count}</span></button>;
     })}</div>
-    {assignments.length > 0 && <div className={styles.tools}><div className={styles.searchField}><AssignmentIcon name="search" className={styles.searchIcon} /><SearchField label="Поиск заданий" value={query} onChange={onQuery} placeholder="Название или текст задания" /></div><Dropdown label="Порядок заданий" value={sort} onChange={(value) => onSort(value as AssignmentSort)} options={[{ value: "deadline", label: "По сроку сдачи" }, { value: "newest", label: "Сначала новые" }, { value: "title", label: "По названию" }]} /></div>}
+      {role === "teacher" && <button type="button" className={styles.primary} onClick={onCreate}><AssignmentIcon name="plus" />Создать задание</button>}
+    </div>
+    {assignments.length > 0 && <div className={styles.tools}><div className={styles.searchField}><AssignmentIcon name="search" className={styles.searchIcon} /><SearchField label="Поиск заданий" value={query} onChange={onQuery} placeholder="Название или текст задания" /></div><Dropdown className={styles.sortField} label="Порядок заданий" value={sort} onChange={(value) => onSort(value as AssignmentSort)} options={[{ value: "deadline", label: "По сроку сдачи" }, { value: "newest", label: "Сначала новые" }, { value: "title", label: "По названию" }]} /></div>}
     </div>
     {query.trim() && <p className={styles.searchResult} role="status">Найдено: {formatCount(items.length, ["задание", "задания", "заданий"])}</p>}
     {items.length > 0 ? <>

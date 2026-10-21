@@ -1,3 +1,4 @@
+@use "../../../styles/switches";
 @use "../../../styles/variables" as *;
 .search { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 18px; border-bottom: 1px solid $color-border; background: var(--messenger-surface); }
 .search label { display: flex; align-items: center; flex: 1 1 170px; gap: 8px; min-width: 0; color: $color-text-secondary; }
@@ -8,7 +9,7 @@
 .controls button { display: grid; place-items: center; min-width: 28px; min-height: 30px; padding: 5px; border: 0; border-radius: 7px; color: $color-text-secondary; background: transparent; }
 .controls button:hover:not(:disabled) { background: theme-alpha($color-text-secondary, .1); border-color: transparent; color: $color-text-light; }
 .controls button:disabled { opacity: .35; cursor: default; }
-.controls .filesFilter { display: flex; gap: 5px; padding: 5px 8px; font-size: .62rem; }
-.controls .filesFilter[aria-pressed="true"] { color: $color-accent-hover; background: $color-accent-background-hover; }
-.controls .filesFilter[aria-pressed="true"]:hover:not(:disabled) { background: theme-alpha($color-accent-primary, .16); color: $color-accent-hover; }
 @media (max-width: 700px) { .search { padding: 8px 12px; gap: 3px; } .controls { flex: 1; justify-content: flex-end; } .controls .filesFilter { margin-right: auto; } }
+
+.controls .filesFilter { @include switches.button; }
+@media(max-width:700px) { .controls .filesFilter { margin-right: auto; } }

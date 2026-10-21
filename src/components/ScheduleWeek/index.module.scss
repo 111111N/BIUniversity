@@ -1,44 +1,56 @@
+﻿@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
-@use "../../styles/mixins" as *;
 
-.container { min-width: 0; margin-top: 18px; }
-.toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-.summary { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.summary strong { font-size: .84rem; }
-.summary span { color: $color-text-secondary; font-size: .73rem; }
-.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.views { display: inline-flex; padding: 3px; border: 1px solid $color-border; border-radius: 9px; background: $color-dark-tertiary; }
-.views button { padding: 7px 12px; border: 1px solid transparent; background: transparent; font-size: .72rem; color: $color-text-secondary; }
-.views button:hover, .views button:focus-visible { border-color: theme-alpha($color-text-secondary, .35); background: $color-ghost; color: $color-text-light; }
-.views button[aria-pressed="true"] { border-color: $color-border; background: color-mix(in srgb, #{$color-dark-primary} 88%, #{$color-text-light}); color: $color-text-light; }
-.views button[aria-pressed="true"]:hover { background: color-mix(in srgb, #{$color-dark-primary} 88%, #{$color-text-light}); }
-:root[data-theme="light"] .views button[aria-pressed="true"] { background: $color-dark-secondary; }
-.print { padding: 9px 12px; border-width: 1px; background: $color-dark-secondary; font-size: .72rem; }
-.gridView { border: 1px solid $color-border; border-radius: 13px; overflow: hidden; background: $color-dark-primary; }
-.gridTools { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border-bottom: 1px solid $color-border; background: color-mix(in srgb, #{$color-dark-primary} 96%, #{$color-text-light}); }
-.gridTools > span { color: $color-text-secondary; font-size: .64rem; line-height: 1.4; }
-.gridTools > div { display: flex; gap: 5px; }
-.gridTools button { width: 28px; height: 28px; padding: 0; border: 0; background: transparent; }
-.scroller { max-height: min(680px, 72vh); min-height: 320px; overflow: auto; overscroll-behavior: contain; cursor: grab; user-select: none; @include scroll-bar(7px); }
+.container { min-width: 0; margin-top: 24px; color: $color-text-light; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid $color-border; }
+.context { display: grid; gap: 4px; min-width: 0; }
+.summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
+.summary > span + span::before { content: "·"; margin-right: 12px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.views { @include switches.group(true); }
+.print { min-height: 44px; padding: 8px 12px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: 13px; font-weight: 500; }
+.print:hover { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
+.gridView { border: 1px solid $color-border; border-radius: 12px; overflow: hidden; background: $color-dark-primary; }
+.gridTools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid $color-border; }
+.gridTools > span { color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
+.gridTools > div { display: flex; gap: 6px; flex-shrink: 0; }
+.gridTools button { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 1px solid transparent; background: transparent; }
+.gridTools button:hover:not(:disabled) { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
+.scroller { max-height: min(720px, 72dvh); min-height: 320px; overflow: auto; overscroll-behavior: contain; cursor: grab; user-select: none; scrollbar-width: none; }
+.scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .scroller.dragging, .scroller.dragging * { cursor: grabbing !important; user-select: none; }
-.scroller:focus-visible { outline-offset: -3px; }
-.calendar { display: grid; grid-template-columns: var(--time-width) repeat(7, var(--day-width)); width: max-content; }
-.corner, .dayHeader { position: sticky; top: 0; z-index: 4; background: $color-dark-primary; border-bottom: 1px solid $color-border; height: 40px; }
+.scroller:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: -3px; }
+.calendar { display: grid; grid-template-columns: var(--time-width) repeat(var(--day-count), var(--day-width)); width: max-content; }
+.corner, .dayHeader { position: sticky; top: 0; z-index: 4; height: 48px; border-bottom: 1px solid $color-border; background: $color-dark-primary; }
 :root[data-theme="light"] .corner, :root[data-theme="light"] .dayHeader { background: $color-dark-secondary; }
-.corner { left: 0; z-index: 5; display: grid; place-items: center; color: $color-text-secondary; font-size: .58rem; }
-.dayHeader { display: flex; align-items: center; justify-content: center; gap: 6px; border-right: 1px solid $color-border; }
-.dayHeader span { font-weight: 700; font-size: .76rem; text-transform: capitalize; }
-.dayHeader time { font-size: .65rem; color: $color-text-secondary; }
-.today span { color: $color-accent-hover; }
-.today time { padding: 4px 6px; border-radius: 6px; background: $color-accent-background-hover; color: $color-accent-hover; }
-.timeColumn { position: sticky; left: 0; z-index: 3; background: $color-dark-primary; border-right: 1px solid $color-border; }
+.corner { left: 0; z-index: 5; display: grid; place-items: center; color: $color-text-secondary; font-size: 12px; }
+.dayHeader { display: flex; align-items: center; justify-content: center; gap: 8px; border-right: 1px solid $color-border; }
+.dayHeader span { font-size: 14px; font-weight: 600; text-transform: capitalize; }
+.dayHeader time { color: $color-text-secondary; font-size: 13px; }
+.today time { padding: 4px 6px; border-radius: 6px; background: $color-accent-primary; color: $color-on-accent; }
+:root[data-theme="dark"] .today time { background: color-mix(in srgb, #{$color-accent-primary} 80%, #000); }
+.timeColumn { position: sticky; left: 0; z-index: 3; border-right: 1px solid $color-border; background: $color-dark-primary; }
 :root[data-theme="light"] .timeColumn { background: $color-dark-secondary; }
-.timeColumn time { position: absolute; right: 7px; color: $color-text-secondary; font-size: .6rem; transform: translateY(5px); }
+.timeColumn time { position: absolute; right: 8px; color: $color-text-secondary; font-size: 12px; font-variant-numeric: tabular-nums; transform: translateY(5px); }
 .dayColumn { position: relative; border-right: 1px solid $color-border; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hour-height) - 1px), #{$color-border} calc(var(--hour-height) - 1px), #{$color-border} var(--hour-height)); }
 .todayColumn { background-color: theme-alpha($color-accent-primary, .025); }
 .inactive { display: none; }
-.empty { display: grid; justify-items: center; gap: 8px; padding: 50px 20px; border: 1px dashed $color-border; border-radius: 12px; text-align: center; }
-.empty strong { font-size: .96rem; }
-.empty span { color: $color-text-secondary; font-size: .78rem; line-height: 1.5; }
-@media (max-width: 650px) { .toolbar { align-items: start; gap: 14px; } .actions { width: 100%; justify-content: space-between; } .scroller { min-height: 300px; } }
-@media print { .toolbar, .gridView { display: none; } .listView.inactive { display: block; } }
+.empty { display: grid; justify-items: center; gap: 8px; padding: 40px 20px; border: 1px solid $color-border; border-radius: 12px; background: $color-ghost; text-align: center; }
+.empty strong { font-size: 18px; font-weight: 600; }
+.empty span { color: $color-text-secondary; font-size: 14px; line-height: 1.6; }
+@media(max-width: 720px) {
+  .actions { gap: 8px; width: 100%; }
+  .views { margin-left: auto; }
+  .views > button { padding-inline: 10px; font-size: 13px; }
+  .print { width: 100%; text-align: right; justify-content: end; min-height: 36px; padding-block: 4px; }
+  .scroller { min-height: 300px; }
+  .gridTools { padding: 6px 10px; }
+  .gridTools > span { font-size: 12px; }
+}
+@media print {
+  .container { margin-top: 12px; }
+  .toolbar { display: block; margin-bottom: 16px; padding-bottom: 10px; }
+  .actions, .gridView { display: none; }
+  .context { gap: 4px; }
+  .listView.inactive { display: block; }
+}

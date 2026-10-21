@@ -1,34 +1,45 @@
-@use "../../styles/variables" as *;
+﻿@use "../../styles/variables" as *;
 
-.card { min-width: 0; padding: 12px; border: 1px solid theme-alpha($color-text-secondary, .25); border-radius: 10px; background: color-mix(in srgb, #{$color-dark-primary} 94%, #{$color-text-light}); box-shadow: 0 2px 6px theme-alpha($color-shadow, .16); transition: border-color $transition-speed; }
-.card:hover, .card:focus-within { border-color: theme-alpha($color-text-secondary, .4); }
-.header { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 8px; }
-.header h3 { min-width: 0; margin: 0; }
-.title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; max-width: 100%; padding: 0; border: 0; border-radius: 3px; background: transparent; color: $color-text-light; text-align: left; font-family: inherit; font-size: .82rem; font-weight: 500; line-height: 1.5; word-break: normal; overflow-wrap: break-word; }
-.title:hover, .title:focus-visible { background: transparent; color: $color-accent-hover; }
-.check { display: grid; place-items: center; box-sizing: border-box; width: 22px; height: 22px; margin-top: 1px; padding: 3px; border: 1px solid theme-alpha($color-text-secondary, .45); border-radius: 6px; background: transparent; color: $color-on-accent; }
-.check svg { width: 15px; height: 15px; }
-.check:hover, .check:focus-visible { border-color: $color-accent-primary; background: $color-accent-background-hover; }
-.check[aria-pressed="true"], .check[aria-pressed="true"]:hover { border-color: $color-success; background: $color-success; color: $color-on-accent; }
-.description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 10px 0 0; color: $color-text-secondary; font-size: .69rem; line-height: 1.55; white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; }
-.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
-.category { padding: 3px 6px; border-radius: 5px; font-size: .57rem; font-weight: 500; }
-.study { color: var(--ui-chart-blue); background: theme-alpha(var(--ui-chart-blue), .1); }
-:root[data-theme="light"] .study { color: color-mix(in srgb, var(--ui-chart-blue) 60%, #{$color-text-light}); }
-.personal { color: $color-accent-added; background: theme-alpha($color-accent-added, .1); }
-.priority { display: inline-flex; align-items: center; gap: 5px; color: $color-text-secondary; font-size: .57rem; }
-.priority i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
-.high { color: $color-error; }
-.medium, .low { color: $color-text-secondary; }
-.done { color: $color-success; font-size: .57rem; }
-.time { display: flex; align-items: flex-start; gap: 6px; margin-top: 11px; color: $color-text-secondary; font-size: .62rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.time svg { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 1px; }
-.footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 7px; border-top: 1px solid $color-border; }
-.open { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 0; border: 0; background: transparent; color: $color-text-secondary; font-size: .64rem; font-weight: 500; }
-.open:hover { background: transparent; color: $color-accent-hover; }
-.delete { display: grid; place-items: center; flex: 0 0 auto; box-sizing: border-box; width: 28px; height: 28px; padding: 5px; border: 0; border-radius: 6px; background: transparent; color: $color-text-secondary; }
-.delete svg { width: 17px; height: 17px; }
-.delete:hover, .delete:focus-visible { background: theme-alpha($color-error, .08); color: $color-error; }
-.completed .title { color: $color-text-secondary; text-decoration: line-through; }
+.card { --task-surface: color-mix(in srgb, #{$color-dark-primary} 96%, #{$color-text-light}); --task-muted: color-mix(in srgb, #{$color-text-secondary} 80%, #{$color-text-light}); position: relative; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 8px; min-width: 0; padding: 12px; border: 1px solid theme-alpha($color-text-secondary, .12); border-radius: 16px 16px 16px 5px; background: color-mix(in srgb, var(--task-surface) 96%, #{$color-text-light}); box-shadow: 0 1px 3px theme-alpha($color-shadow, .07); transition: border-color $transition-speed; }
 :root[data-theme="light"] .card { background: $color-dark-secondary; }
-@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+.card:hover, .card:focus-within { border-color: theme-alpha($color-text-secondary, .3); }
+.header { grid-column: 1 / -1; display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; gap: 2px; min-width: 0; }
+.header h3 { margin: 0; min-width: 0; }
+.title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; min-height: 44px; max-width: 100%; padding: 0; border: 0; border-radius: 3px; background: transparent; color: $color-text-light; text-align: left; font: inherit; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.title:hover { background: transparent; color: $color-accent-hover; }
+.check { position: relative; display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: $color-on-accent; }
+.check::before { content: ""; position: absolute; width: 20px; height: 20px; border: 1px solid theme-alpha($color-text-secondary, .6); border-radius: 6px; }
+.check svg { position: relative; width: 16px; height: 16px; }
+.check:hover { background: transparent; }
+.check:hover::before { border-color: $color-accent-primary; }
+.check[aria-pressed="true"]::before { border-color: $color-success; background: $color-success; }
+.time { grid-column: 1 / -1; display: flex; align-items: start; gap: 6px; min-width: 0; color: var(--task-muted); font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.time svg { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 2px; }
+.description { grid-column: 1 / -1; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-width: 0; margin: 0; color: var(--task-muted); font-size: 14px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.footer { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; min-width: 0; }
+.tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; font-size: 12px; line-height: 1.5; }
+.category { padding: 3px 7px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; }
+.study { color: color-mix(in srgb, var(--ui-chart-blue) 80%, #{$color-text-light}); background: theme-alpha(var(--ui-chart-blue), .08); }
+:root[data-theme="light"] .study { color: color-mix(in srgb, var(--ui-chart-blue) 60%, #{$color-text-light}); }
+.personal { color: color-mix(in srgb, #{$color-accent-added} 60%, #{$color-text-light}); background: theme-alpha($color-accent-added, .08); }
+.priority { display: inline-flex; align-items: center; gap: 5px; color: $color-text-secondary; }
+.priority i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.high { color: color-mix(in srgb, #{$color-error} 65%, #{$color-text-light}); }
+.medium, .low { color: $color-text-secondary; }
+.done { color: $color-success; }
+.more { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 11px; background: transparent; color: var(--task-muted); }
+.more:hover { background: $color-ghost; color: $color-text-light; }
+.completed .title { color: $color-text-secondary; font-weight: 500; text-decoration: line-through; }
+.card button:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; }
+:root[data-theme="light"] .high { color: color-mix(in srgb, #{$color-error} 80%, #{$color-text-light}); }
+:root[data-theme="light"] .done { color: color-mix(in srgb, #{$color-success} 65%, #{$color-text-light}); }
+:root[data-theme="light"] .check[aria-pressed="true"]::before { background: color-mix(in srgb, #{$color-success} 70%, #{$color-text-light}); border-color: transparent; }
+@media(min-width: 1000px) {
+  .row { grid-template-columns: minmax(180px, 1fr) minmax(120px, 180px) minmax(210px, 280px); align-items: center; gap: 0 20px; padding: 12px 16px; }
+  .row .header { grid-column: 1; grid-row: 1; }
+  .row .title { -webkit-line-clamp: 2; }
+  .row .time { grid-column: 2; grid-row: 1; }
+  .row .footer { grid-column: 3; grid-row: 1; }
+  .row .description { grid-column: 1 / -1; padding-left: 46px; margin-top: 4px; -webkit-line-clamp: 1; }
+}
+@media(prefers-reduced-motion: reduce) { .card { transition: none; } }

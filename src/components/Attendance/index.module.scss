@@ -1,5 +1,8 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
+
+.modeSwitch { @include switches.group(true); }
 
 // Grade tokens are also consumed by the journal summary beside the table.
 :root {
@@ -35,9 +38,6 @@
 .tableHeading p { margin: 5px 0 0; color: $color-text-secondary; font-size: .65rem; line-height: 1.5; text-transform: capitalize; }
 .tableActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .modeSwitch { display: flex; gap: 3px; padding: 3px; border: 1px solid $color-border; border-radius: 9px; }
-.modeSwitch button { padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; color: $color-text-secondary; background: transparent; font-size: .65rem; line-height: 1.4; }
-.modeSwitch button:hover { color: $color-text-light; background: $color-ghost; }
-.modeSwitch button[aria-pressed="true"] { border-color: theme-alpha($color-accent-primary, .32); color: $color-accent-hover; background: $color-accent-background-hover; }
 .editButton { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 8px 12px; border: 1px solid theme-alpha($color-accent-primary, .35); border-radius: 8px; color: $color-on-accent; background: $color-accent-primary; font-size: .66rem; }
 .editButton:hover { background: $color-accent-hover; color: $color-on-accent; }
 .editButton svg, .controlButton svg { flex: 0 0 auto; }
@@ -154,3 +154,6 @@
 }
 @media (prefers-reduced-motion: reduce) { .studentLink { transition: none; } }
 
+
+
+.modeSwitch { padding: 0; border: 0; background: transparent; }

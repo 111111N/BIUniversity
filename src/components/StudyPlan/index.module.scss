@@ -1,5 +1,9 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
+
+.semesters { @include switches.group(false); }
+.semesters .activeSemester { @include switches.selected(false); }
 
 .plan { @include dashboard-card($color-dark-secondary, 22px); overflow: hidden; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
@@ -7,10 +11,6 @@
 .header h2 { margin: 5px 0 7px; font-size: 1.5rem; }
 .header p { margin: 0; color: $color-text-secondary; }
 .semesters { display: flex; gap: 4px; padding: 4px; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-tertiary; }
-.semesters button { padding: 9px 14px; border: 0; border-radius: 7px; background: transparent; color: $color-text-secondary; white-space: nowrap; }
-.semesters button:hover { background: $color-ghost; color: $color-text-light; }
-.semesters .activeSemester { background: $color-accent-primary; color: $color-on-accent; }
-.semesters .activeSemester:hover { background: $color-accent-hover; color: $color-on-accent; }
 .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 22px 0 16px; overflow: hidden; border: 1px solid $color-border; border-radius: $border-radius; background: $color-border; }
 .summary div { padding: 15px 18px; background: $color-dark-tertiary; }
 .summary span, .summary strong { display: block; }
@@ -38,7 +38,6 @@
   .plan { padding: 18px; }
   .header { flex-direction: column; }
   .semesters { width: 100%; box-sizing: border-box; }
-  .semesters button { flex: 1; }
   .summary { grid-template-columns: repeat(2, 1fr); }
   .tableWrap { overflow: visible; border: 0; }
   .tableWrap table, .tableWrap tbody { display: block; min-width: 0; }
@@ -57,3 +56,6 @@
   .tableWrap tr { grid-template-columns: 1fr; }
   .tableWrap td:first-child { grid-column: auto; }
 }
+
+
+.semesters { padding: 0; border: 0; border-radius: 0; background: transparent; }

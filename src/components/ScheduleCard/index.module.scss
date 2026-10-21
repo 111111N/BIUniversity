@@ -1,62 +1,76 @@
-@use "../../styles/variables" as *;
+﻿@use "../../styles/variables" as *;
 
-.card { --schedule-card-surface: color-mix(in srgb, #{$color-dark-primary} 90%, #{$color-text-light}); --schedule-card-muted: color-mix(in srgb, #{$color-text-secondary} 65%, #{$color-text-light}); display: flex; flex-direction: column; align-items: stretch; gap: 9px; width: 100%; min-width: 0; box-sizing: border-box; padding: 14px; border: 1px solid theme-alpha($color-text-secondary, .35); border-left: 3px solid theme-alpha($color-accent-primary, .65); border-radius: 11px; background: var(--schedule-card-surface); color: $color-text-light; text-align: left; overflow: hidden; box-shadow: 0 2px 6px theme-alpha($color-shadow, .15); transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.card { --schedule-card-surface: color-mix(in srgb, #{$color-dark-primary} 96%, #{$color-text-light}); --schedule-card-muted: color-mix(in srgb, #{$color-text-secondary} 80%, #{$color-text-light}); display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; min-width: 0; box-sizing: border-box; padding: 12px 14px; border: 1px solid theme-alpha($color-text-secondary, .15); border-radius: 14px; background: var(--schedule-card-surface); color: $color-text-light; text-align: left; overflow: hidden; box-shadow: 0 1px 3px theme-alpha($color-shadow, .07); transition: border-color .15s ease, background .15s ease; }
 :root[data-theme="light"] .card { --schedule-card-surface: #{$color-dark-secondary}; --schedule-card-muted: #{$color-text-secondary}; }
-.card:hover, .card:focus-visible { border-color: $color-accent-primary; background: color-mix(in srgb, var(--schedule-card-surface) 92%, #{$color-accent-primary}); color: $color-text-light; box-shadow: 0 4px 14px theme-alpha($color-shadow, .1); }
+.card:hover, .card:focus-visible { border-color: theme-alpha($color-text-secondary, .4); background: color-mix(in srgb, var(--schedule-card-surface) 94%, #{$color-text-light}); color: $color-text-light; }
+.card:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; }
 .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
-.top time { font-size: .73rem; font-weight: 700; color: var(--schedule-card-muted); white-space: nowrap; }
-.type { padding: 3px 5px; border-radius: 5px; font-size: .58rem; font-weight: 600; }
-.lecture { color: color-mix(in srgb, var(--ui-chart-blue) 60%, #{$color-text-light}); background: theme-alpha(var(--ui-chart-blue), .09); }
-.practice { color: color-mix(in srgb, #{$color-accent-added} 60%, #{$color-text-light}); background: theme-alpha($color-accent-added, .1); }
-.lab { color: $color-success; background: theme-alpha($color-success, .1); }
-.subject { display: block; font-size: .86rem; line-height: 1.4; overflow-wrap: anywhere; }
-.info { display: flex; flex-wrap: wrap; gap: 5px 10px; color: var(--schedule-card-muted); font-size: .7rem; line-height: 1.35; }
-.info > span + span { padding-left: 10px; border-left: 1px solid $color-border; }
-.teacher { color: var(--schedule-card-muted); font-size: .7rem; line-height: 1.35; overflow-wrap: anywhere; }
-.footer { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-top: auto; color: var(--schedule-card-muted); }
-.openLabel { font-size: .64rem; }
-.compact { gap: 5px; padding: 8px 10px; }
-.compact .type, .compact .info, .compact .teacher, .compact .openLabel { display: none; }
-.compact .subject { font-size: .74rem; line-height: 1.3; }
-.compact .footer { position: absolute; bottom: 4px; right: 5px; }
-.row { display: grid; grid-template-columns: 68px minmax(0, 1fr) 28px; align-items: center; gap: 12px; min-height: 64px; padding: 9px 14px; border: 0; border-bottom: 1px solid $color-border; border-radius: 0; background: var(--schedule-card-surface); box-shadow: none; }
+.top time { color: var(--schedule-card-muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.type { display: inline-flex; align-items: center; padding: 3px 6px; border-radius: 5px; font-size: 12px; font-weight: 500; line-height: 1.4; }
+.lecture { color: color-mix(in srgb, var(--ui-chart-blue) 75%, #{$color-text-light}); background: theme-alpha(var(--ui-chart-blue), .08); }
+.practice { color: color-mix(in srgb, #{$color-accent-added} 60%, #{$color-text-light}); background: theme-alpha($color-accent-added, .08); }
+.lab { color: color-mix(in srgb, #{$color-success} 80%, #{$color-text-light}); background: theme-alpha($color-success, .08); }
+:root[data-theme="light"] .lecture { color: color-mix(in srgb, var(--ui-chart-blue) 55%, #{$color-text-light}); }
+:root[data-theme="light"] .lab { color: color-mix(in srgb, #{$color-success} 65%, #{$color-text-light}); }
+.subject { display: block; color: $color-text-light; font-size: 16px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.info { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--schedule-card-muted); font-size: 13px; line-height: 1.5; }
+.teacher { color: var(--schedule-card-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: auto; color: var(--schedule-card-muted); }
+.openLabel { font-size: 13px; }
+.viewOnly { color: var(--schedule-card-muted); font-size: 12px; font-weight: 400; }
+.card.readOnly { cursor: default; }
+.card.readOnly:hover { border-color: theme-alpha($color-text-secondary, .15); background: var(--schedule-card-surface); }
+.row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 24px; align-items: center; gap: 16px; min-height: 76px; padding: 12px 16px; border: 0; border-bottom: 1px solid $color-border; border-radius: 0; box-shadow: none; }
 .row:last-child { border-bottom: 0; }
-.row:first-child { border-top-right-radius: 11px; }
-.row:last-child { border-bottom-right-radius: 11px; }
-.row:hover, .row:focus-visible { border-color: $color-border; background: color-mix(in srgb, var(--schedule-card-surface) 92%, #{$color-accent-primary}); box-shadow: none; }
+.row:hover { border-color: $color-border; background: color-mix(in srgb, var(--schedule-card-surface) 94%, #{$color-text-light}); }
+.row.readOnly:hover { background: var(--schedule-card-surface); }
 .row:focus-visible { position: relative; z-index: 1; outline-offset: -3px; }
 .rowArrow { justify-self: end; }
-.rowTime { display: grid; gap: 5px; align-self: start; padding-top: 2px; }
-.rowTime time:first-child { color: $color-text-light; font-size: .84rem; font-weight: 700; }
-.rowTime time:last-child { color: var(--schedule-card-muted); font-size: .67rem; }
-.rowContent { display: grid; min-width: 0; gap: 5px; }
-.row .subject { font-size: .8rem; line-height: 1.35; }
-.rowMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; color: var(--schedule-card-muted); font-size: .68rem; line-height: 1.5; }
+.rowTime { display: grid; align-self: start; gap: 4px; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.rowTime time:first-child { color: $color-text-light; font-size: 15px; font-weight: 600; }
+.rowTime time:last-child { color: var(--schedule-card-muted); font-size: 13px; }
+.rowContent { display: grid; gap: 6px; min-width: 0; }
+.row .subject { font-size: 16px; line-height: 1.5; }
+.rowMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; color: var(--schedule-card-muted); font-size: 13px; font-weight: 400; line-height: 1.5; }
 .rowMeta > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.rowMeta .type { font-size: .6rem; }
-@media (max-width: 650px) { .row { grid-template-columns: 59px minmax(0, 1fr) 28px; gap: 9px; padding: 12px; } .row:first-child { border-top-right-radius: 0; } .row:last-child { border-bottom-left-radius: 11px; } .row .subject { font-size: .8rem; } .rowTime time:first-child { font-size: .82rem; } .rowMeta { gap: 5px 8px; font-size: .65rem; } }
-.grid { container-type: size; gap: 3px; padding: 7px 8px; border-radius: 8px; border-left-width: 2px; }
-.grid .top { flex-wrap: nowrap; gap: 3px; }
-.grid .top time { font-size: .61rem; line-height: 1.25; }
-.grid .type { font-size: .48rem; padding: 2px 3px; white-space: nowrap; }
-.grid .subject { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex-shrink: 0; font-size: .71rem; line-height: 1.25; word-break: normal; overflow-wrap: break-word; }
-.grid .info { flex-wrap: nowrap; flex-shrink: 0; }
-.grid .info, .grid .teacher { font-size: .58rem; line-height: 1.25; }
-.grid .info { gap: 4px 6px; }
-.grid .info > span + span { padding-left: 6px; }
+.rowMeta .viewOnly { padding: 2px 5px; border: 1px solid $color-border; border-radius: 4px; }
+.grid { container-type: size; gap: 1px; padding: 5px 7px; border-radius: 8px; box-shadow: none; }
+.grid .top { flex-wrap: nowrap; gap: 4px; }
+.grid .top time { font-size: 12px; line-height: 1.25; white-space: nowrap; }
+.grid .type { padding: 1px 4px; font-size: 11px; line-height: 1.2; }
+.grid .subject { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex-shrink: 0; font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+.grid .info { flex-wrap: nowrap; flex-shrink: 0; gap: 4px 6px; }
 .grid .info > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.grid .teacher { flex-shrink: 0; padding-right: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.grid .footer { position: absolute; bottom: 3px; right: 4px; }
+.grid .info, .grid .teacher { font-size: 12px; line-height: 1.2; }
+.grid .teacher { flex-shrink: 0; margin-top: auto; padding-right: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid .footer { position: absolute; bottom: 4px; right: 5px; }
 .grid .footer > span { width: 18px; height: 18px; flex-basis: 18px; }
 .grid .footer svg { width: 15px; height: 15px; }
-.viewOnly { color: var(--schedule-card-muted); font-size: .58rem; }
-.rowMeta .viewOnly { padding: 2px 5px; border: 1px solid $color-border; border-radius: 4px; }
-.card.readOnly { cursor: default; border-left-color: theme-alpha($color-text-secondary, .5); }
-.card.readOnly:hover { border-color: theme-alpha($color-text-secondary, .35); border-left-color: theme-alpha($color-text-secondary, .5); background: var(--schedule-card-surface); }
-.row.readOnly:hover { background: var(--schedule-card-surface); }
 .grid.readOnly .teacher { padding-right: 0; }
-@container (max-height: 72px) { .teacher { display: none; } .subject { padding-right: 16px; } }
-@container (max-height: 54px) { .info, .type { display: none; } .subject { -webkit-line-clamp: 1 !important; font-size: .7rem; } .footer { display: none; } }
-@container (max-height: 34px) { .top { display: none; } }
-@media print { .card { padding: 8px; gap: 4px; border-color: $color-border; break-inside: avoid; } .footer, .rowArrow { display: none; } .row { grid-template-columns: 65px minmax(0, 1fr); min-height: 0; } }
-@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+.grid.compact { gap: 3px; padding: 5px; }
+.grid.compact .type, .grid.compact .info, .grid.compact .footer { display: none; }
+.grid.compact .subject { font-size: 13px; line-height: 1.3; }
+.grid.compact .teacher { padding-right: 0; white-space: normal; }
+.grid.short { padding: 0 4px; gap: 0; }
+.grid.short .top, .grid.short .info, .grid.short .footer { display: none; }
+.grid.short .subject { padding: 0; font-size: 12px; line-height: 1.2; -webkit-line-clamp: 1; }
+@container (max-height: 72px) { .info, .type { display: none; } .subject { -webkit-line-clamp: 1 !important; } .footer { display: none; } .compact .top { display: none; } }
+@container (max-height: 52px) { .top { display: none; } .grid .teacher { padding-right: 0; white-space: nowrap; } }
+@container (max-height: 30px) { .teacher { display: none; } .subject { font-size: 12px; padding-right: 0; } }
+@media(max-width: 650px) {
+  .row { grid-template-columns: 64px minmax(0, 1fr) 20px; gap: 10px; padding: 12px 10px; }
+  .row .subject { font-size: 15px; }
+  .rowTime time:first-child { font-size: 14px; }
+  .rowTime time:last-child, .rowMeta { font-size: 12px; }
+  .rowMeta { gap: 5px 8px; }
+}
+@media print {
+  .card { color: $color-text-light; padding: 8px; gap: 4px; break-inside: avoid; box-shadow: none; }
+  .footer, .rowArrow { display: none; }
+  .row { grid-template-columns: 80px minmax(0, 1fr); column-gap: 16px; min-height: 0; padding: 8px 10px; }
+  .row .subject { font-size: 14px; }
+  .rowMeta { font-size: 12px; }
+  .rowTime time:first-child { font-size: 13px; }
+  .rowTime time:last-child { font-size: 12px; }
+}
+@media(prefers-reduced-motion: reduce) { .card { transition: none; } }

@@ -1,5 +1,9 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
+
+.categoryFilters { @include switches.group(false, "> span"); }
+.categoryFilters .categoryActive { @include switches.selected(false); }
 
 .storage { @include dashboard-card($color-dark-secondary, 22px); min-width: 0; border-width: 1px; border-radius: 14px; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
@@ -34,11 +38,6 @@
 .libraryTools { display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: end; gap: 14px; margin-top: 22px; }
 .libraryTools input { min-height: 36px; padding-block: 7px; }
 .categoryFilters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-.categoryFilters button { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 6px 10px; border: 1px solid $color-border; background: transparent; color: $color-text-secondary; font-size: .65rem; }
-.categoryFilters button > span { min-width: 16px; color: $color-text-secondary; font-size: .59rem; }
-.categoryFilters button:hover:not(:disabled) { background: $color-ghost; color: $color-text-light; }
-.categoryFilters .categoryActive { border-color: theme-alpha($color-accent-primary, .4); background: $color-accent-background-hover; color: $color-accent-hover; }
-.categoryFilters .categoryActive > span { color: inherit; }
 .resultsSummary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; color: $color-text-secondary; font-size: .64rem; line-height: 1.5; }
 .resultsSummary button { padding: 4px 7px; border: 1px solid transparent; background: transparent; color: $color-accent-hover; font-size: .64rem; }
 .resultsSummary button:hover { background: $color-accent-background-hover; }

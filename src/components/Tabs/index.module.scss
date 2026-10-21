@@ -1,8 +1,11 @@
-@use "../../styles/variables" as *;
-.tabs { display: flex; gap: 5px; margin-bottom: 16px; padding: 5px; border: 2px solid $color-border; border-radius: $border-radius; background: $color-dark-secondary; overflow-x: auto; }
-.tabs button { gap: 7px; min-width: max-content; padding: 10px 14px; border: 0; background: transparent; font-size: .72rem; }
-.tabs button span { display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: $color-border; font-size: .6rem; }
-.tabs button:not(.active):hover { background: $color-ghost; color: $color-text-light; }
-.tabs .active { background: $gradient-color-logo; color: $color-on-accent; }
-.tabs .active:hover { background: $gradient-color-logo; color: $color-on-accent; }
-.tabs .active span { background: theme-alpha($color-on-accent, .18); color: $color-on-accent; }
+@use "../../styles/switches";
+
+.tabs {
+  @include switches.group(true, "> span");
+  flex-wrap: nowrap;
+  min-width: 0;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.tabs > button { flex-shrink: 0; }
+.tabs .active { @include switches.selected(true); }

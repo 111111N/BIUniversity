@@ -23,7 +23,7 @@ const createDropdownStyles = (variant: DropdownVariant): StylesConfig<DropdownOp
   return {
     control: (base, state) => ({
       ...base,
-      minHeight: main ? 46 : 36,
+      minHeight: main ? 46 : "var(--dropdown-control-height, 36px)",
       padding: main ? "2px 8px" : "0 6px",
       borderWidth,
       borderTopWidth: main ? 0 : borderWidth,

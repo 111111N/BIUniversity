@@ -1,19 +1,25 @@
-@use '../../styles/variables' as *;
+﻿@use "../../styles/variables" as *;
 
-.toolbar { display: none; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 16px; }
-.hasSelection { display: flex; }
-.selection { min-width: 0; margin-right: auto; color: $color-text-secondary; font-size: .8rem; overflow-wrap: anywhere; }
-.toolbar button { padding: 10px 14px; border-width: 1px; flex-shrink: 0; font-size: .76rem; }
-.headerActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.headerActions .mobileSearchToggle { display: none; }
-.mainContent { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 23vw, 320px); grid-template-areas: "schedule search"; align-items: start; gap: 22px; width: 100%; }
-.scheduleColumn { grid-area: schedule; min-width: 0; }
-.searchColumn { grid-area: search; position: sticky; top: 20px; min-width: 0; }
-@media (max-width: 1100px) {
-  .toolbar { display: flex; }
-  .mainContent { grid-template-columns: minmax(0, 1fr); grid-template-areas: "search" "schedule"; gap: 18px; }
-  .searchColumn { position: static; }
-  .searchClosed { display: none; }
-  .headerActions .mobileSearchToggle { display: inline-flex; align-items: center; gap: 8px; }
+@use "../../styles/switches" as switches;
+
+.page { min-width: 0; }
+.context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+.context > span { color: $color-text-light; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.context button { min-height: 44px; padding: 8px 10px; border: 0; background: transparent; color: $color-accent-hover; font-size: 13px; font-weight: 500; }
+.context button:hover { background: $color-ghost; color: $color-accent-hover; }
+.searchToggle { @include switches.button(true); gap: 8px; border-color: $color-border; color: $color-text-light; }
+.searchToggle > svg { flex-shrink: 0; }
+.searchToggle[aria-expanded="true"], .searchToggle[aria-expanded="true"]:hover { @include switches.selected(true); }
+.searchPanel { min-width: 0; margin-bottom: 20px; }
+.searchPanel[hidden] { display: none; }
+@media(max-width: 650px) { .searchToggle { padding-inline: 10px; font-size: 13px; } }
+@media print {
+  :global(body):has(.page) { background: #fff; }
+  :global(.dashboard-layout):has(.page) { display: block; padding: 0; background: #fff; }
+  :global(.dashboard-layout):has(.page) > :global(nav) { display: none; }
+  :global(.main-content):has(.page) { overflow: visible; padding: 0; }
+  :global(.main-content):has(.page) > :global(.blob) { display: none; }
+  .page { --ui-dark-primary: #fff; --ui-dark-secondary: #fff; --ui-dark-tertiary: #fff; --ui-text-light: #20232b; --ui-text-secondary: #4b5260; --ui-border: #d9dde4; --ui-ghost: transparent; --ui-accent-primary: #a92c43; --ui-accent-hover: #a92c43; --dropdown-text: #20232b; --dropdown-panel: #fff; --dropdown-border: #d9dde4; padding: 0; background: #fff; color: #20232b; }
+  .context button, .searchToggle, .searchPanel { display: none; }
+  .context > span { color: $color-text-light; font-size: 15px; }
 }
-@media print { .headerActions, .searchColumn { display: none; } .toolbar:not(.hasSelection) { display: none; } .mainContent { display: block; } }

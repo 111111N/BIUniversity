@@ -8,7 +8,7 @@ export const timeToMinutes = (time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 };
-export const getWeekDays = (week: Date) => Array.from({ length: 7 }, (_, index) => {
+export const getWeekDays = (week: Date) => Array.from({ length: 6 }, (_, index) => {
   const date = getWeekStart(week);
   date.setDate(date.getDate() + index);
   return { date, key: toLocalDateKey(date) };

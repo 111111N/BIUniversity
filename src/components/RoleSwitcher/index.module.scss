@@ -1,51 +1,13 @@
 @use "../../styles/variables" as *;
+@use "../../styles/switches";
 
-.wrapper {
-  padding: 14px 12px 8px;
-  border-top: 1px solid $color-border;
-}
-
-.label {
-  display: block;
-  margin: 0 6px 8px;
-  color: $color-text-secondary;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.switcher {
-  display: grid;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid $color-border;
-  border-radius: $border-radius;
-  background: $color-dark-tertiary;
-
-  button {
-    min-width: 0;
-    padding: 8px 7px;
-    border: 0;
-    font-size: 0.72rem;
-    font-weight: 500;
-  }
-}
-
-.active {
-  color: $color-on-accent !important;
-  background: $color-accent-primary !important;
-}
-
-@media (max-width: 760px) {
-  .wrapper {
-    padding: 4px;
-    border: 1px solid $color-border;
-    border-radius: $border-radius;
-    background: $color-dark-primary;
-    box-shadow: 0 8px 24px $color-shadow;
-  }
-
+.wrapper { padding: 14px 12px 8px; border-top: 1px solid $color-border; }
+.label { display: block; margin: 0 6px 8px; color: $color-text-secondary; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
+.switcher { @include switches.group(true); display: grid; padding: 4px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
+.switcher .active { @include switches.selected(true); }
+@media(max-width: 760px) {
+  .wrapper { padding: 4px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-primary; box-shadow: 0 8px 24px $color-shadow; }
   .label { display: none; }
   .switcher { grid-template-columns: repeat(2, auto); border: 0; padding: 0; }
-  .switcher button { padding: 7px 9px; font-size: .64rem; }
+  .switcher > button { min-height: 36px; padding: 6px 8px; font-size: 12px; }
 }

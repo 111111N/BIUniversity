@@ -1,5 +1,8 @@
+@use "../../../styles/switches" as switches;
 @use "../../../styles/variables" as *;
 @use "../ui";
+
+.filters { @include switches.group(false, "> span"); }
 
 .workspace { display: grid; gap: 20px; min-width: 0; color: $color-text-light; font-size: 16px; }
 .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
@@ -17,10 +20,6 @@
 .search input, .order select { box-sizing: border-box; min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; @include ui.control; font: inherit; font-size: 14px; }
 .order select { font-size: 13px; }
 .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding-bottom: 14px; border-bottom: 1px solid $color-border; }
-.filters button { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; padding: 8px 4px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: 13px; white-space: normal; text-align: left; }
-.filters button:last-child { grid-column: 1 / -1; }
-.filters button[aria-pressed="true"] { color: $color-accent-hover; border-color: theme-alpha($color-accent-primary, .2); background: $color-accent-background-hover; }
-.filters button span { display: grid; place-items: center; min-width: 16px; height: 18px; border-radius: 4px; background: $color-ghost; font-size: 11px; font-weight: 600; }
 .list { min-width: 0; max-height: 65vh; overflow-y: auto; overscroll-behavior: contain; }
 .list h4 { margin: 0 0 12px; font-size: 16px; }
 .students, .missing { list-style: none; padding: 0; margin: 0; }
@@ -37,7 +36,12 @@
 .students button[data-status="submitted"] .rowMeta > span { color: ui.$info; }
 .rowMeta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; color: $color-text-secondary; font-size: 12px; }
 .draftMark { color: $color-warning; font-size: 12px; }
-.missing li { padding: 12px 0; border-bottom: 1px solid $color-border; overflow-wrap: anywhere; }
+.missing { display: grid; gap: 8px; }
+.missing li { min-width: 0; }
+.studentLink { display: grid; grid-template-columns: 32px minmax(0, 1fr) 16px; align-items: center; gap: 10px; padding: 12px 10px; border: 1px solid ui.$line; border-radius: 10px; background: ui.$quiet; color: $color-text-light; text-decoration: none; }
+.studentLink:hover { border-color: $color-accent-primary; background: $color-ghost; }
+.studentLink strong { font-size: 14px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.studentLink > svg { color: $color-text-secondary; }
 .detail { display: grid; gap: 16px; min-width: 0; }
 .back { display: none; }
 .context, .notice, .error { margin: 0; padding: 12px; border: 1px solid $color-border; border-radius: 7px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
@@ -48,7 +52,7 @@
 .empty strong { color: $color-text-light; font-weight: 600; }
 .empty p { margin-bottom: 0; font-size: 13px; }
 .placeholder { padding: 24px; border: 1px dashed $color-border; border-radius: $border-radius; }
-.workspace :is(button, input, select):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+.workspace :is(a, button, input, select):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 @media (max-width: 850px) {
   .layout { grid-template-columns: 1fr; }
   .detail { display: none; scroll-margin-top: 76px; }
@@ -59,3 +63,8 @@
   .list { max-height: none; }
   .summary { width: 100%; justify-content: space-between; }
 }
+
+
+.filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.filters > button { justify-content: space-between; padding-inline: 6px; font-size: 13px; }
+.filters > button:last-child { grid-column: 1 / -1; }

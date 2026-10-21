@@ -1,10 +1,8 @@
+@use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
 
+.filter { @include switches.group(false, "> strong"); }
+.filter .active { @include switches.selected(false); }
+
 .filter { @include scroll-bar(5px); display: flex; gap: 7px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 3px; }
-.filter button { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid $color-border; border-radius: 999px; background: $color-dark-tertiary; color: $color-text-secondary; font-size: .72rem; white-space: nowrap; }
-.filter button:hover:not(:disabled) { border-color: $color-accent-primary; color: $color-text-light; }
-.filter button:disabled { cursor: default; opacity: .4; }
-.filter strong { display: grid; place-items: center; min-width: 18px; height: 18px; border-radius: 999px; background: $color-ghost; color: inherit; font-size: .64rem; }
-.filter .active { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }
-.filter .active strong { background: $color-accent-primary; color: $color-on-accent; }
