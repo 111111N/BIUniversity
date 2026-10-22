@@ -56,12 +56,13 @@
   color: $color-text-secondary;
   text-transform: uppercase;
 }
-:root[data-theme="light"] .paramBox:nth-child(2) .summaryValue { color: var(--ui-chart-blue); }
-:root[data-theme="light"] .paramBox:nth-child(3) .summaryValue { color: var(--ui-chart-green); }
+:root[data-theme="light"] .paramBox:nth-child(2) .summaryValue { color: color-mix(in srgb, var(--ui-chart-blue) 55%, #{$color-text-light}); }
+:root[data-theme="light"] .paramBox:nth-child(3) .summaryValue { color: $color-success; }
 :root[data-theme="light"] .paramBox:not(:last-child) { border-color: $color-border; }
 
 .leftColumn, .rightColumn { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.scheduleCard, .calendarCard { flex: 1; }
+.scheduleCard { flex: 0 0 auto; }
+.calendarCard { flex: 1; }
 .calendarCard { display: flex; flex-direction: column; }
 .calendarCard > div { flex: 1; }
 .focusCard { min-height: 0; }

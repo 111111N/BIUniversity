@@ -1,0 +1,7 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+.card { @include dashboard-card($color-dark-secondary, 22px); display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
+.card > div { flex: 1 1 280px; min-width: 0; }
+.card h2 { margin: 0 0 10px; font-size: 18px; }
+.card p { max-width: 70ch; margin: 0; color: $color-text-secondary; font-size: 14px; line-height: 1.6; }
+.status { padding: 8px 12px; border: 1px solid $color-border; border-radius: 8px; color: $color-text-secondary; font-size: 12px; }

@@ -1,0 +1,30 @@
+@use "../../styles/variables" as *;
+
+.tasks .task { min-width: 0; }
+.tasks .taskContent { min-width: 0; overflow-wrap: anywhere; }
+.tasks .taskContent strong { font-size: 14px; line-height: 1.45; }
+.tasks .taskContent span { font-size: 12px; line-height: 1.5; }
+.tasks .taskContent .taskStatus { margin-top: 5px; }
+.tasks .taskAction { font-size: 12px; line-height: 1.5; }
+.tasks .urgent { background: $color-error; }
+.tasks .warning { background: $color-warning; }
+.tasks .submitted { background: $color-success; }
+.tasks .closed { background: $color-text-secondary; }
+.journalLink { display: flex; align-items: center; justify-content: flex-end; gap: 3px; min-height: 44px; margin-top: 8px; color: $color-accent-hover; text-decoration: none; font-size: 13px; }
+.reviewNotice { margin: 12px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
+.summary { grid-column: 1 / -1; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 0; }
+.metric { min-width: 0; padding-left: 20px; border-left: 1px solid $color-border; }
+.metric:first-child { padding-left: 0; border-left: 0; }
+.metric dt { color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
+.metric dd { display: grid; gap: 6px; margin: 6px 0 0; }
+.metric strong { color: $color-text-light; font-size: 32px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.metric dd > span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+@media(max-width: 980px) {
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric:nth-child(odd) { padding-left: 0; border-left: 0; }
+}
+@media(max-width: 340px) {
+  .metrics { grid-template-columns: minmax(0, 1fr); }
+  .metric { padding-left: 0; border-left: 0; }
+}

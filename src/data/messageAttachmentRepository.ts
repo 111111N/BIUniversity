@@ -14,6 +14,35 @@ const openDatabase = () => new Promise<IDBDatabase>((resolve, reject) => {
 
 /** Binary files never enter localStorage. Scope is checked on every read/removal. */
 export const messageAttachmentRepository = {
+  async copy(sourceScope: string, targetScope: string, ids: string[]): Promise<MessageAttachment[]> {
+    if (!ids.length) return [];
+    const database = await openDatabase();
+    try {
+      return await new Promise<MessageAttachment[]>((resolve, reject) => {
+        const transaction = database.transaction(STORE, "readwrite");
+        const store = transaction.objectStore(STORE);
+        const copied: MessageAttachment[] = [];
+        let failure: Error | undefined;
+        ids.forEach((id) => {
+          const request = store.get(id);
+          request.onsuccess = () => {
+            const original = request.result as AttachmentRecord | undefined;
+            if (!original || original.scope !== sourceScope || !(original.blob instanceof Blob)) {
+              failure = new Error("Исходный файл сообщения недоступен. Повторите отправку вложения.");
+              transaction.abort();
+              return;
+            }
+            const record = { ...original, id: crypto.randomUUID(), scope: targetScope };
+            store.add(record);
+            copied.push({ id: record.id, name: record.name, type: record.type, size: record.size });
+          };
+        });
+        transaction.oncomplete = () => resolve(copied);
+        transaction.onerror = () => reject(failure ?? transaction.error);
+        transaction.onabort = () => reject(failure ?? transaction.error);
+      });
+    } finally { database.close(); }
+  },
   async save(scope: string, files: File[]): Promise<MessageAttachment[]> {
     if (!files.length) return [];
     if (files.length > 5 || files.some((file) => getAttachmentError(file))) throw new Error("Можно приложить до 5 файлов, каждый до 25 МБ.");

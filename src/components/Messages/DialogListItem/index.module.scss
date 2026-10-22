@@ -1,17 +1,18 @@
+@use "../../../styles/readability" as readability;
 @use "../../../styles/variables" as *;
 .item { display: flex; align-items: center; gap: 11px; box-sizing: border-box; width: 100%; min-height: 76px; padding: 12px 10px; border: 1px solid transparent; border-radius: 11px; color: $color-text-light; background: transparent; text-align: left; }
 .item:hover { background: theme-alpha($color-text-secondary, .1); border-color: transparent; color: $color-text-light; }
 .item.active { border-color: theme-alpha($color-accent-primary, .14); background: $color-accent-background-hover; }
 .item.active:hover { border-color: theme-alpha($color-accent-primary, .25); background: theme-alpha($color-accent-primary, .16); color: $color-text-light; }
-.avatar { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 16px; font-size: .85rem; font-weight: 600; background: theme-alpha($color-text-secondary, .13); color: $color-text-light; }
+.avatar { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 16px; font-size: readability.$body; font-weight: 600; background: theme-alpha($color-text-secondary, .13); color: $color-text-light; }
 .teacher { color: color-mix(in srgb, var(--ui-chart-blue) 75%, #{$color-text-light}); background: theme-alpha(var(--ui-chart-blue), .12); }
 .student { color: color-mix(in srgb, var(--ui-chart-purple) 75%, #{$color-text-light}); background: theme-alpha(var(--ui-chart-purple), .12); }
 .group { color: $color-accent-hover; background: $color-accent-background-hover; }
 .avatar svg { width: 23px; height: 23px; }
 .content { display: grid; flex: 1; gap: 6px; min-width: 0; }
 .top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.top strong { flex: 1; overflow: hidden; font-size: .78rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.top time { flex: 0 0 auto; color: $color-text-secondary; font-size: .59rem; font-variant-numeric: tabular-nums; }
-.preview { overflow: hidden; color: $color-text-secondary; font-size: .68rem; line-height: 1.5; white-space: nowrap; text-overflow: ellipsis; }
+.top strong { flex: 1; overflow: hidden; font-size: readability.$control; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.top time { flex: 0 0 auto; color: $color-text-secondary; font-size: readability.$caption; font-variant-numeric: tabular-nums; }
+.preview { overflow: hidden; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.5; white-space: nowrap; text-overflow: ellipsis; }
 .preview em { color: $color-accent-hover; font-style: normal; }
-.content small { color: $color-text-secondary; font-size: .58rem; }
+.content small { color: $color-text-secondary; font-size: readability.$caption; }

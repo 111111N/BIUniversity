@@ -1,3 +1,4 @@
+@use "../../../styles/readability" as readability;
 @use "../../../styles/switches" as switches;
 @use "../../../styles/variables" as *;
 @use "../../../styles/mixins" as *;
@@ -5,18 +6,18 @@
 .filters { @include switches.group(false); }
 .dialog { display: flex; flex-direction: column; box-sizing: border-box; width: min(500px, 100%); max-height: 85dvh; padding: 22px; gap: 16px; border: 1px solid $color-border; border-radius: 18px; background: $color-dark-primary; box-shadow: 0 24px 70px $color-shadow; }
 .dialog header { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
-.dialog header span { color: $color-text-secondary; font-size: .65rem; }
+.dialog header span { color: $color-text-secondary; font-size: readability.$caption; }
 .dialog h2 { margin: 5px 0 0; color: $color-text-light; font-size: 1.25rem; }
 .dialog header button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; color: $color-text-secondary; background: $color-ghost; }
 .dialog header button:hover { background: theme-alpha($color-text-secondary, .12); border-color: transparent; color: $color-text-light; }
 .createGroup { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid $color-border; color: $color-text-light; background: $color-ghost; text-align: left; }
 .createGroup:hover { background: $color-accent-background-hover; border-color: theme-alpha($color-accent-primary, .3); color: $color-text-light; }
 .createGroup > span { display: grid; flex: 1; gap: 5px; }
-.createGroup strong { font-size: .77rem; font-weight: 600; }
-.createGroup small { color: $color-text-secondary; font-size: .63rem; }
+.createGroup strong { font-size: readability.$control; font-weight: 600; }
+.createGroup small { color: $color-text-secondary; font-size: readability.$caption; }
 .filters { display: flex; gap: 7px; }
-.hint { margin: 0; color: $color-text-secondary; font-size: .64rem; }
+.hint { margin: 0; color: $color-text-secondary; font-size: readability.$caption; }
 .list { min-height: 120px; overflow-y: auto; @include scroll-bar(5px); }
-.empty { padding: 20px; color: $color-text-secondary; font-size: .74rem; line-height: 1.6; text-align: center; }
-.all { flex: 0 0 auto; min-height: 34px; padding: 7px 10px; border: 1px solid $color-border; color: $color-text-light; background: transparent; font-size: .7rem; }
+.empty { padding: 20px; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; text-align: center; }
+.all { flex: 0 0 auto; min-height: 34px; padding: 7px 10px; border: 1px solid $color-border; color: $color-text-light; background: transparent; font-size: readability.$caption; }
 .all:hover { background: theme-alpha($color-text-secondary, .1); border-color: theme-alpha($color-text-secondary, .35); color: $color-text-light; }

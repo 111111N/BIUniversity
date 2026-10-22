@@ -34,6 +34,7 @@
   border-color: $color-dark-primary;
 }
 :root[data-theme="light"] .weekPickerCurrentButton { border-color: $color-border; background: $color-dark-secondary; }
+:root[data-theme="light"] .weekPickerCurrentButton:not(:disabled):hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }
 
 .weekPickerDisplayWrapper {
   position: relative;

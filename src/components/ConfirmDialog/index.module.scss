@@ -11,4 +11,6 @@
 .actions button { padding: 10px 16px; font-size: .72rem; }
 .actions .danger { border-color: $color-error; background: $color-error; color: $color-on-accent; }
 .actions .danger:not(:disabled):hover { background: theme-alpha($color-error, .85); border-color: $color-error; }
+:root:not([data-theme="light"]) .actions .danger { background: #bf3f3b; border-color: #bf3f3b; }
+:root:not([data-theme="light"]) .actions .danger:not(:disabled):hover { background: #ca4141; border-color: #ca4141; }
 .error { color: $color-error; font-size: .72rem; }

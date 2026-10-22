@@ -137,7 +137,7 @@
 .monthsGrid .selectedPeriod:hover, .yearsGrid .selectedPeriod:hover { background: $gradient-color-logo; color: $color-on-accent; }
 
 .outsideDay {
-  color: theme-alpha($color-text-secondary, 0.45);
+  color: $color-text-secondary;
 }
 
 .today {

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { getSemesterSubjects, getSubjectHours } from "../../data/studyPlan";
 import { useRole } from "../RoleContext";
 import styles from "./index.module.scss";
@@ -8,8 +8,10 @@ const semesters = [3, 4] as const;
 
 const StudyPlan = ({ teacher = false }: { teacher?: boolean }) => {
   const { currentUser } = useRole();
-  const [semester, setSemester] = useState<(typeof semesters)[number]>(3);
+  const [params, setParams] = useSearchParams();
   const availableSemesters = teacher ? semesters.filter((item) => getSemesterSubjects(item).some((subject) => subject.teacher === currentUser.name)) : semesters;
+  const semester = availableSemesters.find((item) => String(item) === params.get("semester")) ?? availableSemesters[0] ?? 3;
+  const setSemester = (value: number) => setParams((current) => { const next = new URLSearchParams(current); next.set("semester", String(value)); return next; });
   const subjects = useMemo(() => getSemesterSubjects(semester).filter((subject) => !teacher || subject.teacher === currentUser.name), [semester, teacher, currentUser.name]);
   const totals = useMemo(() => subjects.reduce((result, subject) => ({
     lectures: result.lectures + subject.lectures, practice: result.practice + subject.practice,
@@ -33,11 +35,12 @@ const StudyPlan = ({ teacher = false }: { teacher?: boolean }) => {
         <td data-label="Дисциплина"><Link to={`/journal/${subject.id}`}><strong>{subject.name}</strong></Link><span>{subject.teacher}</span></td>
         <td data-label="Лекции">{subject.lectures || "—"}</td><td data-label="Практика">{subject.practice || "—"}</td><td data-label="Лабораторные">{subject.labs || "—"}</td>
         <td data-label="Самостоятельно">{subject.independent}</td><td data-label="Всего"><strong>{getSubjectHours(subject)}</strong></td><td data-label="Контроль"><span className={styles.control}>{subject.control}</span></td>
-        <td className={styles.actions}>{subject.hasProgram ? <span title="Рабочая программа появится после подключения документов вуза">РПД</span> : <span title="Рабочая программа пока не загружена">—</span>}</td>
+        <td className={styles.actions} data-label="Программа"><span>Пока недоступна</span></td>
       </tr>)}</tbody>
-      <tfoot><tr><td>Итого за семестр</td><td>{totals.lectures}</td><td>{totals.practice}</td><td>{totals.labs}</td><td>{totals.independent}</td><td>{totals.all}</td><td colSpan={2} /></tr></tfoot>
+      <tfoot><tr><td>Итого за семестр</td><td data-label="Лекции">{totals.lectures}</td><td data-label="Практика">{totals.practice}</td><td data-label="Лабораторные">{totals.labs}</td><td data-label="Самостоятельно">{totals.independent}</td><td data-label="Всего">{totals.all}</td><td colSpan={2} /></tr></tfoot>
     </table></div>
-    <p className={styles.note}>РПД — рабочая программа дисциплины. Документы станут доступны после подключения API университета.</p>
+    {!subjects.length && <p className={styles.note}>В этом семестре дисциплин пока нет.</p>}
+    <p className={styles.note}>Рабочие программы дисциплин пока недоступны.</p>
   </section>;
 };
 export default StudyPlan;

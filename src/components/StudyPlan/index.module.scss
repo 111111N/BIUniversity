@@ -1,3 +1,4 @@
+@use "../../styles/readability" as readability;
 @use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
@@ -7,32 +8,32 @@
 
 .plan { @include dashboard-card($color-dark-secondary, 22px); overflow: hidden; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-.header > div:first-child > span { color: $color-accent-primary; font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.header > div:first-child > span { color: $color-accent-primary; font-size: readability.$caption; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .header h2 { margin: 5px 0 7px; font-size: 1.5rem; }
 .header p { margin: 0; color: $color-text-secondary; }
 .semesters { display: flex; gap: 4px; padding: 4px; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-tertiary; }
 .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 22px 0 16px; overflow: hidden; border: 1px solid $color-border; border-radius: $border-radius; background: $color-border; }
 .summary div { padding: 15px 18px; background: $color-dark-tertiary; }
 .summary span, .summary strong { display: block; }
-.summary span { margin-bottom: 6px; color: $color-text-secondary; font-size: .72rem; }
+.summary span { margin-bottom: 6px; color: $color-text-secondary; font-size: readability.$caption; }
 .summary strong { font-size: 1.45rem; }
 .tableWrap { @include scroll-bar(7px); overflow-x: auto; border: 1px solid $color-border; border-radius: $border-radius; }
 .tableWrap table { width: 100%; min-width: 920px; border-collapse: collapse; text-align: left; }
-.tableWrap th { padding: 12px; color: $color-text-secondary; background: $color-dark-tertiary; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.tableWrap td { padding: 14px 12px; border-top: 1px solid $color-border; color: $color-text-secondary; font-size: .82rem; }
+.tableWrap th { padding: 12px; color: $color-text-secondary; background: $color-dark-tertiary; font-size: readability.$caption; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.tableWrap td { padding: 14px 12px; border-top: 1px solid $color-border; color: $color-text-secondary; font-size: readability.$body; }
 .tableWrap tbody tr { transition: background $transition-speed ease; }
 .tableWrap tbody tr:hover { background: $color-accent-background-hover; }
 .tableWrap td:first-child { min-width: 220px; }
 .tableWrap td:first-child strong, .tableWrap td:first-child span { display: block; }
 .tableWrap td:first-child a { color: $color-text-light; text-decoration: none; }
 .tableWrap td:first-child a:hover { color: $color-accent-hover; }
-.tableWrap td:first-child span { margin-top: 5px; font-size: .7rem; }
+.tableWrap td:first-child span { margin-top: 5px; font-size: readability.$caption; }
 .tableWrap td:nth-child(n+2):nth-child(-n+6), .tableWrap th:nth-child(n+2):nth-child(-n+6) { text-align: center; }
 .tableWrap tfoot td { color: $color-text-light; background: $color-dark-tertiary; font-weight: 700; }
-.control { display: inline-block; padding: 5px 8px; border: 1px solid $color-accent-secondary; border-radius: 999px; color: $color-text-light; font-size: .7rem; white-space: nowrap; }
+.control { display: inline-block; padding: 5px 8px; border: 1px solid $color-accent-secondary; border-radius: 999px; color: $color-text-light; font-size: readability.$caption; white-space: nowrap; }
 .actions { width: 44px; text-align: right; }
-.actions span { display: inline-block; padding: 6px 8px; border: 1px solid $color-border; border-radius: 6px; background: $color-dark-tertiary; color: $color-text-secondary; font-size: .68rem; font-weight: 800; cursor: help; }
-.note { margin: 12px 0 0; color: $color-text-secondary; font-size: .7rem; }
+.actions span { display: inline-block; padding: 6px 8px; border: 1px solid $color-border; border-radius: 6px; background: $color-dark-tertiary; color: $color-text-secondary; font-size: readability.$caption; font-weight: 800; cursor: help; }
+.note { margin: 12px 0 0; color: $color-text-secondary; font-size: readability.$caption; }
 
 @media (max-width: 760px) {
   .plan { padding: 18px; }
@@ -41,21 +42,29 @@
   .summary { grid-template-columns: repeat(2, 1fr); }
   .tableWrap { overflow: visible; border: 0; }
   .tableWrap table, .tableWrap tbody { display: block; min-width: 0; }
-  .tableWrap thead, .tableWrap tfoot { display: none; }
+  .tableWrap thead { display: none; }
+  .tableWrap tfoot { display: block; }
   .tableWrap tr { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 10px; padding: 16px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
   .tableWrap td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0; border: 0; text-align: right !important; }
-  .tableWrap td::before { content: attr(data-label); color: $color-text-secondary; font-size: .68rem; text-align: left; }
+  .tableWrap td::before { content: attr(data-label); color: $color-text-secondary; font-size: readability.$caption; text-align: left; }
   .tableWrap td:first-child { display: block; grid-column: 1 / -1; min-width: 0; padding-bottom: 12px; border-bottom: 1px solid $color-border; text-align: left !important; }
   .tableWrap td:first-child::before, .actions::before { display: none; }
-  .tableWrap .actions { display: none; }
+  .tableWrap .actions { display: flex; width: auto; grid-column: 1 / -1; }
+  .tableWrap .actions::before { display: block; }
+  .tableWrap tfoot td:empty { display: none; }
   .control { white-space: normal; }
 }
 
 @media (max-width: 440px) {
-  .summary { grid-template-columns: 1fr; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tableWrap tr { grid-template-columns: 1fr; }
   .tableWrap td:first-child { grid-column: auto; }
 }
 
 
 .semesters { padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+.summary div { min-width: 0; }
+.actions { width: 140px; }
+.actions span { border: 0; background: transparent; font-weight: 400; white-space: nowrap; }
+@media (max-width: 440px) { .summary div { padding: 12px; } .summary span { overflow-wrap: anywhere; } }

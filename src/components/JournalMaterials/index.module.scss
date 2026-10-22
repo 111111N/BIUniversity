@@ -1,6 +1,4 @@
 @use "../../styles/variables" as *;
-
-.materials { display: grid; min-width: 0; gap: 18px; }
-.scopeHint { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-dark-secondary; }
-.scopeHint strong { color: $color-text-light; font-size: .8rem; }
-.scopeHint p { max-width: 100ch; margin: 0; color: $color-text-secondary; font-size: .73rem; line-height: 1.6; }
+.materials { display: grid; min-width: 0; gap: 14px; }
+.audience, .countError { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
+.countError { color: $color-warning; }

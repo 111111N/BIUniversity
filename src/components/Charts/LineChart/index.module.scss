@@ -1,10 +1,11 @@
+@use "../../../styles/readability" as readability;
 @use "../../../styles/variables" as *;
 
 .figure { min-width: 0; margin: 0; }
 .chart { position: relative; min-width: 0; overflow: visible; }
 .chart svg { display: block; flex: 1 1 auto; min-width: 0; }
 .gridLine { stroke: var(--grid-color); stroke-width: 1; }
-.axisText { fill: $color-text-secondary; font-family: inherit; font-size: 11px; }
+.axisText { fill: $color-text-secondary; font-family: inherit; font-size: readability.$caption; }
 .line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: var(--line-shadow); }
 .area { pointer-events: none; animation: appear .35s ease-out; }
 .dot { fill: var(--circle-fill); stroke: var(--circle-stroke); stroke-width: 2.5; pointer-events: none; }
@@ -14,10 +15,10 @@
 .point:focus-visible { outline: none; }
 .focusRing { fill: transparent; stroke: $color-text-light; stroke-width: 1; pointer-events: none; }
 .guide { stroke: var(--hover-line); stroke-dasharray: 4 4; pointer-events: none; }
-.tooltip { position: absolute; z-index: 2; display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: max-content; max-width: min(220px, calc(100% - 16px)); padding: 9px 11px; border: 1px solid $color-border; border-radius: 8px; background: var(--tooltip-bg); box-shadow: 0 6px 20px $color-shadow; color: var(--tooltip-text); pointer-events: none; font-size: .7rem; line-height: 1.5; overflow-wrap: anywhere; }
+.tooltip { position: absolute; z-index: 2; display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: max-content; max-width: min(220px, calc(100% - 16px)); padding: 9px 11px; border: 1px solid $color-border; border-radius: 8px; background: var(--tooltip-bg); box-shadow: 0 6px 20px $color-shadow; color: var(--tooltip-text); pointer-events: none; font-size: readability.$caption; line-height: 1.5; overflow-wrap: anywhere; }
 .tooltip strong { font-weight: 500; }
 .tooltip span { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
-.empty { display: grid; justify-items: center; align-content: center; box-sizing: border-box; gap: 9px; padding: 20px; text-align: center; color: $color-text-secondary; font-size: .73rem; line-height: 1.6; }
+.empty { display: grid; justify-items: center; align-content: center; box-sizing: border-box; gap: 9px; padding: 20px; text-align: center; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
 .empty strong { color: $color-text-light; font-size: .9rem; font-weight: 500; }
 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .area { animation: none; } }

@@ -57,6 +57,16 @@ const openDatabase = () => new Promise<IDBDatabase>((resolve, reject) => {
 });
 
 export const materialRepository = {
+  async count(scope: string) {
+    const database = await openDatabase();
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        const request = database.transaction(STORE_NAME).objectStore(STORE_NAME).index("scope").count(scope);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } finally { database.close(); }
+  },
   subscribe(scope: string, listener: () => void) {
     const handleChange = (event: Event) => { if ((event as CustomEvent<string>).detail === scope) listener(); };
     window.addEventListener(CHANGE_EVENT, handleChange);

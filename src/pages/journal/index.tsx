@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { AttendanceTable } from "../../components/Attendance";
 import BarChartTop from "../../components/Charts/BarChartTop/withsegments";
@@ -21,7 +21,7 @@ import JournalHistory from "../../components/JournalHistory";
 import JournalSummary from "../../components/JournalSummary";
 import AttendanceLegend from "../../components/AttendanceLegend";
 import LessonTypeFilter from "../../components/LessonTypeFilter";
-import type { LessonTypeFilterValue } from "../../components/LessonTypeFilter";
+import useJournalView from "../../hooks/useJournalView";
 import { createJournalCsv, downloadJournalCsv } from "../../domain/journalExport";
 import { changeJournalSection, getJournalSection } from "../../domain/journalNavigation";
 import { isPerformanceLesson } from "../../domain/academic";
@@ -38,7 +38,7 @@ const Journal = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSection = getJournalSection(searchParams, true);
   const setActiveSection = (section: string) => setSearchParams((current) => changeJournalSection(current, section));
-  const [lessonType, setLessonType] = useState<LessonTypeFilterValue>("all");
+  const { lessonType, setLessonType } = useJournalView();
   const subjectName = getSubject(subjectId)?.name ?? formatIdentifier(subjectId);
   const groupName = getSubject(subjectId)?.groups.find((group) => group.id === groupId)?.name ?? formatIdentifier(groupId).toUpperCase();
   const journal = useJournal(subjectId ?? "", groupId ?? "", currentUser);

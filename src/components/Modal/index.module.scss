@@ -27,6 +27,10 @@
   background-color: $color-dark-primary;
 }
 
+:root[data-theme="light"] .overlay {
+  background: rgba(31, 36, 49, .30);
+}
+
 @media (max-width: 620px) {
   .overlay { padding: 12px; }
   .dialog { max-height: calc(100dvh - 24px); }

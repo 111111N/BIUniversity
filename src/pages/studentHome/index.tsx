@@ -1,100 +1,59 @@
-import { Link } from "react-router-dom";
+import { useId, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useRole } from "../../components/RoleContext";
 import TodaySchedule from "../../components/TodaySchedule";
+import Search from "../../components/SearchWidget";
+import ArrowCircle from "../../components/ArrowCircle";
 import { getStudentDashboard, useDashboardUpdate } from "../../data/studentDashboard";
 import { formatDashboardValue } from "../../domain/dashboard";
-import styles from "../studentArea.module.scss";
-import ArrowCircle from "../../components/ArrowCircle";
-import AssignmentProgress from "../../components/AssignmentProgress";
+import { formatCount } from "../../domain/formatCount";
+import { toLocalDateKey } from "../../domain/schedule";
+import StudentTaskCard from "./StudentTaskCard";
+import dashboardStyles from "../home/index.module.scss";
+import styles from "./index.module.scss";
 
 const StudentHome = () => {
   const { currentUser } = useRole();
   const now = useDashboardUpdate();
-  const dashboard = getStudentDashboard({
-    studentId: currentUser.id,
-    memberships: currentUser.memberships,
-    now,
-  });
-  const activeTasks = dashboard.tasks.filter((task) => !task.completed).slice(0, 3);
+  const navigate = useNavigate();
+  const [searchMode, setSearchMode] = useState<"group" | "auditorium">("auditorium");
+  const [query, setQuery] = useState("");
+  const tasksHeading = useId();
+  const summaryHeading = useId();
+  const dashboard = getStudentDashboard({ studentId: currentUser.id, memberships: currentUser.memberships, now });
+  const activeTasks = dashboard.tasks.filter((task) => !task.completed);
 
-  return (
-    <div className={`pageContainer ${styles.page}`}>
-      <div className={styles.grid}>
-        <div className={styles.stack}>
-          <section className={styles.card}>
-            <TodaySchedule />
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h2>Ближайшие задания</h2>
-              <Link to="/journal">Все задания <ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
-            </div>
-            {activeTasks.length ? (
-              <div className={styles.taskList}>
-                {activeTasks.map((task) => (
-                  <Link to={task.href} className={`${styles.taskItem} ${styles.taskLink}`} key={task.id}>
-                    <div>
-                      <span className={styles.taskTag}>{task.subject}</span>
-                      <strong>{task.title}</strong>
-                      <p>{task.canSubmit ? "Сдать" : "Срок сдачи"}: {task.deadline}</p>
-                      <AssignmentProgress state={task.state} />
-                    </div>
-                    <div className={styles.taskAside}><span className={`${styles.taskStatus} ${task.state === "revision" ? styles.taskRevision : task.state === "submitted" || task.state === "resubmitted" ? styles.taskSubmitted : ""}`}>{task.tag}</span><span className={styles.taskAction}>{task.action}<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></span></div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.notice}>
-                <strong>Актуальных заданий нет</strong>
-                <p>Новые опубликованные задания появятся здесь автоматически.</p>
-              </div>
-            )}
-          </section>
-        </div>
-
-        <aside className={styles.stack}>
-          <section className={styles.card}>
-            <div className={styles.cardHeader}><h2>Моя неделя</h2></div>
-            <div className={styles.metrics}>
-              <div className={styles.metric}><strong>{dashboard.weekLessons}</strong><span>пар</span></div>
-              <div className={styles.metric}><strong>{dashboard.activeAssignments}</strong><span>ждут моего ответа</span></div>
-              <div className={styles.metric}><strong>{dashboard.attendance === null ? "—" : `${formatDashboardValue(dashboard.attendance)}%`}</strong><span>посещаемость</span></div>
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.cardHeader}><h2>Следующее действие</h2></div>
-            <div className={styles.notice}>
-              {dashboard.nextAction ? (
-                <>
-                  <strong>{dashboard.nextAction.title}</strong>
-                  <p>{dashboard.nextAction.description}</p>
-                  <Link to={dashboard.nextAction.href}>Открыть задание <ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
-                </>
-              ) : (
-                <>
-                  <strong>{dashboard.awaitingReview ? "Ожидаем проверки" : "Новых действий нет"}</strong>
-                  <p>{dashboard.awaitingReview ? `Отправлено на проверку: ${dashboard.awaitingReview}. Преподаватель сообщит результат или вернёт работу на доработку.` : "Сейчас нет заданий, на которые нужно отправить ответ."}</p>
-                </>
-              )}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.cardHeader}><h2>Средний балл</h2><Link to="/journal">Подробнее <ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link></div>
-            <div className={styles.metric}>
-              <strong>{formatDashboardValue(dashboard.averageGrade, 2)}</strong>
-              <span>{dashboard.gradesCount ? `по ${dashboard.gradesCount} оценкам в журнале` : "оценок пока нет"}</span>
-              <div className={styles.progressTrack}>
-                <span style={{ width: `${dashboard.averageGrade ? dashboard.averageGrade / 5 * 100 : 0}%` }} />
-              </div>
-            </div>
-          </section>
-        </aside>
+  return <div className="pageContainer">
+    <div className={dashboardStyles.dashboardGrid}>
+      <div className={dashboardStyles.leftColumn}>
+        <Search searchMode={searchMode} setSearchMode={setSearchMode} query={query} setQuery={setQuery} onSearch={() => {
+          const params = new URLSearchParams({ date: toLocalDateKey(now) });
+          if (query.trim()) { params.set("type", searchMode === "auditorium" ? "auditory" : "group"); params.set("query", query.trim()); }
+          navigate(`/schedule?${params}`);
+        }} />
+        <div className={`${dashboardStyles.dashboardCard} ${dashboardStyles.scheduleCard}`}><TodaySchedule /></div>
       </div>
+
+      <div className={dashboardStyles.rightColumn}>
+        <section className={`${dashboardStyles.dashboardCard} ${dashboardStyles.focusCard}`} aria-labelledby={tasksHeading}>
+          <div className={dashboardStyles.focusHeader}><div><span>Задания</span><h2 id={tasksHeading} className={dashboardStyles.cardTitle}>Что требует внимания</h2></div><strong>{activeTasks.length}</strong></div>
+          {activeTasks.length ? <div className={`${dashboardStyles.focusList} ${styles.tasks}`}>{activeTasks.slice(0, 3).map((task) => <StudentTaskCard key={task.id} task={task} now={now} recommended={dashboard.nextAction?.href === task.href} />)}</div> : <div className={dashboardStyles.emptyState}><strong>Всё под контролем</strong><span>Актуальных заданий нет.</span></div>}
+          {dashboard.awaitingReview > 0 && !dashboard.activeAssignments && <p className={styles.reviewNotice}>На проверке: {dashboard.awaitingReview}. Преподаватель сообщит результат или вернёт работу на доработку.</p>}
+          <Link className={styles.journalLink} to="/journal">В журнал<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
+        </section>
+      </div>
+
+        <section className={`${dashboardStyles.dashboardCard} ${styles.summary}`} aria-labelledby={summaryHeading}>
+          <h2 id={summaryHeading} className={dashboardStyles.cardTitle}>Учебный обзор</h2>
+          <dl className={styles.metrics}>
+            <div className={styles.metric}><dt>Пар на этой неделе</dt><dd><strong>{dashboard.weekLessons}</strong><span>{dashboard.groupName}</span></dd></div>
+            <div className={styles.metric}><dt>Ждут ответа</dt><dd><strong>{dashboard.activeAssignments}</strong><span>{dashboard.activeAssignments ? "Можно отправить работу" : dashboard.awaitingReview ? `На проверке: ${dashboard.awaitingReview}` : "Новых действий нет"}</span></dd></div>
+            <div className={styles.metric}><dt>Посещаемость</dt><dd><strong>{dashboard.attendance === null ? "—" : `${formatDashboardValue(dashboard.attendance)}%`}</strong><span>{dashboard.attendance === null ? "Отметок пока нет" : "По отмеченным занятиям"}</span></dd></div>
+            <div className={styles.metric}><dt>Средний балл</dt><dd><strong>{formatDashboardValue(dashboard.averageGrade, 2)}</strong><span>{dashboard.gradesCount ? `${formatCount(dashboard.gradesCount, ["оценка", "оценки", "оценок"])} в журнале` : "Оценок пока нет"}</span></dd></div>
+          </dl>
+        </section>
     </div>
-  );
+  </div>;
 };
 
 export default StudentHome;

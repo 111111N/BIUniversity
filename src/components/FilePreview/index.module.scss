@@ -1,22 +1,23 @@
+@use "../../styles/readability" as readability;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
 
 .preview { box-sizing: border-box; width: min(1000px, 100%); min-width: 0; padding: 20px; border: 1px solid $color-border; border-radius: 14px; background: $color-dark-primary; box-shadow: 0 24px 70px $color-shadow; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .header > div { min-width: 0; }
-.header span { color: $color-accent-hover; font-size: .61rem; letter-spacing: .07em; text-transform: uppercase; }
+.header span { color: $color-accent-hover; font-size: readability.$caption; letter-spacing: .07em; text-transform: uppercase; }
 .header h2 { margin: 6px 0; color: $color-text-light; font-size: 1.03rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
-.header p { margin: 0; color: $color-text-secondary; font-size: .66rem; }
+.header p { margin: 0; color: $color-text-secondary; font-size: readability.$caption; }
 .close { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border: 1px solid $color-border; border-radius: 50%; color: $color-text-secondary; background: transparent; font-size: 1.5rem; }
 .close:hover { color: $color-text-light; background: $color-ghost; }
 .content { min-width: 0; min-height: 150px; overflow: hidden; border: 1px solid $color-border; border-radius: 9px; background: $color-ghost; }
 .image { display: block; max-width: 100%; max-height: 65dvh; margin: 0 auto; object-fit: contain; }
 .pdf { display: block; width: 100%; height: 62dvh; min-height: 220px; border: 0; }
-.text { box-sizing: border-box; max-height: 60dvh; margin: 0; padding: 18px; overflow: auto; color: $color-text-light; font-family: monospace; font-size: .76rem; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; @include scroll-bar(6px); }
+.text { box-sizing: border-box; max-height: 60dvh; margin: 0; padding: 18px; overflow: auto; color: $color-text-light; font-family: monospace; font-size: readability.$body; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; @include scroll-bar(6px); }
 .text:focus-visible { outline: 2px solid $color-text-secondary; outline-offset: -3px; }
-.state { max-width: 600px; margin: 0 auto; padding: 42px 22px; color: $color-text-secondary; font-size: .78rem; line-height: 1.7; text-align: center; }
-.hint { margin: 0; padding: 10px 18px; border-bottom: 1px solid $color-border; color: $color-text-secondary; font-size: .66rem; line-height: 1.6; }
+.state { max-width: 600px; margin: 0 auto; padding: 42px 22px; color: $color-text-secondary; font-size: readability.$body; line-height: 1.7; text-align: center; }
+.hint { margin: 0; padding: 10px 18px; border-bottom: 1px solid $color-border; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
 .footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
-.footer > span { flex: 1 1 260px; color: $color-text-secondary; font-size: .64rem; line-height: 1.6; }
-.footer button { min-height: 36px; padding: 8px 14px; border: 1px solid theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-accent-hover; font-size: .72rem; }
-@media (max-width: 620px) { .preview { padding: 14px; } .header { gap: 10px; } .header h2 { font-size: .88rem; } .text { padding: 12px; font-size: .7rem; } .pdf { height: 55dvh; } }
+.footer > span { flex: 1 1 260px; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
+.footer button { min-height: 36px; padding: 8px 14px; border: 1px solid theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-accent-hover; font-size: readability.$control; }
+@media (max-width: 620px) { .preview { padding: 14px; } .header { gap: 10px; } .header h2 { font-size: .88rem; } .text { padding: 12px; } .pdf { height: 55dvh; } }

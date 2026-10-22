@@ -9,5 +9,5 @@
   .wrapper { padding: 4px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-primary; box-shadow: 0 8px 24px $color-shadow; }
   .label { display: none; }
   .switcher { grid-template-columns: repeat(2, auto); border: 0; padding: 0; }
-  .switcher > button { min-height: 36px; padding: 6px 8px; font-size: 12px; }
+  .switcher > button { min-height: 44px; padding: 6px 8px; font-size: 12px; }
 }

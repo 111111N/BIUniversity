@@ -13,6 +13,10 @@
 .scrollTools > span { margin-right: 6px; color: $color-text-secondary; font-size: 12px; }
 .scrollTools button { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; padding: 10px; border: 1px solid $color-border; background: transparent; }
 .scrollTools svg { width: 20px; height: 20px; }
+:root[data-theme="light"] .day.selected { border-color: theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-accent-primary; }
+:root[data-theme="light"] .day.selected small { background: $color-dark-secondary; color: $color-accent-primary; }
+:root[data-theme="light"] .scrollTools button { background: $color-dark-secondary; color: $color-text-secondary; }
+:root[data-theme="light"] .scrollTools button:not(:disabled):hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
 @media(max-width: 600px) {
   .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); width: 100%; gap: 3px; }
   .day { flex-direction: column; gap: 3px; padding: 8px 2px; font-size: 12px; }

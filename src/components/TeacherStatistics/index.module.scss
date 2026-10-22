@@ -1,36 +1,37 @@
+@use "../../styles/readability" as readability;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
 
 .dashboard { display: flex; flex-direction: column; gap: 16px; }
-.activeFilters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: .7rem; }
+.activeFilters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: readability.$caption; }
 .activeFilters button { padding: 6px 10px; border: 1px solid $color-border; color: $color-text-light; background: $color-ghost; }
 .activeFilters small { flex-basis: 100%; line-height: 1.6; }
 .filters { display: flex; gap: 10px; }
 .filters > div { flex: 1; min-width: 0; }
 .contextBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .contextBar > div { display: grid; gap: 5px; }
-.contextBar strong { color: $color-text-light; font-size: .8rem; }
-.contextBar span { color: $color-text-secondary; font-size: .65rem; }
-.contextBar button { display: inline-flex; gap: 10px; min-height: 36px; padding: 7px 12px; border-width: 1px; background: $color-dark-secondary; font-size: .7rem; }
+.contextBar strong { color: $color-text-light; font-size: readability.$body; }
+.contextBar span { color: $color-text-secondary; font-size: readability.$caption; }
+.contextBar button { display: inline-flex; gap: 10px; min-height: 36px; padding: 7px 12px; border-width: 1px; background: $color-dark-secondary; font-size: readability.$caption; }
 .contextBar button span { color: inherit; font-size: 1rem; }
-.exportStatus, .dataWarning { margin: 0; padding: 11px 13px; border: 1px solid $color-border; border-radius: $border-radius; color: $color-text-secondary; font-size: .72rem; line-height: 1.6; }
+.exportStatus, .dataWarning { margin: 0; padding: 11px 13px; border: 1px solid $color-border; border-radius: $border-radius; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
 .dataWarning { border-color: theme-alpha($color-warning, .3); background: theme-alpha($color-warning, .06); color: $color-warning; }
-.methodology { padding: 12px 14px; border: 1px solid $color-border; border-radius: $border-radius; color: $color-text-secondary; font-size: .7rem; line-height: 1.7; }
+.methodology { padding: 12px 14px; border: 1px solid $color-border; border-radius: $border-radius; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.7; }
 .methodology summary { color: $color-text-light; cursor: pointer; }
 .methodology p { max-width: 110ch; margin: 10px 0 0; }
-.chartHint { margin: 12px 0 0; color: $color-text-secondary; font-size: .66rem; line-height: 1.6; }
+.chartHint { margin: 12px 0 0; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
 .chartEmpty { display: grid; justify-items: center; align-content: center; flex: 1; min-height: 250px; gap: 10px; padding: 20px; box-sizing: border-box; text-align: center; }
 .chartEmpty strong { font-size: .9rem; font-weight: 600; color: $color-text-light; }
-.chartEmpty p { max-width: 40ch; margin: 0; color: $color-text-secondary; font-size: .73rem; line-height: 1.6; }
-.chartEmpty a { margin-top: 5px; color: $color-accent-hover; font-size: .72rem; text-underline-offset: 3px; }
+.chartEmpty p { max-width: 40ch; margin: 0; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
+.chartEmpty a { margin-top: 5px; color: $color-accent-hover; font-size: readability.$caption; text-underline-offset: 3px; }
 .chartCard header > .sampleCount { color: $color-text-secondary; font-size: .9rem; }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .metrics article { @include dashboard-card($color-dark-secondary, 18px); position: relative; min-width: 0; overflow: hidden; }
 .metrics article::before { content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: $color-accent-primary; }
 .metrics span, .metrics small { display: block; color: $color-text-secondary; }
-.metrics span { font-size: .72rem; text-transform: uppercase; }
+.metrics span { font-size: readability.$caption; text-transform: uppercase; }
 .metrics strong { display: block; margin: 12px 0 7px; font-size: 2rem; }
-.metrics small { font-size: .68rem; }
+.metrics small { font-size: readability.$caption; }
 .metrics .positive { color: $color-success; }
 .metrics .riskMetric::before { background: $color-error; }
 .metrics .riskMetric span, .metrics .riskMetric strong { color: $color-error; }
@@ -41,36 +42,37 @@
 .chartCard { @include dashboard-card($color-dark-secondary, 18px); min-width: 0; }
 .mainGrid > .chartCard:first-child { display: flex; flex-direction: column; container-name: grade-card; container-type: inline-size; }
 .chartCard > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.chartCard header span { color: $color-accent-primary; font-size: .65rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.chartCard header span { color: $color-accent-primary; font-size: readability.$caption; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .chartCard h2 { margin: 5px 0 0; font-size: 1rem; }
 .chartCard header > strong { font-size: 1.5rem; }
 .trendValue { display: grid; flex: 0 1 auto; gap: 5px; min-width: 0; text-align: right; }
 .trendValue strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
-.trendValue small { color: $color-text-secondary; font-size: .62rem; line-height: 1.5; }
+.trendValue small { color: $color-text-secondary; font-size: readability.$caption; line-height: 1.5; }
 .gradeChart { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(135px, .9fr); align-items: center; gap: clamp(14px, 4cqw, 28px); padding: clamp(6px, 2cqw, 18px) 0; }
 .donutWrap { position: relative; width: min(100%, 380px); aspect-ratio: 1; min-width: 0; min-height: 0; justify-self: center; user-select: none; }
 .donut { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; background: transparent; }
-.donutSegment { fill: none; stroke: currentColor; stroke-width: 1.8; cursor: pointer; filter: drop-shadow(0 0 2px currentColor); transition: fill .18s ease, stroke .18s ease, filter .18s ease; }
+.donutSegment { fill: none; stroke: var(--segment-stroke, currentColor); stroke-width: 1.8; cursor: pointer; filter: drop-shadow(0 0 2px currentColor); transition: fill .18s ease, stroke .18s ease, filter .18s ease; }
 .hitSegment { fill: transparent; stroke: transparent; stroke-width: 10; pointer-events: all; cursor: pointer; }
 .segmentGroup { outline: none; cursor: pointer; }
 .segmentGroup:focus-visible .donutSegment { stroke-width: 3.2; }
 .filteredDonut .donutSegment:not(.selectedSegment) { fill: none; stroke: $color-text-secondary; filter: none; }
-.segmentGroup:is(:hover, :focus-visible) .donutSegment:not(.selectedSegment) { fill: none; stroke: currentColor; filter: drop-shadow(0 0 4px currentColor); }
-.donut .selectedSegment { fill: currentColor; stroke: currentColor; stroke-width: 1.5; filter: drop-shadow(0 0 3px currentColor); }
+.segmentGroup:is(:hover, :focus-visible) .donutSegment:not(.selectedSegment) { fill: none; stroke: var(--segment-stroke, currentColor); filter: drop-shadow(0 0 4px currentColor); }
+.donut .selectedSegment { fill: currentColor; stroke: var(--segment-stroke, currentColor); stroke-width: 1.5; filter: drop-shadow(0 0 3px currentColor); }
 .donutValue { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: center; pointer-events: none; text-align: center; }
 .donutValue strong, .donutValue span { display: block; }
 .donutValue strong { font-size: clamp(1.6rem, 6cqw, 2.5rem); }
-.donutValue span { max-width: 60%; justify-self: center; margin-top: 4px; color: $color-text-secondary; font-size: clamp(.65rem, 1.8cqw, .8rem); line-height: 1.5; }
+.donutValue span { max-width: 60%; justify-self: center; margin-top: 4px; color: $color-text-secondary; font-size: clamp(12px, 1.8cqw, 13px); line-height: 1.5; }
 .legend { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; user-select: none; }
-.legend button { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%; padding: 8px; border: 1px solid transparent; background: transparent; font-size: clamp(.7rem, 1.6cqw, .82rem); text-align: left; }
+.legend button { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%; padding: 8px; border: 1px solid transparent; background: transparent; font-size: clamp(13px, 1.6cqw, 14px); text-align: left; }
 .legend button:not(:disabled):hover, .legend .activeLegend { border-color: $color-border; background: $color-accent-background-hover; color: $color-text-light; }
 .legend button:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; }
 .legend i { width: 8px; height: 8px; border-radius: 2px; }
 .legend span { color: $color-text-secondary; }
 .legend strong { color: $color-text-light; font-variant-numeric: tabular-nums; }
-.legend small { display: block; margin-top: 4px; color: $color-text-secondary; font-size: clamp(.57rem, 1.35cqw, .68rem); font-weight: 400; }
+.legend small { display: block; margin-top: 4px; color: $color-text-secondary; font-size: clamp(12px, 1.35cqw, 13px); font-weight: 400; }
 .legend button:disabled { cursor: default; opacity: .5; }
 .legend button:disabled:hover { border-color: transparent; background: transparent; }
+:root[data-theme="light"] .segmentGroup { --segment-stroke: color-mix(in srgb, currentColor 60%, #{$color-text-light}); }
 :root[data-theme="light"] .donutSegment { filter: none; }
 :root[data-theme="light"] .donut .selectedSegment { fill: color-mix(in srgb, currentColor 48%, #{$color-dark-secondary}); filter: none; }
 :root[data-theme="light"] .segmentGroup:is(:hover, :focus-visible) .donutSegment { filter: none; }
@@ -78,7 +80,7 @@
 :root[data-theme="light"] .legend button:not(:disabled):hover, :root[data-theme="light"] .legend .activeLegend { border-color: theme-alpha($color-accent-primary, .24); background: $color-accent-background-hover; }
 :root[data-theme="light"] .legend span { color: $color-text-light; }
 .groupBars { display: flex; flex-direction: column; gap: 12px; max-height: 285px; overflow-y: auto; padding-right: 5px; @include scroll-bar(5px); }
-.groupBar { display: grid; grid-template-columns: 72px 1fr 38px; align-items: center; gap: 9px; font-size: .7rem; }
+.groupBar { display: grid; grid-template-columns: 72px 1fr 38px; align-items: center; gap: 9px; font-size: readability.$caption; }
 .groupBar > span { font-weight: 700; }
 .groupBar > div { height: 9px; overflow: hidden; border-radius: 999px; background: $color-border; }
 .groupBar i { display: block; height: 100%; border-radius: inherit; background: $gradient-color-logo; }
@@ -86,30 +88,30 @@
 .groupBar strong { text-align: right; }
 .groupBar { padding: 7px 5px; border: 1px solid transparent; border-radius: 7px; color: $color-text-light; text-decoration: none; }
 .groupBar:hover { border-color: $color-border; background: $color-ghost; }
-.groupBar small { display: block; margin-top: 3px; color: $color-text-secondary; font-size: .58rem; font-weight: 400; }
-.riskCard header button { padding: 7px 10px; font-size: .65rem; }
+.groupBar small { display: block; margin-top: 3px; color: $color-text-secondary; font-size: readability.$caption; font-weight: 400; }
+.riskCard header button { padding: 7px 10px; font-size: readability.$caption; }
 .riskList { display: flex; flex-direction: column; max-height: 360px; overflow-y: auto; padding-right: 3px; @include scroll-bar(5px); }
 .riskList > div { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid $color-border; }
-.riskList > div > span { display: grid; place-items: center; box-sizing: border-box; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 9px; background: $color-accent-background; color: $color-accent-hover; font-size: .65rem; font-weight: 800; }
+.riskList > div > span { display: grid; place-items: center; box-sizing: border-box; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 9px; background: $color-accent-background; color: $color-accent-hover; font-size: readability.$caption; font-weight: 800; }
 .riskList > div:hover > span { border: 1px solid $color-text-light; color: $color-text-light; }.riskList > div:hover a, .riskList > div:hover small, .riskList > div:hover em { color: $color-text-light; }
 .riskList p, .riskList strong, .riskList small { display: block; margin: 0; }
-.riskList strong { font-size: .75rem; }.riskList small { margin-top: 4px; color: $color-text-secondary; font-size: .62rem; }
+.riskList strong { font-size: readability.$control; }.riskList small { margin-top: 4px; color: $color-text-secondary; font-size: readability.$caption; }
 .riskList strong a { color: $color-text-light; text-decoration: none; }
 .riskList strong a:hover { color: $color-accent-hover; }
-.riskList em { margin-left: 6px; color: $color-accent-hover; font-size: .62rem; font-style: normal; font-weight: 700; }
-.riskList b { padding: 4px 7px; border-radius: 999px; background: theme-alpha($color-error, .14); color: $color-error; font-size: .6rem; }
+.riskList em { margin-left: 6px; color: $color-accent-hover; font-size: readability.$caption; font-style: normal; font-weight: 700; }
+.riskList b { padding: 4px 7px; border-radius: 999px; background: theme-alpha($color-error, .14); color: $color-error; font-size: readability.$caption; }
 .riskList .medium { background: theme-alpha($color-warning, .14); color: $color-warning; }
-.riskList .emptyRisk { padding: 18px 0; color: $color-text-secondary; font-size: .72rem; }
-.workStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }.workStats div { padding: 14px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }.workStats span, .workStats strong { display: block; }.workStats span { color: $color-text-secondary; font-size: .65rem; }.workStats strong { margin-top: 10px; font-size: 1.35rem; }
+.riskList .emptyRisk { padding: 18px 0; color: $color-text-secondary; font-size: readability.$caption; }
+.workStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }.workStats div { padding: 14px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }.workStats span, .workStats strong { display: block; }.workStats span { color: $color-text-secondary; font-size: readability.$caption; }.workStats strong { margin-top: 10px; font-size: 1.35rem; }
 .workProgress { height: 6px; overflow: hidden; margin: 14px 0 18px; border-radius: 999px; background: $color-border; }
 .workProgress i { display: block; height: 100%; border-radius: inherit; background: $color-success; }
 .workStats a { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; padding: 14px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-accent-background-hover; color: $color-accent-hover; text-decoration: none; }
 .workStats a:hover { border-color: theme-alpha($color-accent-primary, .4); }
-.workStats a strong { margin: 0; font-size: .82rem; }
+.workStats a strong { margin: 0; font-size: readability.$body; }
 .workStats div { min-width: 0; }
 
 @media (max-width: 1100px) { .metrics { grid-template-columns: repeat(2, 1fr); }.mainGrid, .middleGrid, .lowerGrid { grid-template-columns: 1fr; } }
-@media (max-width: 650px) { .filters { flex-direction: column; }.metrics { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .filters { flex-direction: column; }.metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.metrics article { padding: 14px; }.metrics strong { font-size: 1.7rem; } }
 @media (max-width: 480px) { .workStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }.riskList > div { grid-template-columns: 30px minmax(0, 1fr); }.riskList b { grid-column: 2; justify-self: start; }.groupBar { grid-template-columns: 78px minmax(0, 1fr) 44px; } }
 @container grade-card (max-width: 380px) {
   .gradeChart { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 4px 0; }
@@ -118,3 +120,12 @@
   .legend { width: min(100%, 320px); justify-self: center; }
 }
 @media (prefers-reduced-motion: reduce) { .donutSegment { transition: none; } }
+
+.chartDetails { margin-top: 14px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
+.chartDetails summary { cursor: pointer; color: $color-text-light; }
+.chartDetails p { margin: 10px 0 0; }
+.activeFilters { padding: 12px; border: 1px solid theme-alpha($color-accent-primary, .3); border-radius: 10px; background: $color-accent-background-hover; }
+.activeFilters button { min-height: 36px; }
+.riskList em a { color: $color-text-secondary; font-size: 12px; }
+.riskList em a:hover { color: $color-accent-hover; }
+@media (pointer: coarse) { .activeFilters button, .riskCard header button, .contextBar button { min-height: 44px; } }

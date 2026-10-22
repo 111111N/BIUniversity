@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import ProfileLink from "../ProfileLink";
+import { readAnalyticsNavigation, updateAnalyticsNavigation } from "../../domain/analyticsNavigation";
 import { getAcademicGroup, getAcademicSubjectDefinition, getJournalHrefById } from "../../data/academicCatalog";
 import { getAssignments, getSubmissions } from "../../data/assignmentStore";
 import { readAnalyticsJournals } from "../../data/teacherAnalytics";
 import { useDashboardUpdate } from "../../data/studentDashboard";
-import { calculateTeacherAnalytics, createAnalyticsCsv, getAnalyticsRange, type AnalyticsPeriod } from "../../domain/teacherAnalytics";
+import { calculateTeacherAnalytics, createAnalyticsCsv, getAnalyticsRange } from "../../domain/teacherAnalytics";
 import { formatDashboardValue } from "../../domain/dashboard";
 import { formatCount } from "../../domain/formatCount";
 import { downloadJournalCsv } from "../../domain/journalExport";
@@ -12,7 +14,7 @@ import { toLocalDateKey } from "../../domain/schedule";
 import { useRole } from "../RoleContext";
 import LineChart from "../Charts/LineChart";
 import SelectField from "../SelectField";
-import SortControls, { type SortDirection } from "../SortControls";
+import SortControls from "../SortControls";
 import WeekPicker from "../WeekPicker";
 import styles from "./index.module.scss";
 
@@ -47,15 +49,14 @@ const formatWeek = (range: { start: Date; end: Date }) => `${dateFormat.format(r
 const TeacherStatistics = () => {
   const { currentUser } = useRole();
   const now = useDashboardUpdate();
-  const [subjectId, setSubjectId] = useState("all");
-  const [groupId, setGroupId] = useState("all");
-  const [period, setPeriod] = useState<AnalyticsPeriod>("semester");
-  const [selectedWeek, setSelectedWeek] = useState(() => new Date());
-  const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
-  const [drillWeek, setDrillWeek] = useState<string | null>(null);
-  const [showAllRisks, setShowAllRisks] = useState(false);
-  const [attendanceSort, setAttendanceSort] = useState<SortDirection>("desc");
-  const [gradeSort, setGradeSort] = useState<SortDirection>("desc");
+  const [params, setParams] = useSearchParams();
+  const { subjectId, groupId, period, selectedWeek, selectedGrade, drillWeek, showAllRisks, attendanceSort, gradeSort } = readAnalyticsNavigation(params, currentUser.memberships, now);
+  const updateFilters = (changes: Record<string, string | null>) => {
+    setParams((current) => updateAnalyticsNavigation(current, changes));
+    setExportMessage("");
+  };
+  const setSelectedGrade = (index: number | null) => updateFilters({ grade: index === null ? null : String(GRADE_SEGMENTS[index].grade) });
+  const setDrillWeek = (date: string | null) => updateFilters({ drill: date });
   const [exportMessage, setExportMessage] = useState("");
   const segmentRefs = useRef<Array<SVGGElement | null>>([]);
   const { journals, warnings } = useMemo(() => readAnalyticsJournals(currentUser.memberships), [currentUser.memberships, now]);
@@ -105,12 +106,12 @@ const TeacherStatistics = () => {
 
   return <div className={styles.dashboard}>
     <div className={styles.filters}>
-      <SelectField variant="main" label="Дисциплина" value={subjectId} onChange={(value) => { setSubjectId(value); setGroupId("all"); setSelectedGrade(null); setExportMessage(""); }} options={[{ value: "all", label: "Все дисциплины" }, ...subjects.map((subject) => ({ value: subject.id, label: subject.name }))]} />
-      <SelectField variant="main" label="Группа" value={groupId} onChange={(value) => { setGroupId(value); setSelectedGrade(null); setExportMessage(""); }} options={[{ value: "all", label: "Все группы" }, ...groups.map((group) => ({ value: group.id, label: group.name }))]} />
-      <SelectField variant="main" label="Период" value={period} onChange={(value) => { setPeriod(value as AnalyticsPeriod); setDrillWeek(null); setSelectedGrade(null); setExportMessage(""); }} options={PERIODS} />
+      <SelectField variant="main" label="Дисциплина" value={subjectId} onChange={(value) => { updateFilters({ subject: value, group: null, grade: null }); }} options={[{ value: "all", label: "Все дисциплины" }, ...subjects.map((subject) => ({ value: subject.id, label: subject.name }))]} />
+      <SelectField variant="main" label="Группа" value={groupId} onChange={(value) => { updateFilters({ group: value, grade: null }); }} options={[{ value: "all", label: "Все группы" }, ...groups.map((group) => ({ value: group.id, label: group.name }))]} />
+      <SelectField variant="main" label="Период" value={period} onChange={(value) => { updateFilters({ period: value, drill: null, grade: null }); }} options={PERIODS} />
     </div>
-    {period === "week" && <WeekPicker value={selectedWeek} onWeekChange={(date) => { setSelectedWeek(date); setDrillWeek(null); setSelectedGrade(null); setExportMessage(""); }} />}
-    {(selected !== null || drillWeek) && <div className={styles.activeFilters} aria-label="Активные фильтры"><span>Фильтры:</span>{selected !== null && <button type="button" onClick={() => { setSelectedGrade(null); setExportMessage(""); }}>Оценка {GRADE_SEGMENTS[selected].grade} ×</button>}{drillWeek && <button type="button" onClick={() => { setDrillWeek(null); setExportMessage(""); }}>{formatWeek(range)} ×</button>}<button type="button" onClick={() => { setSelectedGrade(null); setDrillWeek(null); setExportMessage(""); }}>Сбросить всё</button>{selected !== null && <small>Посещаемость, работы и риски — по студентам, получившим эту оценку за период. Баллы — только выбранная оценка.</small>}</div>}
+    {period === "week" && <WeekPicker value={selectedWeek} onWeekChange={(date) => { updateFilters({ week: toLocalDateKey(date), drill: null, grade: null }); }} />}
+    {(selected !== null || drillWeek) && <div className={styles.activeFilters} aria-label="Активные фильтры"><span>Фильтры:</span>{selected !== null && <button type="button" onClick={() => { setSelectedGrade(null); setExportMessage(""); }}>Оценка {GRADE_SEGMENTS[selected].grade} ×</button>}{drillWeek && <button type="button" onClick={() => { setDrillWeek(null); setExportMessage(""); }}>{formatWeek(range)} ×</button>}<button type="button" onClick={() => { updateFilters({ grade: null, drill: null }); }}>Сбросить всё</button>{selected !== null && <small>Посещаемость, работы и риски — по студентам, получившим эту оценку за период. Баллы — только выбранная оценка.</small>}</div>}
     <div className={styles.contextBar}><div><strong>{rangeLabel}</strong><span>Локальные учебные данные · обновляются вместе с журналом</span></div><button type="button" onClick={exportReport}>Скачать отчёт CSV <span aria-hidden="true">↓</span></button></div>
     {exportMessage && <p className={styles.exportStatus} role="status">{exportMessage}</p>}
     {warnings.length > 0 && <p className={styles.dataWarning} role="alert">Не удалось прочитать журналы: {warnings.join(", ")}. Они исключены из расчётов; сохранённые записи не изменены.</p>}
@@ -121,6 +122,17 @@ const TeacherStatistics = () => {
       <article className={styles.riskMetric}><span>Требуют внимания</span><strong>{analytics.risks.length}</strong><small>По отметкам и просроченным работам</small></article>
     </section>
     <details className={styles.methodology}><summary>Как считаются показатели</summary><p>Посещаемость — доля присутствий среди заполненных отметок проведённых занятий. Уважительная причина и пропуск входят в знаменатель; «не отмечено» — нет. Средний балл и распределение учитывают только выставленные оценки 5, 4, 3 и 2 за проведённые практики и лабораторные за период. Лекции и занятия без оценки не учитываются и не заменяются нулём. Один студент одной группы учитывается в численности один раз, даже если изучает несколько дисциплин.</p><p>Задания отбираются по дате занятия, без черновиков и архива. Ожидаемые ответы считаются по текущему составу группы. Внимание: посещаемость ниже 65% при наличии хотя бы трёх отметок, средний балл ниже 3 при двух оценках или две работы к сдаче после срока. Это сигналы для преподавателя, не официальный статус студента.</p></details>
+
+    <div className={styles.middleGrid}>
+      <section className={`${styles.chartCard} ${styles.riskCard}`}><header><div><span>Контроль</span><h2>Требуют внимания</h2></div>{analytics.risks.length > 4 && <button type="button" aria-expanded={showAllRisks} onClick={() => updateFilters({ risks: showAllRisks ? null : "all" })}>{showAllRisks ? "Свернуть" : `Все ${analytics.risks.length}`}</button>}</header>
+        <div className={styles.riskList}>{analytics.risks.slice(0, showAllRisks ? analytics.risks.length : 4).map((student) => <div key={student.key}><span>{student.initials}</span><p><strong><ProfileLink to={`/students/${encodeURIComponent(student.id)}?groupId=${encodeURIComponent(student.groupId)}`} title="Открыть профиль студента">{student.name}</ProfileLink> <em><Link to={getJournalHrefById(student.subjectId, student.groupId)} title="Открыть журнал группы">{student.groupName}</Link></em></strong><small>{student.reasons.join(" · ")}</small></p><b className={student.level === "Средний" ? styles.medium : ""}>{student.level}</b></div>)}{!analytics.risks.length && <p className={styles.emptyRisk}>По доступным данным за этот период сигналов риска нет.</p>}</div>
+      </section>
+      <section className={`${styles.chartCard} ${styles.workCard}`}><header><div><span>Учебная активность</span><h2>Выполнение работ</h2></div><strong>{formatPercent(completion)}</strong></header>
+        <p className={styles.chartHint}>{analytics.work.received} из {analytics.work.expected} ожидаемых ответов · заданий: {analytics.work.assignments}</p>
+        <div className={styles.workProgress} role="progressbar" aria-label="Получено ответов" aria-valuemin={0} aria-valuemax={Math.max(analytics.work.expected, 1)} aria-valuenow={analytics.work.received}><i style={{ width: `${completion ?? 0}%` }} /></div>
+        <div className={styles.workStats}><div><span>Первый ответ вовремя</span><strong>{analytics.work.onTime}</strong></div><div><span>На проверке</span><strong>{analytics.work.waiting}</strong></div><div><span>Без ответа после срока</span><strong>{analytics.work.overdue}</strong></div><div><span>На доработке</span><strong>{analytics.work.revision}</strong></div><div><span>Проверено</span><strong>{analytics.work.graded}</strong></div><Link to={subjectId !== "all" && groupId !== "all" ? `${getJournalHrefById(subjectId, groupId)}?tab=assignments` : "/journal"}><strong>Задания →</strong><span>{subjectId !== "all" && groupId !== "all" ? "Открыть задания группы" : "Выбрать журнал группы"}</span></Link></div>
+      </section>
+    </div>
 
     <div className={styles.mainGrid}>
       <section className={styles.chartCard}>
@@ -136,27 +148,16 @@ const TeacherStatistics = () => {
             })}
           </svg><div className={styles.donutValue}><strong>{selected === null ? "100%" : gradeShare(selected)}</strong><span>{selected === null ? "Все оценки" : `${formatCount(gradeContext.distribution[selected], ["оценка", "оценки", "оценок"])} «${GRADE_SEGMENTS[selected].grade}»`}</span></div></div>
           <div className={styles.legend}>{GRADE_SEGMENTS.map((segment, index) => <button type="button" disabled={!gradeContext.distribution[index] && selected !== index} aria-pressed={selected === index} className={selected === index ? styles.activeLegend : ""} onClick={() => { setSelectedGrade(selected === index ? null : index); setExportMessage(""); }} key={segment.grade}><i style={{ background: segment.color }} /><span>{segment.grade} · {segment.label}<small>{formatCount(gradeContext.distribution[index], ["оценка", "оценки", "оценок"])}</small></span><strong>{gradeShare(index)}</strong></button>)}</div>
-        </div><p className={styles.chartHint}>Нажмите на оценку, чтобы отфильтровать показатели, сравнения, работы и риски. Повторный клик снимает фильтр. Круг сохраняет все оценки выбранного периода для переключения.</p></> : <div className={styles.chartEmpty}><strong>Пока нет оценок за практики и лабораторные</strong><p>Выберите другой период или внесите оценки в журнал. Лекции и занятия без оценки в график не входят.</p><Link to="/journal">Открыть журнал →</Link></div>}
+        </div><details className={styles.chartDetails}><summary>Как работает фильтр оценки</summary><p>Оценка на диаграмме фильтрует показатели, работы и риски по студентам. Повторный клик снимает фильтр. Круг сохраняет все оценки периода.</p></details></> : <div className={styles.chartEmpty}><strong>Пока нет оценок за практики и лабораторные</strong><p>Выберите другой период или внесите оценки в журнал. Лекции и занятия без оценки в график не входят.</p><Link to="/journal">Открыть журнал →</Link></div>}
       </section>
       <section className={`${styles.chartCard} ${styles.trendCard}`}><header><div><span>Обзор периода · выбор недели</span><h2>Посещаемость по неделям</h2></div><div className={styles.trendValue}><strong>{formatPercent(activeTrend?.value ?? null)}</strong><small>{activeTrend ? `${drillWeek === activeTrend.date ? "Выбрано: " : "Последняя: "}${formatWeek(weekRange(activeTrend.date, baseRange))}` : "Нет отметок"}</small></div></header>
-        {trend.length ? <><LineChart data={trend.map((point) => Math.round(point.value * 10) / 10)} labels={trend.map((point) => formatWeek(weekRange(point.date, baseRange)))} length={trend.length} height={260} selectedIndex={trend.findIndex((point) => point.date === drillWeek)} onPointSelect={(index) => { setDrillWeek(drillWeek === trend[index].date ? null : trend[index].date); setExportMessage(""); }} /><p className={styles.chartHint}>Нажмите на точку недели: показатели и CSV будут отобраны за её даты. Для переключения график сохраняет полный период и всех студентов выбранных групп, независимо от фильтра оценки. Повторный клик снимает фильтр недели.</p></> : <div className={styles.chartEmpty}><strong>Нет данных для динамики</strong><p>За выбранный период нет заполненных отметок проведённых занятий.</p></div>}
-      </section>
-    </div>
-
-    <div className={styles.middleGrid}>
-      <section className={`${styles.chartCard} ${styles.riskCard}`}><header><div><span>Контроль</span><h2>Требуют внимания</h2></div>{analytics.risks.length > 4 && <button type="button" aria-expanded={showAllRisks} onClick={() => setShowAllRisks((value) => !value)}>{showAllRisks ? "Свернуть" : `Все ${analytics.risks.length}`}</button>}</header>
-        <div className={styles.riskList}>{analytics.risks.slice(0, showAllRisks ? analytics.risks.length : 4).map((student) => <div key={student.key}><span>{student.initials}</span><p><strong><Link to={getJournalHrefById(student.subjectId, student.groupId)} title="Открыть журнал группы">{student.name}</Link> <em>{student.groupName}</em></strong><small>{student.reasons.join(" · ")}</small></p><b className={student.level === "Средний" ? styles.medium : ""}>{student.level}</b></div>)}{!analytics.risks.length && <p className={styles.emptyRisk}>По доступным данным за этот период сигналов риска нет.</p>}</div>
-      </section>
-      <section className={`${styles.chartCard} ${styles.workCard}`}><header><div><span>Учебная активность</span><h2>Выполнение работ</h2></div><strong>{formatPercent(completion)}</strong></header>
-        <p className={styles.chartHint}>{analytics.work.received} из {analytics.work.expected} ожидаемых ответов · заданий: {analytics.work.assignments}</p>
-        <div className={styles.workProgress} role="progressbar" aria-label="Получено ответов" aria-valuemin={0} aria-valuemax={Math.max(analytics.work.expected, 1)} aria-valuenow={analytics.work.received}><i style={{ width: `${completion ?? 0}%` }} /></div>
-        <div className={styles.workStats}><div><span>Первый ответ вовремя</span><strong>{analytics.work.onTime}</strong></div><div><span>На проверке</span><strong>{analytics.work.waiting}</strong></div><div><span>Без ответа после срока</span><strong>{analytics.work.overdue}</strong></div><div><span>На доработке</span><strong>{analytics.work.revision}</strong></div><div><span>Проверено</span><strong>{analytics.work.graded}</strong></div><Link to="/journal"><strong>Журнал →</strong><span>Открыть задания групп</span></Link></div>
+        {trend.length ? <><LineChart data={trend.map((point) => Math.round(point.value * 10) / 10)} labels={trend.map((point) => formatWeek(weekRange(point.date, baseRange)))} length={trend.length} height={260} selectedIndex={trend.findIndex((point) => point.date === drillWeek)} onPointSelect={(index) => { setDrillWeek(drillWeek === trend[index].date ? null : trend[index].date); setExportMessage(""); }} /><details className={styles.chartDetails}><summary>Как работает выбор недели</summary><p>Нажмите на точку недели: показатели и CSV будут отобраны за её даты. Для переключения график сохраняет полный период и всех студентов выбранных групп, независимо от фильтра оценки. Повторный клик снимает фильтр недели.</p></details></> : <div className={styles.chartEmpty}><strong>Нет данных для динамики</strong><p>За выбранный период нет заполненных отметок проведённых занятий.</p></div>}
       </section>
     </div>
 
     <div className={styles.lowerGrid}>
-      <section className={styles.chartCard}><header><div><span>Сравнение журналов</span><h2>Посещаемость</h2></div><SortControls value={attendanceSort} onChange={setAttendanceSort} /></header>{attendanceGroups.length ? <div className={styles.groupBars}>{attendanceGroups.map((group) => <Link className={styles.groupBar} to={getJournalHrefById(group.subjectId, group.groupId)} key={group.id} title={`${group.subjectName} · открыть журнал`}><span>{group.groupName}<small>{group.subjectShortName}</small></span><div><i style={{ width: `${group.attendance ?? 0}%` }} /></div><strong>{formatPercent(group.attendance)}</strong></Link>)}</div> : <p className={styles.chartHint}>Нет журналов для сравнения с выбранными фильтрами. Измените период или снимите фильтр оценки.</p>}<p className={styles.chartHint}>Процент считается по заполненным отметкам, а не средним из процентов групп. «—» означает, что отметок нет, а не нулевую посещаемость.</p></section>
-      <section className={styles.chartCard}><header><div><span>Сравнение журналов</span><h2>Средний балл</h2></div><SortControls value={gradeSort} onChange={setGradeSort} /></header>{gradeGroups.length ? <div className={styles.groupBars}>{gradeGroups.map((group) => <Link className={styles.groupBar} to={getJournalHrefById(group.subjectId, group.groupId)} key={group.id} title={`${group.subjectName} · открыть журнал`}><span>{group.groupName}<small>{group.subjectShortName}</small></span><div><i style={{ width: `${group.average / 5 * 100}%` }} /></div><strong>{formatDashboardValue(group.average, 2)}</strong></Link>)}</div> : <p className={styles.chartHint}>Нет оценок за практики и лабораторные для сравнения.</p>}<p className={styles.chartHint}>Только практики и лабораторные; журналы без оценок не отображаются. Нажмите на строку, чтобы открыть журнал.</p></section>
+      <section className={styles.chartCard}><header><div><span>Сравнение журналов</span><h2>Посещаемость</h2></div><SortControls value={attendanceSort} onChange={(value) => updateFilters({ attendanceSort: value })} /></header>{attendanceGroups.length ? <div className={styles.groupBars}>{attendanceGroups.map((group) => <Link className={styles.groupBar} to={getJournalHrefById(group.subjectId, group.groupId)} key={group.id} title={`${group.subjectName} · открыть журнал`}><span>{group.groupName}<small>{group.subjectShortName}</small></span><div><i style={{ width: `${group.attendance ?? 0}%` }} /></div><strong>{formatPercent(group.attendance)}</strong></Link>)}</div> : <p className={styles.chartHint}>Нет журналов для сравнения с выбранными фильтрами. Измените период или снимите фильтр оценки.</p>}<p className={styles.chartHint}>Процент считается по заполненным отметкам, а не средним из процентов групп. «—» означает, что отметок нет, а не нулевую посещаемость.</p></section>
+      <section className={styles.chartCard}><header><div><span>Сравнение журналов</span><h2>Средний балл</h2></div><SortControls value={gradeSort} onChange={(value) => updateFilters({ gradeSort: value })} /></header>{gradeGroups.length ? <div className={styles.groupBars}>{gradeGroups.map((group) => <Link className={styles.groupBar} to={getJournalHrefById(group.subjectId, group.groupId)} key={group.id} title={`${group.subjectName} · открыть журнал`}><span>{group.groupName}<small>{group.subjectShortName}</small></span><div><i style={{ width: `${group.average / 5 * 100}%` }} /></div><strong>{formatDashboardValue(group.average, 2)}</strong></Link>)}</div> : <p className={styles.chartHint}>Нет оценок за практики и лабораторные для сравнения.</p>}<p className={styles.chartHint}>Только практики и лабораторные; журналы без оценок не отображаются. Нажмите на строку, чтобы открыть журнал.</p></section>
     </div>
   </div>;
 };

@@ -2,6 +2,8 @@ import { ChangeEvent, useEffect, useId, useRef, useState } from "react";
 import { getPersonalMaterialScope, materialRepository, type StoredMaterial } from "../../data/materialRepository";
 import { formatFileSize, MAX_ATTACHMENT_SIZE } from "../../domain/files";
 import { matchesSearchText } from "../../domain/search";
+import { changesMaterialScope } from "../../domain/unsavedNavigation";
+import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import Checkbox from "../Checkbox";
 import ConfirmDialog from "../ConfirmDialog";
 import Dropdown from "../Dropdown";
@@ -63,6 +65,7 @@ const FileStorage = ({
   const scopeVersion = useRef(0);
   const mutationLock = useRef(false);
   const busy = uploading || deleting || Boolean(pinningId);
+  useUnsavedChangesWarning(!readOnly && (uploading || selectedFiles.length > 0 || (uploadOpen && Boolean(materialDescription.trim() || pinned))), changesMaterialScope);
   const emptyHeading = emptyTitle ?? (readOnly ? "Материалов пока нет" : "Загрузите первый файл");
   const emptyHint = emptyDescription ?? (readOnly ? "Когда преподаватель добавит материалы, они появятся в этом разделе." : "Конспекты, ведомости, презентации и учебные материалы");
   const hasFilters = categoryFilter !== "Все" || Boolean(query.trim());
@@ -240,7 +243,7 @@ const FileStorage = ({
       {visibleFiles.length ? <div className={styles.fileList}>{visibleFiles.map((file) => <MaterialCard key={file.id} file={file} readOnly={readOnly} busy={busy} pinning={pinningId === file.id} onDownload={() => materialRepository.download(file)} onPreview={() => setPreviewFile(file)} onPin={() => { void togglePinned(file); }} onDelete={() => { setDeleteError(""); setPendingDelete(file); }} />)}</div> : <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">⌕</span><strong>Материалы не найдены</strong><p>Попробуйте другое название или покажите все категории.</p><button type="button" onClick={resetFilters}>Показать все материалы</button></div>}
     </>}
 
-    {!loading && !loadError && files.length === 0 && <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">{readOnly ? "≡" : <ArrowIcon direction="up" size={22} />}</span><strong>{emptyHeading}</strong><p>{emptyHint}</p>{!readOnly && <button type="button" disabled={busy} onClick={() => { setUploadOpen(true); requestAnimationFrame(() => inputRef.current?.click()); }}>Выбрать первый файл</button>}</div>}
+    {!loading && !loadError && files.length === 0 && !uploadOpen && <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">{readOnly ? "≡" : <ArrowIcon direction="up" size={22} />}</span><strong>{emptyHeading}</strong><p>{emptyHint}</p></div>}
     {pendingDelete && !readOnly && <ConfirmDialog title="Удалить материал?" busy={deleting} error={deleteError} onCancel={() => setPendingDelete(null)} onConfirm={() => { void deleteFile(pendingDelete.id); }}><p><strong>{pendingDelete.name}</strong></p><p>Файл исчезнет из этого раздела. Восстановить его можно только повторной загрузкой.</p></ConfirmDialog>}
     {previewFile && <FilePreview key={previewFile.id} name={previewFile.name} blob={previewFile.blob} onDownload={() => materialRepository.download(previewFile)} onClose={() => setPreviewFile(null)} />}
   </section>;

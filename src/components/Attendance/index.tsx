@@ -1,3 +1,5 @@
+import ProfileLink from "../ProfileLink";
+import useJournalView from "../../hooks/useJournalView";
 import * as React from 'react';
 import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { format, eachDayOfInterval, getDay } from 'date-fns';
@@ -12,7 +14,7 @@ import {
   CloseIcon,
 } from '../ButtonIcons/Icons';
 import { Student, AttendanceStatus, Grade } from './data/students';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import type { AcademicLesson } from '../../domain/academic';
 import { lessonTypeLabels } from '../../domain/academic';
 import { countJournalDraftChanges, mergeJournalDraft } from '../../domain/journalDraft';
@@ -293,10 +295,9 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
   const [originalStudents, setOriginalStudents] = useState<Student[]>(students);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [mode, setMode] = useState<'attendance' | 'grades'>('attendance');
+  const { mode, setMode, studentQuery, setStudentQuery } = useJournalView();
   const [editError, setEditError] = useState('');
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [studentQuery, setStudentQuery] = useState('');
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [keyboardCell, setKeyboardCell] = useState<{ studentId: string; lessonId: string } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -477,7 +478,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
     setDraftStudents(prev => [...prev, newStudent]);
     setStudentQuery('');
     addedStudentRef.current = newStudent.id;
-  }, [columns]);
+  }, [columns, setStudentQuery]);
 
   const deleteStudent = useCallback((id: string) => {
     setDraftStudents(prev => prev.filter(student => student.id !== id));
@@ -637,13 +638,13 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
             ) : readOnly || isEditing ? (
               <span title={student.name}>{student.name}</span>
             ) : (
-              <Link
+              <ProfileLink
                 className={styles.studentLink}
                 to={`/students/${student.id}?name=${encodeURIComponent(student.name)}${groupId ? `&groupId=${encodeURIComponent(groupId)}` : ""}`}
                 title={`Открыть профиль: ${student.name}`}
               >
                 {student.name}
-              </Link>
+              </ProfileLink>
             )}
           </td>
 
@@ -708,7 +709,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
             {searching && isRosterEditing && <small>Чтобы менять порядок строк, очистите поиск.</small>}
           </div>
         </div>}
-        <div ref={tableWrapperRef} className={styles.tableWrapper} tabIndex={isEditing ? -1 : 0} role="region" aria-label="Таблица журнала, прокручивается по горизонтали и вертикали" aria-describedby={isEditing ? keyboardHintId : undefined} onKeyDown={handleTableKeys}>
+        <div ref={tableWrapperRef} data-profile-scroll="journal-table" className={styles.tableWrapper} tabIndex={isEditing ? -1 : 0} role="region" aria-label="Таблица журнала, прокручивается по горизонтали и вертикали" aria-describedby={isEditing ? keyboardHintId : undefined} onKeyDown={handleTableKeys}>
           <table>
             <caption className={styles.visuallyHidden}>{mode === 'attendance' ? 'Посещаемость учеников по занятиям' : 'Оценки учеников по занятиям'}</caption>
             <thead>

@@ -69,6 +69,28 @@
 .planner :is(button, input, summary):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 .dragging, .dragging * { cursor: grabbing !important; user-select: none; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+:root[data-theme="light"] {
+  .plannerToolbar { box-shadow: 0 4px 18px rgba(31, 36, 49, .025); }
+  .dayColumn {
+    border-color: $color-border;
+    background: color-mix(in srgb, var(--ui-chart-blue) 3%, #{$color-dark-secondary});
+  }
+  .dayColumn.selectedDay {
+    border-color: theme-alpha($color-accent-primary, .35);
+    background: color-mix(in srgb, #{$color-accent-primary} 3%, #{$color-dark-secondary});
+    box-shadow: 0 3px 14px theme-alpha($color-accent-primary, .06);
+  }
+  .dayHeader { border-bottom-color: theme-alpha($color-text-secondary, .14); }
+  .weekday { color: $color-text-light; font-weight: 500; }
+  .weekday small { background: $color-dark-secondary; border: 1px solid $color-border; }
+  .selectedDay .weekday small { border-color: theme-alpha($color-accent-primary, .18); color: $color-accent-primary; }
+  .addButton { background: $color-dark-secondary; border-color: $color-border; color: $color-text-secondary; }
+  .addButton:hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
+  .emptyState, .addAnother { border-color: theme-alpha($color-text-secondary, .22); border-style: dashed; background: $color-dark-secondary; }
+  .emptyState:hover, .addAnother:hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
+  .emptyWeek { background: $color-dark-secondary; }
+}
 @media(max-width: 720px) {
   .plannerToolbar { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 12px; }
   .toolbarTop, .tools { display: contents; }

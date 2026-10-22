@@ -1,11 +1,13 @@
+@use "../../../styles/readability" as readability;
 @use "../../../styles/switches";
 @use "../../../styles/variables" as *;
 .search { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 18px; border-bottom: 1px solid $color-border; background: var(--messenger-surface); }
 .search label { display: flex; align-items: center; flex: 1 1 170px; gap: 8px; min-width: 0; color: $color-text-secondary; }
-.search input { flex: 1; width: 100%; min-width: 0; min-height: 32px; padding: 4px; border: 0; outline: none; border-radius: 0; background: transparent; box-shadow: none; color: $color-text-light; font: inherit; font-size: .73rem; }
+.search input { flex: 1; width: 100%; min-width: 0; min-height: 32px; padding: 4px; border: 0; outline: none; border-radius: 0; background: transparent; box-shadow: none; color: $color-text-light; font: inherit; font-size: readability.$caption; }
 .search label:focus-within { color: $color-text-light; }
+.search label:has(input:focus-visible) { outline: 2px solid $color-accent-primary; outline-offset: 2px; border-radius: 4px; }
 .controls { display: flex; align-items: center; gap: 4px; }
-.controls span { min-width: 67px; margin: 0 5px; color: $color-text-secondary; font-size: .6rem; text-align: center; font-variant-numeric: tabular-nums; }
+.controls span { min-width: 67px; margin: 0 5px; color: $color-text-secondary; font-size: readability.$caption; text-align: center; font-variant-numeric: tabular-nums; }
 .controls button { display: grid; place-items: center; min-width: 28px; min-height: 30px; padding: 5px; border: 0; border-radius: 7px; color: $color-text-secondary; background: transparent; }
 .controls button:hover:not(:disabled) { background: theme-alpha($color-text-secondary, .1); border-color: transparent; color: $color-text-light; }
 .controls button:disabled { opacity: .35; cursor: default; }

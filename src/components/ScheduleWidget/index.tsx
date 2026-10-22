@@ -8,9 +8,10 @@ import styles from "./index.module.scss";
 interface ScheduleProps {
   schedule: WeeklyScheduleData;
   currentTime: Date;
+  fill?: boolean;
 }
 
-export default function Schedule({ schedule, currentTime }: ScheduleProps) {
+export default function Schedule({ schedule, currentTime, fill = false }: ScheduleProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const lessons = [...schedule].sort((a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`));
   const activeId = lessons.find((lesson) => getLessonStatus(lesson, currentTime).state !== "past")?.id;
@@ -25,7 +26,7 @@ export default function Schedule({ schedule, currentTime }: ScheduleProps) {
   if (!lessons.length) return <p className={styles.empty}>Сегодня занятий нет. <Link to="/schedule">Посмотреть неделю <ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link></p>;
 
   return (
-    <div className={styles.scheduleWrapper} ref={listRef}>
+    <div className={`${styles.scheduleWrapper} ${fill ? styles.fill : ""}`} ref={listRef}>
       <ul className={styles.scheduleList}>
         {lessons.map((item) => {
           const status = getLessonStatus(item, currentTime);

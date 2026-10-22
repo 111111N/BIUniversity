@@ -1,5 +1,5 @@
-﻿import { Link, useParams } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import AssignmentCenter from "../../components/AssignmentCenter";
 import { AttendanceTable } from "../../components/Attendance";
@@ -14,8 +14,10 @@ import { createSubjectLessons } from "../../data/lessons";
 import AttendanceLegend from "../../components/AttendanceLegend";
 import JournalSummary from "../../components/JournalSummary";
 import LessonTypeFilter from "../../components/LessonTypeFilter";
-import type { LessonTypeFilterValue } from "../../components/LessonTypeFilter";
+import useJournalView from "../../hooks/useJournalView";
 import ArrowCircle from "../../components/ArrowCircle";
+import SearchField from "../../components/SearchField";
+import { matchesSearchText } from "../../domain/search";
 import { changeJournalSection, getJournalSection } from "../../domain/journalNavigation";
 import { useDashboardUpdate } from "../../data/studentDashboard";
 
@@ -26,11 +28,14 @@ const StudentJournal = () => {
   const subjectMembership = currentUser.memberships.find((membership) => membership.subjectId === subjectId);
   const studentGroup = groupId ?? subjectMembership?.groupIds[0] ?? "";
   const [searchParams, setSearchParams] = useSearchParams();
+  const catalogQuery = searchParams.get("q") ?? "";
+  const setCatalogQuery = (value: string) => setSearchParams((current) => { const next = new URLSearchParams(current); if (value) next.set("q", value); else next.delete("q"); return next; }, { replace: true });
   const activeSection = getJournalSection(searchParams);
   const setActiveSection = (section: string) => setSearchParams((current) => changeJournalSection(current, section));
-  const [lessonType, setLessonType] = useState<LessonTypeFilterValue>("all");
+  const { lessonType, setLessonType } = useJournalView();
   const subject = getSubject(subjectId);
   const subjects = JOURNAL_SUBJECTS.filter((item) => currentUser.memberships.some((membership) => membership.subjectId === item.id));
+  const visibleSubjects = subjects.filter((item) => matchesSearchText(`${item.name} ${item.shortName}`, catalogQuery));
   const group = subject?.groups.find((item) => item.id === studentGroup);
   const journal = useJournal(subjectId ?? "", studentGroup);
   const student = journal.students.find((item) => item.id === currentUser.id);
@@ -50,8 +55,10 @@ const StudentJournal = () => {
       <header className={catalogStyles.pageHeader}>
         <nav className={catalogStyles.breadcrumbs} aria-label="Навигационная цепочка"><span aria-current="page">Журнал</span></nav>
       </header>
+      <div className={catalogStyles.catalogTools}><SearchField label="Найти дисциплину" value={catalogQuery} onChange={setCatalogQuery} placeholder="Название дисциплины" /></div>
+      {catalogQuery.trim() && <p className={catalogStyles.resultLine} role="status">Найдено: {visibleSubjects.length} из {subjects.length}</p>}
       <div className={catalogStyles.subjectsGrid}>
-        {subjects.map((item) => {
+        {visibleSubjects.map((item) => {
           const membershipGroupId = currentUser.memberships.find((membership) => membership.subjectId === item.id)?.groupIds[0] ?? "";
           const membershipGroup = item.groups.find((entry) => entry.id === membershipGroupId);
           return (
@@ -70,6 +77,7 @@ const StudentJournal = () => {
           );
         })}
       </div>
+      {!visibleSubjects.length && <div className={catalogStyles.empty}><strong>{subjects.length ? "Дисциплины не найдены" : "Дисциплин пока нет"}</strong>{catalogQuery && <button type="button" onClick={() => setCatalogQuery("")}>Показать все дисциплины</button>}</div>}
     </div>
   );
 

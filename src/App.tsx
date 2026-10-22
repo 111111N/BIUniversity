@@ -1,6 +1,7 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Nav from "./components/Navigation";
+import NavigationScroll from "./components/NavigationScroll";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { RoleProvider, useRole } from "./components/RoleContext";
 import { ThemeProvider } from "./components/ThemeContext";
@@ -26,22 +27,14 @@ const NotFound = lazy(() => import("./pages/notFound"));
 const LayoutWithNav = () => {
     const location = useLocation();
     const { role } = useRole();
-    const [blobs, setBlobs] = useState<Array<{top?: string, left?: string, bottom?: string, right?: string}>>([]);
-    const getRandomPercentage = () => Math.floor(Math.random() * 80) + 10;
-    useEffect(() => {
-        const newBlobs = Array.from({ length: 6 }).map((_, i) => {
-            if (i % 2 === 0) {
-                return { top: `${getRandomPercentage()}%`, left: `${getRandomPercentage()}%` };
-            } else {
-                return { bottom: `${getRandomPercentage()}%`, right: `${getRandomPercentage()}%` };
-            }
-        });
-        setBlobs(newBlobs);
-    }, [location]);
+    const [blobs] = useState(() => Array.from({ length: 6 }, (_, index) => ({
+        top: `${12 + index * 14}%`, left: `${index % 2 === 0 ? 22 : 78}%`,
+    })));
 
     return (
         <div className="dashboard-layout">
             <Nav />
+            <NavigationScroll />
 
             <main className="main-content">
                 {blobs.map((style, index) => (

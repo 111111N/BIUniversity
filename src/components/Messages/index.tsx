@@ -1,10 +1,11 @@
+import ProfileLink from "../ProfileLink";
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { STUDENT_PROFILES } from "../../data/studentProfiles";
 import { TEACHER_PROFILES } from "../../data/teacherProfiles";
 import { getAcademicGroupByName, getAcademicSubjectByName } from "../../data/academicCatalog";
 import { createEmptyMessagingState, messageRepository, type MessagingState, type MessageTab, type StoredMessage, type StoredMessageGroup } from "../../data/messageStore";
 import { messageAttachmentRepository } from "../../data/messageAttachmentRepository";
+import { deliverDirectMessage, recoverDemoDirectMessages } from "../../data/messageDelivery";
 import { getAttachmentError } from "../../domain/files";
 import { matchesSearchText } from "../../domain/search";
 import type { MessagingContact } from "../../domain/messaging";
@@ -43,7 +44,7 @@ const DEFAULT_MESSAGES: StoredMessage[] = [
 const profileHref = (contact: Contact) => contact.kind === "student" ? "/students/" + contact.id : "/teachers/" + contact.id;
 const mergeGroups = (groups: StoredMessageGroup[]) => Array.from(new Map(groups.map((group) => [group.id, group])).values());
 
-const Messages = ({ initialContactId }: { initialContactId?: string | null }) => {
+const Messages = ({ initialContactId, initialThreadTop }: { initialContactId?: string | null; initialThreadTop?: number }) => {
   const { role, currentUser } = useRole();
   const componentId = useId();
   const editorHeadingId = useId();
@@ -67,7 +68,7 @@ const Messages = ({ initialContactId }: { initialContactId?: string | null }) =>
     if (initialSnapshot.state) return initialSnapshot.state;
     if (initialSnapshot.error) return createEmptyMessagingState();
     const contact = role === "student" ? people.find((person) => person.id === "teacher-elena-volkova") : initialPeople.find((person) => person.kind === "student");
-    return { dialogIds: contact ? [contact.id] : [], messages: contact ? { [contact.id]: DEFAULT_MESSAGES } : {}, unread: { students: 0, teachers: 0, groups: 0 } };
+    return { dialogIds: contact ? [contact.id] : [], messages: contact ? { [contact.id]: DEFAULT_MESSAGES.map((message) => role === "student" ? { ...message, incoming: !message.incoming } : message) } : {}, unread: { students: 0, teachers: 0, groups: 0 } };
   });
   const [draftGroup, setDraftGroup] = useState<StoredMessageGroup | null>(null);
   const groups = mergeGroups([...DEFAULT_GROUPS, ...(state.groups ?? []), ...(draftGroup ? [draftGroup] : [])]).filter((group) => group.memberIds.includes(currentUser.id) && !state.leftGroupIds?.includes(group.id));
@@ -107,7 +108,7 @@ const Messages = ({ initialContactId }: { initialContactId?: string | null }) =>
   const [actionError, setActionError] = useState("");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const filesButtonRef = useRef<HTMLButtonElement>(null);
-  const threadPositions = useRef(new Map<string, ThreadPosition>());
+  const threadPositions = useRef(new Map<string, ThreadPosition>(initialContactId && initialThreadTop !== undefined ? [[initialContactId, { top: initialThreadTop, followLatest: false }]] : []));
   useUnsavedChangesWarning(hasUnsavedText || Object.values(draftFiles).some((files) => files.length > 0), changesMessageContact);
   const selected = directory.find((contact) => contact.id === selectedId);
   const selectedGroup = selected?.kind === "group" ? groups.find((group) => group.id === selected.id) : undefined;
@@ -142,6 +143,15 @@ const Messages = ({ initialContactId }: { initialContactId?: string | null }) =>
     setStorageError("");
   }, [role, currentUser.id]);
   useEffect(() => messageRepository.subscribe(role, currentUser.id, refreshHistory), [role, currentUser.id, refreshHistory]);
+  useEffect(() => {
+    let active = true;
+    const identities = [...people.flatMap((person) => person.kind === "group" ? [] : [{ id: person.id, role: person.kind }]), { id: currentUser.id, role }];
+    void recoverDemoDirectMessages(identities).then((warnings) => { if (active && warnings.length) setStorageError(warnings.join(" ")); }).catch((error) => {
+      console.error("Не удалось восстановить доставку переписки:", error);
+      if (active) setStorageError("Не удалось восстановить прежние отправления. Сохранённая история не изменена.");
+    });
+    return () => { active = false; };
+  }, [people, currentUser.id, role]);
 
   const latestOrStop = () => {
     const snapshot = messageRepository.readState(role, currentUser.id);
@@ -244,7 +254,15 @@ const Messages = ({ initialContactId }: { initialContactId?: string | null }) =>
       if (replyId !== undefined && !currentThread.some((message) => message.id === replyId)) throw new Error("Сообщение для ответа уже удалено. Уберите цитату и повторите отправку.");
       const message: StoredMessage = { id: currentThread.reduce((latestId, item) => Math.max(latestId, item.id), Date.now()) + 1, incoming: false, text, sentAt: new Date().toISOString(), time: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }), ...(attachments.length ? { attachments } : {}), ...(replyId !== undefined ? { replyTo: replyId } : {}) };
       const next: MessagingState = { ...latest, dialogIds: Array.from(new Set([selected.id, ...latest.dialogIds])), messages: { ...latest.messages, [selected.id]: [...currentThread, message] }, groups: latestGroups, unread: { ...latest.unread, [tabFor(selected.kind)]: 0 } };
-      if (!commit(next, "Не удалось сохранить сообщение. Черновик остался на месте.", selected.id)) throw new Error("Не удалось сохранить сообщение. Текст и выбранные файлы остались в черновике.");
+      if (selected.kind === "group") {
+        if (!commit(next, "Не удалось сохранить сообщение. Черновик остался на месте.", selected.id)) throw new Error("Не удалось сохранить сообщение. Текст и выбранные файлы остались в черновике.");
+      } else {
+        const delivered = await deliverDirectMessage({ role, id: currentUser.id }, { role: selected.kind, id: selected.id }, message, latest);
+        hasStoredHistory.current = true;
+        setState(delivered);
+        setStorageError("");
+        setDraftErrors((current) => ({ ...current, [selected.id]: "" }));
+      }
       saved = true;
       if (selectedIdRef.current === selected.id) setScrollRequest((value) => value + 1);
       completeDraft(selected.id);
@@ -320,12 +338,12 @@ const Messages = ({ initialContactId }: { initialContactId?: string | null }) =>
       {storageError && <p className={styles.storageError} role="alert">{storageError}</p>}
       {notice && <div className={styles.notice} role="status"><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Скрыть уведомление"><MessageActionIcon name="close" /></button></div>}
       {selected ? <>
-        <header className={styles.chatHeader}><button type="button" className={styles.mobileBack} onClick={() => { setSelectedId(null); setMembersOpen(false); setThreadSearchOpen(false); setThreadFilesOpen(false); }} aria-label="Назад к чатам"><MessageActionIcon name="back" /></button><span className={styles.avatar}>{selected.kind === "group" ? <MessageActionIcon name="group" /> : selected.initials}</span><div className={styles.chatIdentity}>{selected.kind === "group" ? <button type="button" onClick={() => { setMembersOpen((value) => !value); setThreadSearchOpen(false); }}>{selected.name}</button> : <Link to={profileHref(selected)}>{selected.name}</Link>}<span>{selected.kind === "group" ? selected.subtitle : `${selected.kind === "student" ? "Студент" : "Преподаватель"} · ${selected.subtitle}`}</span></div><div className={styles.headerActions}><button ref={filesButtonRef} type="button" className={styles.iconButton} aria-label="Вложения переписки" title="Все вложения" aria-haspopup="dialog" aria-expanded={threadFilesOpen} onClick={() => setThreadFilesOpen(true)}><MessageActionIcon name="folder" /></button><button type="button" className={styles.iconButton} aria-label="Поиск в переписке" title="Найти сообщение" aria-pressed={threadSearchOpen} onClick={() => { setThreadSearchOpen((value) => !value); setMembersOpen(false); }}><MessageActionIcon name="search" /></button>{selectedGroup && <button type="button" className={styles.iconButton} onClick={() => { setMembersOpen((value) => !value); setThreadSearchOpen(false); }} aria-expanded={membersOpen} aria-label="Участники и действия беседы" title="Участники и действия"><MessageActionIcon name="group" /></button>}</div></header>
-        {selectedGroup && membersOpen && <div className={styles.membersPanel}><div className={styles.membersHeading}><strong>Участники · {selectedGroup.memberIds.length}</strong><div className={styles.chatActions}><button type="button" disabled={Boolean(readError) || sending} onClick={() => openGroupEditor(selectedGroup)}>Добавить людей</button><button type="button" className={styles.leaveButton} disabled={Boolean(readError) || sending} onClick={() => requestAction({ kind: "leave", group: selectedGroup })}>Выйти из беседы</button></div></div><div className={styles.membersList}>{selectedGroup.memberIds.map((id) => { const member = participant(id); return member ? <Link className={styles.memberCard} key={id} to={profileHref(member)}><span>{member.initials}</span><strong>{member.name}{id === currentUser.id ? " · вы" : ""}</strong></Link> : <span className={styles.unknownMember} key={id}>Пользователь недоступен</span>; })}</div></div>}
+        <header className={styles.chatHeader}><button type="button" className={styles.mobileBack} onClick={() => { setSelectedId(null); setMembersOpen(false); setThreadSearchOpen(false); setThreadFilesOpen(false); }} aria-label="Назад к чатам"><MessageActionIcon name="back" /></button><span className={styles.avatar}>{selected.kind === "group" ? <MessageActionIcon name="group" /> : selected.initials}</span><div className={styles.chatIdentity}>{selected.kind === "group" ? <button type="button" onClick={() => { setMembersOpen((value) => !value); setThreadSearchOpen(false); }}>{selected.name}</button> : <ProfileLink returnTo={`/messages?contact=${encodeURIComponent(selected.id)}`} to={profileHref(selected)}>{selected.name}</ProfileLink>}<span>{selected.kind === "group" ? selected.subtitle : `${selected.kind === "student" ? "Студент" : "Преподаватель"} · ${selected.subtitle}`}</span></div><div className={styles.headerActions}><button ref={filesButtonRef} type="button" className={styles.iconButton} aria-label="Вложения переписки" title="Все вложения" aria-haspopup="dialog" aria-expanded={threadFilesOpen} onClick={() => setThreadFilesOpen(true)}><MessageActionIcon name="folder" /></button><button type="button" className={styles.iconButton} aria-label="Поиск в переписке" title="Найти сообщение" aria-pressed={threadSearchOpen} onClick={() => { setThreadSearchOpen((value) => !value); setMembersOpen(false); }}><MessageActionIcon name="search" /></button>{selectedGroup && <button type="button" className={styles.iconButton} onClick={() => { setMembersOpen((value) => !value); setThreadSearchOpen(false); }} aria-expanded={membersOpen} aria-label="Участники и действия беседы" title="Участники и действия"><MessageActionIcon name="group" /></button>}</div></header>
+        {selectedGroup && membersOpen && <div className={styles.membersPanel}><div className={styles.membersHeading}><strong>Участники · {selectedGroup.memberIds.length}</strong><div className={styles.chatActions}><button type="button" disabled={Boolean(readError) || sending} onClick={() => openGroupEditor(selectedGroup)}>Добавить людей</button><button type="button" className={styles.leaveButton} disabled={Boolean(readError) || sending} onClick={() => requestAction({ kind: "leave", group: selectedGroup })}>Выйти из беседы</button></div></div><div className={styles.membersList}>{selectedGroup.memberIds.map((id) => { const member = participant(id); return member ? <ProfileLink returnTo={`/messages?contact=${encodeURIComponent(selected.id)}`} className={styles.memberCard} key={id} to={profileHref(member)}><span>{member.initials}</span><strong>{member.name}{id === currentUser.id ? " · вы" : ""}</strong></ProfileLink> : <span className={styles.unknownMember} key={id}>Пользователь недоступен</span>; })}</div></div>}
         <MessageThread key={`thread:${selected.id}`} messages={thread} filesOpen={threadFilesOpen} onFilesClose={() => { setThreadFilesOpen(false); requestAnimationFrame(() => filesButtonRef.current?.focus({ preventScroll: true })); }} positions={threadPositions.current} positionKey={selected.id} contactName={selected.name} searchOpen={threadSearchOpen} onSearchClose={() => setThreadSearchOpen(false)} group={selected.kind === "group"} scrollRequest={scrollRequest} attachmentScope={attachmentScope(selected.id)} readOnly={Boolean(readError) || sending} onDelete={(messages) => requestAction({ kind: "delete", contactId: selected.id, messages, group: selected.kind === "group" })} onReply={(message) => { setReplies((current) => ({ ...current, [selected.id]: message.id })); requestAnimationFrame(() => composerRef.current?.focus({ preventScroll: true })); }} />
         {draftErrors[selected.id] && <div className={`${styles.storageError} ${styles.draftError}`} role="alert"><span>{draftErrors[selected.id]}</span><button type="button" onClick={() => setDraftErrors((current) => ({ ...current, [selected.id]: "" }))} aria-label="Скрыть ошибку черновика"><MessageActionIcon name="close" /></button></div>}
         {draftStorageErrors[selected.id] && <div className={`${styles.storageError} ${styles.draftPersistenceError}`} role="alert"><span>{draftStorageErrors[selected.id]}</span><button type="button" onClick={() => retryDraft(selected.id)}>Повторить</button></div>}
-        <MessageComposer key={`composer:${selected.id}`} id={componentId + "-message"} inputRef={composerRef} name={selected.name} text={draft} textSaved={Boolean(savedDrafts[selected.id])} newGroup={draftGroup?.id === selected.id} files={files} replyId={replyId} reply={reply} sending={sending} readOnly={Boolean(readError)}
+        <MessageComposer key={`composer:${selected.id}`} id={componentId + "-message"} inputRef={composerRef} name={selected.name} text={draft} textSaved={Boolean(savedDrafts[selected.id])} newGroup={draftGroup?.id === selected.id} files={files} replyId={replyId} reply={reply} sending={sending} readOnly={Boolean(readError)} localDelivery={selected.kind !== "group"}
           onSubmit={(event) => { void send(event); }} onText={(text) => changeDraft(selected.id, text)} onFiles={addFiles}
           onRemoveFile={(index) => setDraftFiles((current) => ({ ...current, [selected.id]: files.filter((_, fileIndex) => fileIndex !== index) }))}
           onCancelReply={() => setReplies((current) => ({ ...current, [selected.id]: undefined }))} />

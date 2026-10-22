@@ -1,4 +1,5 @@
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { ProfileBackLink } from "../../components/ProfileLink";
 import TeacherProfile from "../../components/TeacherProfile";
 import { useRole } from "../../components/RoleContext";
 import { getTeacherProfile } from "../../data/teacherProfiles";
@@ -10,7 +11,7 @@ const TeacherPage = () => {
   const teacher = getTeacherProfile(teacherId);
   const ownProfile = teacherId === currentUser.id;
   return <div className={`pageContainer ${styles.page}`}>
-    <Link className={styles.back} to={ownProfile ? "/cabinet" : "/messages"}>← {ownProfile ? "Назад в кабинет" : "Назад к сообщениям"}</Link>
+    <ProfileBackLink className={styles.back} fallback={ownProfile ? "/cabinet" : "/messages"} />
     {teacher ? <TeacherProfile teacher={teacher} /> : <section className={styles.empty}><h1>Преподаватель не найден</h1></section>}
   </div>;
 };

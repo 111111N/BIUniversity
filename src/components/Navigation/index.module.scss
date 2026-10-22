@@ -136,38 +136,31 @@
 }
 .bottomNav { margin-top: auto; padding-bottom: 20px; }
 
+// The mobile bar has a fixed set of five destinations.
+.mobileList { display: none; }
+.morePanel { box-sizing: border-box; width: min(460px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 20px; overflow-y: auto; border: 1px solid $color-border; border-radius: 16px; background: $color-dark-primary; color: $color-text-light; box-shadow: 0 18px 55px $color-shadow; }
+:root[data-theme="light"] .morePanel { background: $color-dark-secondary; }
+.moreHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.moreHeading h2 { margin: 0; font-size: 20px; }
+.moreHeading button { width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: $color-text-secondary; font-size: 26px; }
+.moreContent { display: grid; gap: 8px; }
+.extraList { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.extraList .navLink, .moreAction { box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 12px; border: 0; border-radius: 8px; font-size: 14px; text-align: left; text-decoration: none; }
+.extraList .icon, .moreAction .icon { margin: 0; }
+.moreAction { justify-content: flex-start; background: transparent; color: $color-text-light; font-weight: 400; }
+.moreAction strong { margin-left: auto; color: $color-accent-hover; }
+.extraList .active { border-radius: 8px; box-shadow: none; }
+.moreContent > div:last-child { margin-top: 10px; }
 @media (max-width: 760px) {
-  .sidebarNav {
-    position: fixed;
-    inset: auto 0 0;
-    z-index: 20;
-    flex-direction: row;
-    align-items: stretch;
-    width: 100%;
-    min-width: 0;
-    height: auto;
-    min-height: 0;
-    padding: 0;
-    overflow-x: auto;
-    border-top: 1px solid $color-border;
-    border-right: 0;
-  }
-
-  .navHeader { display: grid; place-items: center; flex: 0 0 52px; padding: 0; }
-  .themeToggle { min-height: 52px; padding: 2px; }
-  .logoImage { width: 38px; height: 38px; }
-  .navList { display: flex; }
-  .navLink { flex-direction: column; gap: 4px; min-width: 62px; padding: 9px 8px; font-size: .62rem; }
-  .icon { flex-basis: 18px; width: 18px; height: 18px; margin: 0; }
-  .badge { position: absolute; top: 5px; right: 5px; min-width: 15px; height: 15px; font-size: .52rem; }
-  .bottomNav { display: flex; margin: 0 0 0 auto; padding: 0; }
-  .bottomNav > div:not(.profileRow) {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 30;
-  }
-  .profileRow { width: auto; gap: 2px; padding: 0 9px 0 0; }
-  .profileRow .navLink { gap: 4px; min-width: 68px; padding: 9px 5px; font-size: .62rem; }
-  .profileRow .badge { top: -4px; right: -4px; }
+  .sidebarNav { position: fixed; inset: auto 0 0; z-index: 20; display: block; width: 100%; min-width: 0; height: auto; min-height: 0; padding: 0 0 env(safe-area-inset-bottom, 0px); overflow: visible; border-top: 1px solid $color-border; border-right: 0; }
+  .navHeader, .desktopList, .bottomNav { display: none; }
+  .mobileList { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+  .mobileList .navItem { min-width: 0; }
+  .mobileList .navLink, .moreButton { display: flex; flex-direction: column; justify-content: center; gap: 5px; box-sizing: border-box; width: 100%; min-width: 0; min-height: 66px; padding: 8px 2px; border: 0; border-radius: 0; background: transparent; color: $color-text-secondary; font: inherit; font-size: 12px; line-height: 1.3; text-decoration: none; }
+  .mobileList .icon { flex-basis: auto; width: 20px; height: 20px; margin: 0; }
+  .mobileList .active .navLink, .mobileList .active .moreButton { color: $color-on-accent; }
+  .mobileList .active { box-shadow: none; }
+  .moreButton:hover, .moreButton[aria-expanded=true] { background: $color-accent-background-hover; color: $color-accent-hover; }
+  .mobileList .badge { top: 4px; right: 12%; min-width: 17px; height: 17px; font-size: 11px; }
+  .morePanel .navLink { flex-direction: row; }
 }

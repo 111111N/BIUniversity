@@ -1,5 +1,6 @@
+@use "../../../styles/readability" as readability;
 @use "../../../styles/variables" as *;
-.toast { position: absolute; z-index: 5; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: max-content; max-width: calc(100% - 28px); padding: 9px 10px 9px 14px; border: 1px solid theme-alpha($color-text-secondary, .3); border-radius: 12px; color: $color-text-light; background: var(--messenger-surface, #{$color-dark-primary}); box-shadow: 0 6px 24px theme-alpha($color-shadow, .3); font-size: .7rem; line-height: 1.6; }
+.toast { position: absolute; z-index: 5; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: max-content; max-width: calc(100% - 28px); padding: 9px 10px 9px 14px; border: 1px solid theme-alpha($color-text-secondary, .3); border-radius: 12px; color: $color-text-light; background: var(--messenger-surface, #{$color-dark-primary}); box-shadow: 0 6px 24px theme-alpha($color-shadow, .3); font-size: readability.$caption; line-height: 1.6; }
 .toast span { min-width: 0; overflow-wrap: anywhere; }
 .toast button { display: grid; place-items: center; flex: 0 0 auto; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; color: $color-text-secondary; background: transparent; }
 .toast button:hover { background: $color-ghost; color: $color-text-light; }

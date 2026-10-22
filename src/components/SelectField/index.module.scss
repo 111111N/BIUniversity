@@ -1,3 +1,4 @@
+@use "../../styles/readability" as readability;
 @use "../../styles/variables" as *;
 
 :root {
@@ -14,4 +15,4 @@
 }
 
 .field { display: block; min-width: 220px; }
-.field > span { display: block; margin: 0 0 6px 3px; color: $color-text-secondary; font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.field > span { display: block; margin: 0 0 6px 3px; color: $color-text-secondary; font-size: readability.$caption; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }

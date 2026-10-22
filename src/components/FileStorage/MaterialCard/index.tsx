@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { StoredMaterial } from "../../../data/materialRepository";
 import { formatFileSize, getFilePreviewFormat } from "../../../domain/files";
 import DownloadButton from "../../DownloadButton";
@@ -15,6 +16,26 @@ interface Props {
 }
 
 const MaterialCard = ({ file, readOnly, busy, pinning, onDownload, onPreview, onPin, onDelete }: Props) => {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const closeActions = () => {
+    if (!detailsRef.current) return;
+    detailsRef.current.open = false;
+    detailsRef.current.querySelector("summary")?.focus();
+  };
+  useEffect(() => {
+    const outside = (event: PointerEvent) => { if (detailsRef.current && !detailsRef.current.contains(event.target as Node)) detailsRef.current.open = false; };
+    const escape = (event: KeyboardEvent) => {
+      const details = detailsRef.current;
+      if (event.key !== "Escape" || !details?.open || !details.contains(document.activeElement)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      details.open = false;
+      details.querySelector("summary")?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, []);
   const extension = file.name.includes(".") ? file.name.split(".").pop()?.slice(0, 6) : "Файл";
   const date = new Date(file.createdAt);
   const hasDate = Number.isFinite(date.getTime());
@@ -34,7 +55,10 @@ const MaterialCard = ({ file, readOnly, busy, pinning, onDownload, onPreview, on
     <div className={styles.actions}>
       {canPreview && <button type="button" className={styles.previewButton} onClick={onPreview} aria-label={`Просмотреть материал ${file.name}`}><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6Z" /><circle cx="10" cy="10" r="2.5" /></svg>Просмотр</button>}
       <DownloadButton name={file.name} compact className={styles.download} onDownload={onDownload} />
-      {!readOnly && <div className={styles.manage}><button type="button" disabled={busy} aria-pressed={Boolean(file.pinned)} onClick={onPin}>{pinning ? "Сохраняем…" : file.pinned ? "Открепить" : "Закрепить"}</button><button type="button" disabled={busy} className={styles.deleteButton} onClick={onDelete}>Удалить</button></div>}
+      {!readOnly && <details ref={detailsRef} className={styles.manage}>
+        <summary aria-label={`Управление материалом ${file.name}`}>Ещё <span aria-hidden="true">⋯</span></summary>
+        <div className={styles.manageMenu}><button type="button" disabled={busy} aria-pressed={Boolean(file.pinned)} onClick={() => { closeActions(); onPin(); }}>{pinning ? "Сохраняем…" : file.pinned ? "Открепить" : "Закрепить"}</button><button type="button" disabled={busy} className={styles.deleteButton} onClick={() => { closeActions(); onDelete(); }}>Удалить</button></div>
+      </details>}
     </div>
   </article>;
 };

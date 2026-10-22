@@ -20,28 +20,22 @@ export default function TodaySchedule({ date }: Props) {
   const isToday = key === toLocalDateKey(now);
   const schedule = getPersonalSchedule(getDemoWeekSchedule(selectedDate), role).filter((lesson) => lesson.date === key);
   let nextDate: Date | undefined;
-  let nextSchedule = schedule;
   if (!schedule.length) {
     for (let offset = 1; offset <= 14; offset++) {
       const candidate = new Date(selectedDate);
       candidate.setDate(candidate.getDate() + offset);
-      const lessons = getPersonalSchedule(getDemoWeekSchedule(candidate), role).filter((lesson) => lesson.date === toLocalDateKey(candidate));
-      if (lessons.length) { nextDate = candidate; nextSchedule = lessons.slice(0, 2); break; }
+      if (getPersonalSchedule(getDemoWeekSchedule(candidate), role).some((lesson) => lesson.date === toLocalDateKey(candidate))) { nextDate = candidate; break; }
     }
   }
-  const href = `/schedule?date=${key}`;
 
-  return (
-    <section className={styles.container}>
-      <div className={styles.header}>
-        <h2>{isToday ? "Сегодня, " : ""}{selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</h2>
-        <Link to={href}>Расписание<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
-      </div>
-      <p className={styles.caption}>{selectedDate.toLocaleDateString("ru-RU", { weekday: "long" })} · демонстрационное расписание</p>
-      {schedule.length ? <Schedule schedule={schedule} currentTime={now} /> : <>
-        <div className={styles.freeDay}><span aria-hidden="true">✓</span><div><strong>{isToday ? "Сегодня без занятий" : "На этот день занятий нет"}</strong><p>Можно уделить время задачам и подготовке к следующей паре.</p></div></div>
-        {nextDate && <div className={styles.nextDay}><div className={styles.nextHeader}><span>Следующий учебный день</span><Link to={`/schedule?date=${toLocalDateKey(nextDate)}`}>{nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}<ArrowCircle /></Link></div><Schedule schedule={nextSchedule} currentTime={now} /></div>}
-      </>}
-    </section>
-  );
+  return <section className={styles.container} aria-label="Расписание на день">
+    <div className={styles.header}>
+      <h2>{isToday ? "Сегодня, " : ""}{selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</h2>
+      <Link to={`/schedule?date=${key}`}>Расписание<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
+    </div>
+    <p className={styles.caption}>{selectedDate.toLocaleDateString("ru-RU", { weekday: "long" })} · демонстрационное расписание</p>
+    <div className={styles.body}>
+      {schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : nextDate && <div className={styles.nextDay}><span>Следующий учебный день</span><Link to={`/schedule?date=${toLocalDateKey(nextDate)}`}>{nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}<ArrowCircle /></Link></div>}
+    </div>
+  </section>;
 }

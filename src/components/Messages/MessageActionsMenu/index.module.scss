@@ -1,7 +1,8 @@
+@use "../../../styles/readability" as readability;
 @use "../../../styles/variables" as *;
 
 .menu { position: fixed; z-index: 2500; display: grid; box-sizing: border-box; width: 196px; max-width: calc(100vw - 16px); padding: 5px; border: 1px solid $color-border; border-radius: 11px; background: $color-dark-primary; box-shadow: 0 8px 32px $color-shadow; }
-.menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; color: $color-text-light; font-size: .74rem; text-align: left; }
+.menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; color: $color-text-light; font-size: readability.$caption; text-align: left; }
 .menu button:hover:not(:disabled), .menu button:focus-visible { outline: none; background: theme-alpha($color-text-secondary, .12); border-color: transparent; color: $color-text-light; }
 .menu .danger { color: $color-error; }
 .menu .danger:hover:not(:disabled), .menu .danger:focus-visible { background: theme-alpha($color-error, .12); color: $color-error; }

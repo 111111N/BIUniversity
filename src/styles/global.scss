@@ -75,8 +75,8 @@ h6 {
 }
 
 @media (max-width: 760px) {
-  .dashboard-layout { display: block; padding-bottom: 66px; }
-  .main-content { padding-top: 44px; }
+  .dashboard-layout { display: block; padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  .main-content { padding-top: 0; }
 }
 
 .nav-menu {

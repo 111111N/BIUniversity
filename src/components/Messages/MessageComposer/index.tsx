@@ -16,6 +16,7 @@ interface Props {
   reply?: StoredMessage;
   sending: boolean;
   readOnly: boolean;
+  localDelivery?: boolean;
   onSubmit(event: FormEvent): void;
   onText(text: string): void;
   onFiles(files: FileList): void;
@@ -23,7 +24,7 @@ interface Props {
   onCancelReply(): void;
 }
 
-export default function MessageComposer({ id, inputRef, name, text, textSaved, newGroup, files, replyId, reply, sending, readOnly, onSubmit, onText, onFiles, onRemoveFile, onCancelReply }: Props) {
+export default function MessageComposer({ id, inputRef, name, text, textSaved, newGroup, files, replyId, reply, sending, readOnly, localDelivery = false, onSubmit, onText, onFiles, onRemoveFile, onCancelReply }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fit = useCallback(() => {
     const input = inputRef.current;
@@ -41,6 +42,6 @@ export default function MessageComposer({ id, inputRef, name, text, textSaved, n
     <label className={styles.srOnly} htmlFor={id}>Сообщение для {name}</label><textarea id={id} ref={inputRef} rows={1} value={text} maxLength={16000} disabled={sending} onPaste={(event) => { if (event.clipboardData.files.length && !readOnly) { event.preventDefault(); onFiles(event.clipboardData.files); } }} onChange={(event) => onText(event.target.value)} placeholder="Написать сообщение…" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.altKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
     <button type="submit" className={styles.sendButton} disabled={(!text.trim() && !files.length) || readOnly || sending || (replyId !== undefined && !reply)} aria-label={sending ? "Сохраняем сообщение" : "Отправить сообщение"} title={replyId !== undefined && !reply ? "Уберите недоступную цитату перед отправкой" : "Отправить · Enter"}><MessageActionIcon name="send" /></button></div>
     </div>
-    <div className={styles.hint}><span>Enter — отправить <i>·</i> Shift + Enter — новая строка</span><span role="status" title={newGroup ? "Новая беседа появится в списке после первого сообщения. До этого текст, состав и название беседы остаются только в памяти — не уходите из раздела. Файлы и цитаты ответа также не восстанавливаются после выхода." : "В рамках этой вкладки сохраняется только текстовый черновик. После ухода из раздела файлы нужно прикрепить заново, а цитату ответа — выбрать повторно. История локальная, доставка собеседнику пока не подключена."}>{sending ? "Сохраняем…" : newGroup ? "Новая беседа · до выхода" : text ? textSaved ? "Текст сохранён в этой вкладке" : "Текст только в памяти" : files.length ? "Вложения до выхода" : "Локальный режим"}{!sending && text ? files.length > 0 && replyId !== undefined ? " · файлы и цитата до выхода" : files.length > 0 ? " · файлы до выхода" : replyId !== undefined ? " · цитата до выхода" : "" : ""}</span></div>
+    <div className={styles.hint}><span>Enter — отправить <i>·</i> Shift + Enter — новая строка</span><span role="status" title={newGroup ? "Новая беседа появится в списке после первого сообщения. До этого текст, состав и название беседы остаются только в памяти — не уходите из раздела. Файлы и цитаты ответа также не восстанавливаются после выхода." : localDelivery ? "Личные сообщения и вложения доступны обоим участникам в этом браузере. Между устройствами доставка пока не подключена. До отправки файлы и цитата сохраняются только в этой вкладке." : "История беседы хранится в этом браузере. Доставка сообщений беседы другим участникам пока не подключена. До отправки файлы и цитата сохраняются только в этой вкладке."}>{sending ? "Сохраняем…" : newGroup ? "Новая беседа · до выхода" : text ? textSaved ? "Текст сохранён в этой вкладке" : "Текст только в памяти" : files.length ? "Вложения до выхода" : "Локальный режим"}{!sending && text ? files.length > 0 && replyId !== undefined ? " · файлы и цитата до выхода" : files.length > 0 ? " · файлы до выхода" : replyId !== undefined ? " · цитата до выхода" : "" : ""}</span></div>
   </form>;
 }

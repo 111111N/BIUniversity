@@ -1,5 +1,5 @@
+import ProfileLink from "../../ProfileLink";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
-import { Link } from "react-router-dom";
 import type { Submission } from "../../../data/assignmentStore";
 import type { Student } from "../../Attendance/data/students";
 import { getCurrentSubmissionAttempt, getSubmissionStatus } from "../../../domain/assignments";
@@ -129,7 +129,7 @@ const SubmissionWorkspace = ({ answers, students, groupId, rosterError, currentI
         <div className={styles.list} ref={listRef}>
           {filter === "missing" ? rosterError ? <p role="alert" className={styles.error}>Не удалось прочитать состав группы. Список несдавших временно недоступен.</p> : <><h4>Не сдали · {missing.length}</h4>{missing.length ? <ul className={styles.missing}>{missing.map((student) => {
             const search = new URLSearchParams({ name: student.name, ...(groupId ? { groupId } : {}) });
-            return <li key={student.id}><Link className={styles.studentLink} to={`/students/${encodeURIComponent(student.id)}?${search}`} aria-label={`Открыть профиль: ${student.name}`}><span className={styles.avatar} aria-hidden="true">{student.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("")}</span><span className={styles.studentBody}><strong>{student.name}</strong><span className={styles.rowMeta}>Открыть профиль</span></span><AssignmentIcon name="arrowRight" size={16} /></Link></li>;
+            return <li key={student.id}><ProfileLink className={styles.studentLink} to={`/students/${encodeURIComponent(student.id)}?${search}`} aria-label={`Открыть профиль: ${student.name}`}><span className={styles.avatar} aria-hidden="true">{student.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("")}</span><span className={styles.studentBody}><strong>{student.name}</strong><span className={styles.rowMeta}>Открыть профиль</span></span><AssignmentIcon name="arrowRight" size={16} /></ProfileLink></li>;
           })}</ul> : <p className={styles.empty}>{query.trim() ? "Несдавшие по этому поиску не найдены." : "Все студенты из журнала отправили ответы."}</p>}</> : filtered.length ? <ul className={styles.students}>{filtered.map((answer) => {
             const attempt = getCurrentSubmissionAttempt(answer);
             const status = getSubmissionStatus(answer) ?? "submitted";

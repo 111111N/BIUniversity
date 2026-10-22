@@ -1,3 +1,4 @@
+@use "../../styles/readability" as readability;
 @use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
@@ -9,51 +10,51 @@
 .header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .header > div { flex: 1 1 260px; min-width: 0; }
 .header h2 { margin: 5px 0 8px; color: $color-text-light; font-size: 1.15rem; line-height: 1.35; }
-.header p { max-width: 750px; margin: 0; color: $color-text-secondary; font-size: .75rem; line-height: 1.6; overflow-wrap: anywhere; }
-.eyebrow { color: $color-accent-hover; font-size: .61rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-.uploadButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 14px; border: 1px solid theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-hover; font-size: .72rem; line-height: 1.4; }
+.header p { max-width: 750px; margin: 0; color: $color-text-secondary; font-size: readability.$control; line-height: 1.6; overflow-wrap: anywhere; }
+.eyebrow { color: $color-accent-hover; font-size: readability.$caption; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.uploadButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 14px; border: 1px solid theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-hover; font-size: readability.$caption; line-height: 1.4; }
 .uploadButton:hover:not(:disabled) { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
 .uploadPanel { display: grid; gap: 16px; margin-top: 20px; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-ghost; }
 .uploadHeading { display: grid; gap: 5px; }
-.uploadHeading strong { color: $color-text-light; font-size: .83rem; font-weight: 600; }
-.uploadHeading > span { color: $color-text-secondary; font-size: .68rem; line-height: 1.6; }
+.uploadHeading strong { color: $color-text-light; font-size: readability.$body; font-weight: 600; }
+.uploadHeading > span { color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
 .uploadFields { display: grid; grid-template-columns: minmax(180px, 230px) minmax(0, 1fr); gap: 14px; align-items: end; }
-.descriptionField { display: grid; min-width: 0; gap: 5px; color: $color-text-secondary; font-size: .72rem; font-weight: 600; }
-.descriptionField input { @include input(12px, 7px); box-sizing: border-box; width: 100%; min-width: 0; min-height: 36px; font-size: .8rem; font-weight: 400; }
+.descriptionField { display: grid; min-width: 0; gap: 5px; color: $color-text-secondary; font-size: readability.$caption; font-weight: 600; }
+.descriptionField input { @include input(12px, 7px); box-sizing: border-box; width: 100%; min-width: 0; min-height: 36px; font-size: readability.$body; font-weight: 400; }
 .uploadOptions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-.uploadOptions > span { max-width: 370px; color: $color-text-secondary; font-size: .61rem; line-height: 1.5; }
+.uploadOptions > span { max-width: 370px; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.5; }
 .fileSelection { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 14px; border-top: 1px solid $color-border; }
-.fileSelection button { min-height: 38px; padding: 8px 12px; border-width: 1px; background: $color-dark-secondary; color: $color-text-light; font-size: .7rem; }
+.fileSelection button { min-height: 38px; padding: 8px 12px; border-width: 1px; background: $color-dark-secondary; color: $color-text-light; font-size: readability.$caption; }
 .fileSelection button:hover:not(:disabled) { border-color: theme-alpha($color-accent-primary, .4); background: $color-accent-background-hover; }
-.fileSelection > span { color: $color-text-secondary; font-size: .64rem; line-height: 1.5; }
+.fileSelection > span { color: $color-text-secondary; font-size: readability.$caption; line-height: 1.5; }
 .selectedFiles { display: grid; gap: 7px; max-height: 260px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .selectedFiles li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid $color-border; border-radius: 8px; background: $color-dark-secondary; }
 .selectedFiles li > div { display: grid; min-width: 0; gap: 4px; }
-.selectedFiles strong { color: $color-text-light; font-size: .7rem; font-weight: 500; overflow-wrap: anywhere; }
-.selectedFiles span { color: $color-text-secondary; font-size: .62rem; }
-.selectedFiles button { flex: 0 0 auto; min-height: 34px; padding: 6px 8px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: .62rem; }
+.selectedFiles strong { color: $color-text-light; font-size: readability.$caption; font-weight: 500; overflow-wrap: anywhere; }
+.selectedFiles span { color: $color-text-secondary; font-size: readability.$caption; }
+.selectedFiles button { flex: 0 0 auto; min-height: 34px; padding: 6px 8px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: readability.$caption; }
 .selectedFiles button:hover:not(:disabled) { background: theme-alpha($color-error, .08); color: $color-error; }
 .uploadFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.uploadFooter > span { color: $color-text-secondary; font-size: .68rem; }
-.libraryTools { display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: end; gap: 14px; margin-top: 22px; }
-.libraryTools input { min-height: 36px; padding-block: 7px; }
+.uploadFooter > span { color: $color-text-secondary; font-size: readability.$caption; }
+.libraryTools { --dropdown-control-height: 44px; display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: end; gap: 14px; margin-top: 22px; }
+.libraryTools input[type="search"] { box-sizing: border-box; min-height: 44px; height: 44px; padding-block: 7px; }
 .categoryFilters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-.resultsSummary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; color: $color-text-secondary; font-size: .64rem; line-height: 1.5; }
-.resultsSummary button { padding: 4px 7px; border: 1px solid transparent; background: transparent; color: $color-accent-hover; font-size: .64rem; }
+.resultsSummary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.5; }
+.resultsSummary button { padding: 4px 7px; border: 1px solid transparent; background: transparent; color: $color-accent-hover; font-size: readability.$caption; }
 .resultsSummary button:hover { background: $color-accent-background-hover; }
 .fileList { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 12px; align-items: stretch; }
 .emptyState { display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; min-height: 210px; gap: 10px; margin-top: 20px; padding: 26px 18px; border: 1px dashed theme-alpha($color-text-secondary, .3); border-radius: 12px; color: $color-text-secondary; text-align: center; }
 .emptyState strong { color: $color-text-light; font-size: .88rem; font-weight: 600; line-height: 1.5; }
-.emptyState p { max-width: 460px; margin: 0; font-size: .72rem; line-height: 1.65; }
+.emptyState p { max-width: 460px; margin: 0; font-size: readability.$caption; line-height: 1.65; }
 .emptyIcon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 3px; border-radius: 12px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: 1.45rem; }
-.emptyState button { min-height: 38px; margin-top: 4px; padding: 8px 12px; border: 1px solid theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-accent-hover; font-size: .69rem; }
+.emptyState button { min-height: 38px; margin-top: 4px; padding: 8px 12px; border: 1px solid theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-accent-hover; font-size: readability.$caption; }
 .emptyState button:hover:not(:disabled) { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
-.error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding: 12px 14px; border: 1px solid theme-alpha($color-error, .3); border-radius: 8px; background: theme-alpha($color-error, .06); color: $color-error; font-size: .73rem; line-height: 1.6; }
+.error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding: 12px 14px; border: 1px solid theme-alpha($color-error, .3); border-radius: 8px; background: theme-alpha($color-error, .06); color: $color-error; font-size: readability.$caption; line-height: 1.6; }
 .error > span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
-.error button { min-height: 34px; padding: 6px 9px; border: 1px solid theme-alpha($color-error, .3); background: transparent; color: $color-error; font-size: .64rem; }
+.error button { min-height: 34px; padding: 6px 9px; border: 1px solid theme-alpha($color-error, .3); background: transparent; color: $color-error; font-size: readability.$caption; }
 .error button:hover { background: theme-alpha($color-error, .1); }
-.notice { margin: 16px 0 0; padding: 10px 13px; border: 1px solid theme-alpha($color-success, .25); border-radius: 8px; background: theme-alpha($color-success, .06); color: $color-text-light; font-size: .71rem; line-height: 1.6; }
-.loading { display: flex; align-items: center; gap: 9px; margin-top: 18px; padding: 10px 0; color: $color-text-secondary; font-size: .73rem; }
+.notice { margin: 16px 0 0; padding: 10px 13px; border: 1px solid theme-alpha($color-success, .25); border-radius: 8px; background: theme-alpha($color-success, .06); color: $color-text-light; font-size: readability.$caption; line-height: 1.6; }
+.loading { display: flex; align-items: center; gap: 9px; margin-top: 18px; padding: 10px 0; color: $color-text-secondary; font-size: readability.$caption; }
 .loadingDot { width: 8px; height: 8px; border-radius: 50%; background: $color-accent-primary; box-shadow: 0 0 0 4px $color-accent-background-hover; }
 .storage button:disabled { cursor: not-allowed; }
 @media (max-width: 760px) {

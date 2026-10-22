@@ -17,7 +17,7 @@
 .dots { position: absolute; bottom: 5px; display: flex; justify-content: center; gap: 4px; }
 .dots i, .legend i { width: 4px; height: 4px; border-radius: 50%; }
 .lessonDot { background: $color-accent-primary; }
-.taskDot { background: var(--ui-chart-blue); }
+.taskDot { background: var(--calendar-task-color, var(--ui-chart-blue)); }
 .today .dots i { background: $color-on-accent; }
 .legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: $color-text-secondary; font-size: .62rem; }
 .legend > span { display: inline-flex; align-items: center; gap: 5px; }
@@ -27,11 +27,12 @@
 .daySummary > span { color: $color-text-light; font-size: .74rem; font-weight: 600; text-transform: capitalize; }
 .daySummary strong { color: $color-text-secondary; font-size: .66rem; font-weight: 500; }
 .daySummary p { margin: 0; color: $color-text-secondary; font-size: .62rem; line-height: 1.45; }
-.outsideDay { opacity: .4; }
-.weekend { color: $color-accent-hover; }
+.outsideDay { background: $color-ghost; color: $color-text-secondary; }
+.weekend:not(.outsideDay):not(.today) { color: $color-accent-hover; }
 .today { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; font-weight: 800; box-shadow: 0 3px 9px theme-alpha($color-accent-primary, .2); }
 :root[data-theme="light"] .calendarDay { background: $color-dark-secondary; }
-:root[data-theme="light"] .outsideDay { background: $color-dark-primary; color: $color-text-secondary; opacity: .72; }
+:root[data-theme="light"] .calendarWidget { --calendar-task-color: color-mix(in srgb, var(--ui-chart-blue) 70%, #{$color-text-light}); }
+:root[data-theme="light"] .outsideDay { background: $color-dark-primary; color: $color-text-secondary; }
 :root[data-theme="light"] .weekend:not(.outsideDay):not(.today) { background: $color-accent-background-hover; }
 :root[data-theme="light"] .today { background: $color-accent-primary; color: $color-on-accent; }
 :root[data-theme="light"] .calendarDay:hover, :root[data-theme="light"] .calendarDay:focus-visible { background: $color-accent-background-hover; }

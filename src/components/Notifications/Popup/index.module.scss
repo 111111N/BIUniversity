@@ -11,3 +11,5 @@
 .heading button { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: $color-text-secondary; }
 .heading button svg { width: 20px; height: 20px; }
 .heading button:hover { background: $color-accent-background-hover; color: $color-accent-hover; }
+
+.heading button { width: 44px; height: 44px; flex-basis: 44px; }

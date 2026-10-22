@@ -11,6 +11,8 @@
   @include scroll-bar();
 }
 
+.fill { height: 100%; max-height: none; box-sizing: border-box; }
+
 .scheduleList {
   list-style: none;
   padding: 0;
@@ -85,6 +87,7 @@
 :root[data-theme="light"] .scheduleItem.now,
 :root[data-theme="light"] .scheduleItem.soon { border-color: theme-alpha($color-accent-primary, .32); border-left-color: $color-accent-primary; background: color-mix(in srgb, #{$color-accent-primary} 6%, white); box-shadow: none; animation: none; }
 :root[data-theme="light"] .scheduleItem.firstNext { border-color: $color-border; background: $color-dark-secondary; }
+:root[data-theme="light"] .scheduleItem.past { opacity: 1; filter: none; background: $color-dark-primary; }
 
 .scheduleTime {
   display: flex;
