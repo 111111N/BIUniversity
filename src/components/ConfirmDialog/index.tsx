@@ -8,12 +8,13 @@ interface Props {
   confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  busyLabel?: string;
   error?: string;
   onConfirm(): void;
   onCancel(): void;
 }
 
-const ConfirmDialog = ({ title, children, confirmLabel = "Удалить", cancelLabel = "Отмена", busy = false, error, onConfirm, onCancel }: Props) => {
+const ConfirmDialog = ({ title, children, confirmLabel = "Удалить", cancelLabel = "Отмена", busy = false, busyLabel = "Выполняем…", error, onConfirm, onCancel }: Props) => {
   const headingId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
   return <Modal labelledBy={headingId} initialFocusRef={cancelRef} layer={3000} onClose={() => { if (!busy) onCancel(); }} className={styles.dialog}>
@@ -21,7 +22,7 @@ const ConfirmDialog = ({ title, children, confirmLabel = "Удалить", cance
     <h2 id={headingId}>{title}</h2>
     <div className={styles.content}>{children}</div>
     {error && <p className={styles.error} role="alert">{error}</p>}
-    <div className={styles.actions}><button ref={cancelRef} type="button" disabled={busy} onClick={onCancel}>{cancelLabel}</button><button className={styles.danger} type="button" disabled={busy} onClick={onConfirm}>{busy ? "Удаляем…" : confirmLabel}</button></div>
+    <div className={styles.actions}><button ref={cancelRef} type="button" disabled={busy} onClick={onCancel}>{cancelLabel}</button><button className={styles.danger} type="button" disabled={busy} onClick={onConfirm}>{busy ? busyLabel : confirmLabel}</button></div>
   </Modal>;
 };
 

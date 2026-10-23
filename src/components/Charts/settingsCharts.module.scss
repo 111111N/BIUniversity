@@ -45,8 +45,8 @@
   --bar-bg: #{$color-dark-primary};
   --bg-dark-color: #{$color-dark-secondary};
   --chart-point-shadow: drop-shadow(0 2px 3px rgba(39, 57, 78, .16));
-  --radar-grid-stroke: #dce5ee;
-  --radar-axis-stroke: #e5ebf2;
+  --radar-grid-stroke: #c4cedb;
+  --radar-axis-stroke: #d3dce6;
 }
 
 :root[data-theme="light"] .chartContainer :is(.domain, .tick line) { stroke: $color-border; }

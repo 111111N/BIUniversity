@@ -1,0 +1,28 @@
+@use "../../styles/variables" as *;
+
+.page { position: relative; z-index: 1; display: grid; gap: 24px; align-content: start; min-width: 0; --dropdown-control-height: 44px; }
+.page button { min-height: 44px; border: 1px solid $color-border; border-radius: 8px; padding: 8px 12px; color: $color-text-light; background: $color-dark-primary; cursor: pointer; }
+.page button:disabled { opacity: .5; cursor: not-allowed; }
+.page button.primary { color: $color-on-accent; background: $color-accent-primary; border-color: $color-accent-primary; font-weight: 600; }
+.catalog { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; width: 100%; min-width: 0; }
+.content { display: grid; gap: 16px; min-width: 0; }
+.header { display: flex; gap: 16px; align-items: center; justify-content: space-between; h2 { margin: 0; font-size: 18px; line-height: 1.5; } p { margin: 5px 0 0; font-size: 12px; color: $color-text-secondary; } > button { flex-shrink: 0; } }
+.editor, .teacher { border: 1px solid $color-border; border-radius: 12px; background: $color-dark-primary; padding: 18px; }
+.editor { display: grid; gap: 16px; }
+.editorHeader, .teacherHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; h2, h3 { margin: 0; font-size: 15px; } }
+.subjectFields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; min-width: 0; padding: 0; border: 0; margin: 0; > label { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 12px; } input { box-sizing: border-box; min-width: 0; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid $color-border; border-radius: 8px; background: $color-dark-tertiary; color: $color-text-light; font: inherit; font-size: 14px; } }
+.note { color: $color-text-secondary; font-size: 12px; line-height: 1.6; margin: 0; }
+.formActions { display: flex; justify-content: flex-start; }
+.list { display: grid; gap: 10px; }
+.teacher { display: grid; gap: 14px; }
+.teacherHeader > div { display: grid; gap: 6px; min-width: 0; strong { font-size: 14px; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; overflow-wrap: anywhere; } }
+.teacherHeader > button { flex-shrink: 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; > span { padding: 5px 9px; border: 1px solid $color-border; border-radius: 6px; background: $color-ghost; font-size: 12px; } }
+.error, .message { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; line-height: 1.5; font-size: 13px; }
+.error { color: $color-error; }
+.message { color: $color-success; }
+.empty { text-align: center; padding: 30px 18px; color: $color-text-secondary; border: 1px dashed $color-border; border-radius: 12px; line-height: 1.8; strong { color: $color-text-light; font-size: 15px; } p { max-width: 620px; margin: 8px auto 0; } a { color: $color-accent-primary; } }
+@media(max-width: 760px) { .header h2 { font-size: 16px; } .editor, .teacher { padding: 14px; } }
+@media(max-width: 600px) { .page { padding: 18px 14px; } }
+@media(max-width: 600px) { .catalog, .subjectFields { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 480px) { .header { align-items: stretch; flex-direction: column; } .teacherHeader { align-items: flex-start; flex-direction: column; } .teacherHeader > button { align-self: stretch; } .formActions > button { width: 100%; } }

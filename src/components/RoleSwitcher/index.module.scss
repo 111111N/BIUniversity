@@ -3,11 +3,12 @@
 
 .wrapper { padding: 14px 12px 8px; border-top: 1px solid $color-border; }
 .label { display: block; margin: 0 6px 8px; color: $color-text-secondary; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
+.error { color: $color-error; font-size: 12px; line-height: 1.5; }
 .switcher { @include switches.group(true); display: grid; padding: 4px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
 .switcher .active { @include switches.selected(true); }
 @media(max-width: 760px) {
   .wrapper { padding: 4px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-primary; box-shadow: 0 8px 24px $color-shadow; }
-  .label { display: none; }
+  .label { margin-top: 6px; }
   .switcher { grid-template-columns: repeat(2, auto); border: 0; padding: 0; }
   .switcher > button { min-height: 44px; padding: 6px 8px; font-size: 12px; }
 }

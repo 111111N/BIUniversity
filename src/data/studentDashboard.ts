@@ -13,6 +13,8 @@ import { getStudentDashboardTasks } from "../domain/dashboardAssignments";
 import { getAssignmentHref } from "../domain/journalNavigation";
 import { getSubmissionStatus } from "../domain/assignments";
 import { createSubjectLessons } from "./lessons";
+import { subscribeManagedSchedule } from "./managedScheduleStore";
+import type { CurrentUser } from "../domain/accounts";
 
 export const useDashboardUpdate = () => {
   const [now, setNow] = useState(() => new Date());
@@ -20,10 +22,12 @@ export const useDashboardUpdate = () => {
     const refresh = () => setNow(new Date());
     const unsubscribeAssignments = subscribeAssignmentStore(refresh);
     const unsubscribeJournal = subscribeJournalStore(refresh);
+    const unsubscribeSchedule = subscribeManagedSchedule(refresh);
     const timer = window.setInterval(refresh, 60_000);
     return () => {
       unsubscribeAssignments();
       unsubscribeJournal();
+      unsubscribeSchedule();
       window.clearInterval(timer);
     };
   }, []);
@@ -52,7 +56,7 @@ export const getStudentDashboard = ({
   const journals = readMembershipJournals(memberships);
   const journal = calculateDashboardJournalMetrics(journals, studentId);
   const tasks = getStudentDashboardTasks(getAssignments(), getSubmissions(), memberships, studentId, now);
-  const weekSchedule = getPersonalSchedule(getDemoWeekSchedule(now), "student");
+  const weekSchedule = getPersonalSchedule(getDemoWeekSchedule(now), { id: studentId, role: "student", memberships });
   const todaySchedule = weekSchedule.filter((lesson) => lesson.date === toLocalDateKey(now));
   const nextTask = tasks.find((task) => task.canSubmit);
 
@@ -74,8 +78,8 @@ export const getStudentDashboard = ({
   };
 };
 
-export const getTeacherDashboard = ({ memberships, now }: { memberships: DashboardMembership[]; now: Date }) => {
-  const schedule = getPersonalSchedule(getDemoWeekSchedule(now), "teacher");
+export const getTeacherDashboard = ({ memberships, now, teacher }: { memberships: DashboardMembership[]; now: Date; teacher?: CurrentUser }) => {
+  const schedule = getPersonalSchedule(getDemoWeekSchedule(now), teacher ?? "teacher");
   const today = schedule.filter((lesson) => lesson.date === toLocalDateKey(now));
   const nowTime = now.getTime();
   const conducted = today.filter((lesson) => new Date(`${lesson.date}T${lesson.endTime}:00`).getTime() <= nowTime).length;

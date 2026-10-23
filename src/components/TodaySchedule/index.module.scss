@@ -8,6 +8,7 @@
 .caption { flex-shrink: 0; color: $color-text-secondary; font-size: .8rem; margin: 8px 0 16px; }
 .caption::first-letter { text-transform: uppercase; }
 .body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.error { margin: 0; color: $color-text-light; font-size: 13px; line-height: 1.6; overflow-y: auto; }
 .nextDay { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-top: auto; padding: 8px 0 0; border-top: 1px solid $color-border; }
 .nextDay > span { color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
 .nextDay a { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: $color-accent-hover; font-size: 14px; text-decoration: none; }

@@ -1,6 +1,6 @@
 import { createMemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import { changesAssignmentAnswer, changesAssignmentEditor, changesJournalSection, changesLocation, changesMessageContact, changesPlannerTask, createUnsavedChangesRegistry } from "./unsavedNavigation";
+import { changesAssignmentAnswer, changesAssignmentEditor, changesJournalSection, changesLocation, changesMaterialScope, changesMessageContact, changesPlannerTask, createUnsavedChangesRegistry } from "./unsavedNavigation";
 
 const transition = (current: string, next: string) => {
   const currentLocation = new URL(current, "https://example.test");
@@ -9,6 +9,14 @@ const transition = (current: string, next: string) => {
 };
 
 describe("unsaved form navigation", () => {
+  it("protects uploads when changing the effective material scope, without blocking equivalent group URLs or filters", () => {
+    const current = "/journal/math/group?tab=materials";
+    expect(changesMaterialScope(transition(current, current + "&materials=group"))).toBe(false);
+    expect(changesMaterialScope(transition(current, current + "&fileQ=notes"))).toBe(false);
+    expect(changesMaterialScope(transition(current, current + "&materials=subject"))).toBe(true);
+    expect(changesMaterialScope(transition(current + "&materials=subject", current))).toBe(true);
+    expect(changesMaterialScope(transition(current, "/journal/math/group?tab=journal"))).toBe(true);
+  });
   it("protects the standalone editor when returning to the list or changing the edited assignment", () => {
     expect(changesAssignmentEditor(transition("/journal/math/group?tab=assignments&editor=new", "/journal/math/group?tab=assignments"))).toBe(true);
     expect(changesAssignmentEditor(transition("/journal/math/group?tab=assignments&assignment=one&editor=edit", "/journal/math/group?tab=assignments&assignment=two&editor=edit"))).toBe(true);

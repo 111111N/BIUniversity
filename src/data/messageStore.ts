@@ -19,7 +19,7 @@ export interface MessagingState {
   leftGroupIds?: string[];
 }
 
-const DEMO_USER_IDS: Record<UserRole, string> = { teacher: "teacher-elena-volkova", student: "anna-smirnova" };
+const DEMO_USER_IDS: Partial<Record<UserRole, string>> = { teacher: "teacher-elena-volkova", student: "anna-smirnova" };
 const keyFor = (role: UserRole, userId: string) => "bi-university-messages-v2:" + role + ":" + encodeURIComponent(userId);
 const DATABASE_KEY = "bi-university-messages-v3";
 const CHANGE_EVENT = "bi-university-messages-change";
@@ -71,6 +71,7 @@ const readDatabase = (): MessagingDatabase => {
 };
 
 const readUser = (database: MessagingDatabase, role: UserRole, userId: string): MessagingState | null => {
+  if (!userId) throw new Error("Для переписки требуется ID учётной записи.");
   const key = keyFor(role, userId);
   if (Object.hasOwn(database.users, key)) return normalizeState(database.users[key]);
   const saved = localStorage.getItem(key);
@@ -85,7 +86,7 @@ const writeDatabase = (database: MessagingDatabase, changed: string[]) => {
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: changed }));
 };
 
-const readMessagingState = (role: UserRole, userId = DEMO_USER_IDS[role]): MessagingReadState => {
+const readMessagingState = (role: UserRole, userId = DEMO_USER_IDS[role] ?? ""): MessagingReadState => {
     try { return { state: readUser(readDatabase(), role, userId), error: "" }; }
     catch (error) {
       console.error("Не удалось прочитать сохранённую переписку:", error);
@@ -104,11 +105,11 @@ export const messageRepository = {
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => { window.removeEventListener("storage", onStorage); window.removeEventListener(CHANGE_EVENT, onChange); };
   },
-  read(role: UserRole, userId = DEMO_USER_IDS[role]): MessagingState | null {
+  read(role: UserRole, userId = DEMO_USER_IDS[role] ?? ""): MessagingState | null {
     return readMessagingState(role, userId).state;
   },
 
-  save(role: UserRole, state: MessagingState, userId = DEMO_USER_IDS[role]) {
+  save(role: UserRole, state: MessagingState, userId = DEMO_USER_IDS[role] ?? "") {
     try {
       const database = readDatabase();
       readUser(database, role, userId);

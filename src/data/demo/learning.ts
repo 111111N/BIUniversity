@@ -1,7 +1,7 @@
 import { addDays, startOfWeek } from "date-fns";
 import type { Assignment, Submission, SubmissionAttempt, SubmissionStatus } from "../assignmentStore";
 import type { PlannerNote } from "../plannerStore";
-import { SUBJECTS, getAcademicGroup, getSubjectGroups } from "../academicCatalog";
+import { DEMO_SUBJECTS, getAcademicGroup, getSubjectGroups } from "../academicCatalog";
 import { getJournalSnapshot } from "../journalStore";
 import { getDemoWeekSchedule } from "../schedule";
 
@@ -20,7 +20,7 @@ export const createLearningDemo = (anchor: Date) => {
   const monday = startOfWeek(anchor, { weekStartsOn: 1 });
   const assignments: Assignment[] = [];
   const submissions: Submission[] = [];
-  SUBJECTS.forEach((subject, subjectIndex) => {
+  DEMO_SUBJECTS.forEach((subject, subjectIndex) => {
     const primaryGroup = getAcademicGroup("112-mko");
     const extraGroup = getSubjectGroups(subject.id).find((group) => group.id !== "112-mko");
     const groups = [primaryGroup, extraGroup].filter((group) => group !== undefined);

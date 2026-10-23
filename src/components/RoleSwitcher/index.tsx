@@ -1,23 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { useRole, UserRole } from "../RoleContext";
+import { useRole } from "../RoleContext";
+import { ACCOUNT_ROLE_LABELS } from "../../domain/accounts";
+import Dropdown from "../Dropdown";
 import styles from "./index.module.scss";
 import DemoDataManager from "../DemoDataManager";
 import { useUnsavedChangesGuard } from "../UnsavedChangesProvider";
 
-const roles: Array<{ value: UserRole; label: string }> = [
-  { value: "teacher", label: "Преподаватель" },
-  { value: "student", label: "Студент" },
-];
-
 const RoleSwitcher = () => {
-  const { role, setRole } = useRole();
+  const { currentUser, accounts, selectAccount, accountError } = useRole();
   const navigate = useNavigate();
   const { requestAction } = useUnsavedChangesGuard();
 
-  const selectRole = (nextRole: UserRole) => {
-    if (nextRole === role) return;
+  const selectDemoAccount = (id: string) => {
+    if (id === currentUser.id) return;
     requestAction(() => {
-      setRole(nextRole);
+      selectAccount(id);
       navigate("/");
     });
   };
@@ -25,19 +22,8 @@ const RoleSwitcher = () => {
   return (
     <div className={styles.wrapper}>
       <span className={styles.label}>Демо-режим</span>
-      <div className={styles.switcher} aria-label="Роль пользователя">
-        {roles.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className={role === item.value ? styles.active : ""}
-            aria-pressed={role === item.value}
-            onClick={() => selectRole(item.value)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Dropdown label="Демонстрационная учётная запись" hideLabel value={currentUser.id} options={accounts.map((account) => ({ value: account.id, label: `${account.name} · ${ACCOUNT_ROLE_LABELS[account.role]}` }))} onChange={selectDemoAccount} disabled={Boolean(accountError)} />
+      {accountError && <p className={styles.error} role="alert">{accountError}</p>}
       <DemoDataManager />
     </div>
   );

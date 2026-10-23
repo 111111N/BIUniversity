@@ -1,4 +1,4 @@
-import type { UserRole } from "../components/RoleContext";
+type LegacyNotificationRole = "teacher" | "student";
 
 export type NotificationKind = "assignment" | "submission" | "grade" | "revision" | "schedule";
 
@@ -17,7 +17,7 @@ export interface AppNotification {
 type AddNotificationInput = Pick<AppNotification, "kind" | "title" | "body" | "href"> & {
   recipientUserId?: string;
   /** @deprecated Передавайте recipientUserId. Поле оставлено для совместимости старых вызовов. */
-  recipientRole?: UserRole;
+  recipientRole?: LegacyNotificationRole;
   dedupeKey?: string;
 };
 
@@ -36,7 +36,7 @@ const CHANGE_EVENT = "bi-university-notifications-change";
 const STORAGE_VERSION = 2;
 const AUTO_DEDUPE_WINDOW_MS = 60_000;
 
-const ROLE_RECIPIENTS: Record<UserRole, string> = {
+const ROLE_RECIPIENTS: Record<LegacyNotificationRole, string> = {
   teacher: "teacher-elena-volkova",
   student: "anna-smirnova",
 };

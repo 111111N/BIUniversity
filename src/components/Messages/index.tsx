@@ -2,7 +2,7 @@ import ProfileLink from "../ProfileLink";
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { STUDENT_PROFILES } from "../../data/studentProfiles";
 import { TEACHER_PROFILES } from "../../data/teacherProfiles";
-import { getAcademicGroupByName, getAcademicSubjectByName } from "../../data/academicCatalog";
+import { getAcademicGroup, getAcademicGroupByName, getAcademicSubjectByName } from "../../data/academicCatalog";
 import { createEmptyMessagingState, messageRepository, type MessagingState, type MessageTab, type StoredMessage, type StoredMessageGroup } from "../../data/messageStore";
 import { messageAttachmentRepository } from "../../data/messageAttachmentRepository";
 import { deliverDirectMessage, recoverDemoDirectMessages } from "../../data/messageDelivery";
@@ -44,20 +44,28 @@ const DEFAULT_MESSAGES: StoredMessage[] = [
 const profileHref = (contact: Contact) => contact.kind === "student" ? "/students/" + contact.id : "/teachers/" + contact.id;
 const mergeGroups = (groups: StoredMessageGroup[]) => Array.from(new Map(groups.map((group) => [group.id, group])).values());
 
-const Messages = ({ initialContactId, initialThreadTop }: { initialContactId?: string | null; initialThreadTop?: number }) => {
-  const { role, currentUser } = useRole();
+type MessagesProps = { initialContactId?: string | null; initialThreadTop?: number };
+const Messages = (props: MessagesProps) => {
+  const { role } = useRole();
+  return role === "configurator" ? null : <AcademicMessages {...props} role={role} />;
+};
+const AcademicMessages = ({ initialContactId, initialThreadTop, role }: MessagesProps & { role: "teacher" | "student" }) => {
+  const { currentUser, accounts } = useRole();
   const componentId = useId();
   const editorHeadingId = useId();
   const self: Contact = { id: currentUser.id, name: currentUser.name, initials: initialsFor(currentUser.name), subtitle: "Вы", kind: role };
   const people = useMemo<Contact[]>(() => [
+    ...accounts.filter((account) => account.role !== "configurator").map((account) => ({ id: account.id, initials: initialsFor(account.name), name: account.name, subtitle: account.role === "student" ? getAcademicGroup(account.memberships[0]?.groupIds[0])?.name ?? "Группа не указана" : TEACHER_PROFILES.find((teacher) => teacher.id === account.id)?.department ?? "Преподаватель", kind: account.role as "teacher" | "student" })),
     ...STUDENT_PROFILES.map((student) => ({ id: student.id, initials: student.initials, name: student.name, subtitle: student.group, kind: "student" as const })),
     ...TEACHER_PROFILES.map((teacher) => ({ id: teacher.id, initials: teacher.initials, name: teacher.name, subtitle: teacher.department, kind: "teacher" as const })),
-  ].filter((person, index, list) => person.id !== currentUser.id && list.findIndex((item) => item.id === person.id) === index), [currentUser.id]);
+  ].filter((person, index, list) => person.id !== currentUser.id && !accounts.some((account) => account.id === person.id && account.role === "configurator") && list.findIndex((item) => item.id === person.id) === index), [currentUser.id, accounts]);
   const relatedGroupIds = useMemo(() => new Set(currentUser.memberships.flatMap((membership) => membership.groupIds)), [currentUser.memberships]);
   const studentSubjects = new Set(currentUser.memberships.map((membership) => membership.subjectId));
   const initialPeople = people.filter((person) => {
     if (person.kind === "student") return relatedGroupIds.has(getAcademicGroupByName(person.subtitle)?.id ?? "");
     if (role === "teacher") return true;
+    const account = accounts.find((item) => item.id === person.id && item.role === "teacher");
+    if (account) return account.memberships.some((entry) => studentSubjects.has(entry.subjectId) && entry.groupIds.some((groupId) => relatedGroupIds.has(groupId)));
     const profile = TEACHER_PROFILES.find((teacher) => teacher.id === person.id);
     return Boolean(profile?.subjects.some((subject) => studentSubjects.has(getAcademicSubjectByName(subject)?.id ?? "")));
   });
@@ -67,6 +75,7 @@ const Messages = ({ initialContactId, initialThreadTop }: { initialContactId?: s
   const [state, setState] = useState<MessagingState>(() => {
     if (initialSnapshot.state) return initialSnapshot.state;
     if (initialSnapshot.error) return createEmptyMessagingState();
+    if (currentUser.id !== "anna-smirnova" && currentUser.id !== "teacher-elena-volkova") return createEmptyMessagingState();
     const contact = role === "student" ? people.find((person) => person.id === "teacher-elena-volkova") : initialPeople.find((person) => person.kind === "student");
     return { dialogIds: contact ? [contact.id] : [], messages: contact ? { [contact.id]: DEFAULT_MESSAGES.map((message) => role === "student" ? { ...message, incoming: !message.incoming } : message) } : {}, unread: { students: 0, teachers: 0, groups: 0 } };
   });

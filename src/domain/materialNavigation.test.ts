@@ -5,7 +5,7 @@ const transition = (from: string, to: string) => ({ currentLocation: new URL(fro
 
 describe("pending material upload navigation", () => {
   it("protects changing the library, cabinet tab or page", () => {
-    expect(changesMaterialScope(transition("/journal/math/a?tab=materials", "/journal/math/a?tab=materials&materials=group"))).toBe(true);
+    expect(changesMaterialScope(transition("/journal/math/a?tab=materials", "/journal/math/a?tab=materials&materials=subject"))).toBe(true);
     expect(changesMaterialScope(transition("/cabinet?tab=files", "/cabinet?tab=settings"))).toBe(true);
     expect(changesMaterialScope(transition("/cabinet?tab=files", "/journal"))).toBe(true);
   });

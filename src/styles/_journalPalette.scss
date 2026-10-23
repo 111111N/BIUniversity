@@ -1,0 +1,19 @@
+@use "variables" as *;
+
+@mixin colors {
+  --journal-present: #{$color-success};
+  --journal-present-ring: var(--journal-present);
+  --journal-sick: #{$color-warning};
+  --journal-absent: #{$color-error};
+  --journal-outline: #{theme-alpha($color-text-secondary, .6)};
+  --journal-grade-4: #{$color-accent-added};
+
+  :root[data-theme="light"] & {
+    --journal-present: #2c826c;
+    --journal-present-ring: #a8cfc3;
+    --journal-sick: #b57a24;
+    --journal-absent: #ca5363;
+    --journal-outline: #c4cbd6;
+    --journal-grade-4: #6675a4;
+  }
+}

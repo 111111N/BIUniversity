@@ -35,13 +35,13 @@ export default function Home() {
     setSavedTask(task);
   };
   const getDaySummary = (date: Date) => ({
-    lessons: getPersonalSchedule(getDemoWeekSchedule(date), "teacher").filter((lesson) => lesson.date === toLocalDateKey(date)).length,
+    lessons: getPersonalSchedule(getDemoWeekSchedule(date), currentUser).filter((lesson) => lesson.date === toLocalDateKey(date)).length,
     tasks: plannerError ? null : getPlannerDayNotes(notes, date).length,
   });
 
   const dashboard = useMemo(
-    () => getTeacherDashboard({ memberships: currentUser.memberships, now }),
-    [currentUser.memberships, now],
+    () => getTeacherDashboard({ memberships: currentUser.memberships, now, teacher: currentUser }),
+    [currentUser, now],
   );
 
   return (

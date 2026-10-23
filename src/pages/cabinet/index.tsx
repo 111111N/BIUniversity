@@ -22,7 +22,7 @@ const Cabinet = () => {
 
       {activeTab === "study-plan" ? <StudyPlan teacher /> : activeTab === "files" ? <FileStorage /> : activeTab === "settings" ? <CabinetSettings /> : <><div className={styles.dashboardGrid}>
         <section className={styles.profileCard}>
-          <div className={styles.avatar}>{teacher?.initials ?? "ЕВ"}</div>
+          <div className={styles.avatar}>{teacher?.initials ?? currentUser.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("")}</div>
           <div>
             <h2>{currentUser.name}</h2>
             <p>{teacher ? `${teacher.position} · ${teacher.department}` : "Преподаватель"}</p>

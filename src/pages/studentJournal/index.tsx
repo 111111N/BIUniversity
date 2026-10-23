@@ -2,19 +2,15 @@ import { Link, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import AssignmentCenter from "../../components/AssignmentCenter";
-import { AttendanceTable } from "../../components/Attendance";
+import StudentLessonJournal from "../../components/StudentLessonJournal";
 import JournalMaterials from "../../components/JournalMaterials";
 import Tabs from "../../components/Tabs";
 import { getSubject, JOURNAL_SUBJECTS } from "../journal/data";
 import styles from "../journal/index.module.scss";
 import catalogStyles from "../../components/JournalCatalog/index.module.scss";
-import { JOURNAL_PERIOD, useJournal } from "../../data/journalStore";
+import { useJournal } from "../../data/journalStore";
 import { useRole } from "../../components/RoleContext";
 import { createSubjectLessons } from "../../data/lessons";
-import AttendanceLegend from "../../components/AttendanceLegend";
-import JournalSummary from "../../components/JournalSummary";
-import LessonTypeFilter from "../../components/LessonTypeFilter";
-import useJournalView from "../../hooks/useJournalView";
 import ArrowCircle from "../../components/ArrowCircle";
 import SearchField from "../../components/SearchField";
 import { matchesSearchText } from "../../domain/search";
@@ -32,7 +28,6 @@ const StudentJournal = () => {
   const setCatalogQuery = (value: string) => setSearchParams((current) => { const next = new URLSearchParams(current); if (value) next.set("q", value); else next.delete("q"); return next; }, { replace: true });
   const activeSection = getJournalSection(searchParams);
   const setActiveSection = (section: string) => setSearchParams((current) => changeJournalSection(current, section));
-  const { lessonType, setLessonType } = useJournalView();
   const subject = getSubject(subjectId);
   const subjects = JOURNAL_SUBJECTS.filter((item) => currentUser.memberships.some((membership) => membership.subjectId === item.id));
   const visibleSubjects = subjects.filter((item) => matchesSearchText(`${item.name} ${item.shortName}`, catalogQuery));
@@ -40,7 +35,6 @@ const StudentJournal = () => {
   const journal = useJournal(subjectId ?? "", studentGroup);
   const student = journal.students.find((item) => item.id === currentUser.id);
   const lessons = useMemo(() => createSubjectLessons(subjectId ?? "", studentGroup), [subjectId, studentGroup, now]);
-  const visibleLessons = useMemo(() => lessonType === "all" ? lessons : lessons.filter((lesson) => lesson.type === lessonType), [lessonType, lessons]);
 
   if (subjectId && (!subject || !group || !canAccessJournal(subjectId, groupId ?? studentGroup))) return (
     <div className={`pageContainer ${styles.page}`}>
@@ -90,16 +84,10 @@ const StudentJournal = () => {
           <p>Группа {group.name}</p>
         </div>
       </header>
-      <Tabs ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Журнал и прогресс" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }]} />
+      <Tabs className={styles.studentTabs} ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Мои результаты" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }]} />
       {activeSection === "journal" && <section className={styles.tableSection}>
-        <div className={styles.sectionHeading}><div><span>Электронный журнал</span><h2>Мои результаты</h2></div><strong>{JOURNAL_PERIOD}</strong></div>
         {journal.error && <p className={styles.pageError} role="alert">{journal.error}</p>}
-        <div className={styles.tableFilters}><LessonTypeFilter lessons={lessons} value={lessonType} onChange={setLessonType} /><AttendanceLegend /></div>
-        {student ? <AttendanceTable students={[student]} readOnly lessons={visibleLessons} /> : <p>Записи студента пока не найдены.</p>}
-        {student && <div className={styles.inlineAnalytics}>
-          <div className={styles.sectionHeading}><div><span>Личный срез</span><h2>Мой прогресс</h2></div><strong>По текущему фильтру занятий</strong></div>
-          <JournalSummary students={[student]} lessons={visibleLessons} period={JOURNAL_PERIOD} />
-        </div>}
+        {student ? <StudentLessonJournal student={student} lessons={lessons} now={now} /> : <p>Записи студента пока не найдены.</p>}
       </section>}
       {activeSection === "assignments" && <section className={styles.tableSection}>
         <AssignmentCenter key={`${subject.id}:${group.id}`} subject={subject.name} group={group.name} />

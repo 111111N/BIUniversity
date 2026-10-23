@@ -1,5 +1,6 @@
-import { SUBJECTS } from "./academicCatalog";
+import { DEMO_SUBJECTS, SUBJECTS } from "./academicCatalog";
 import { STUDY_PLAN_TOTAL_HOURS } from "./studyPlan";
+import { readAccountsState } from "./accountStore";
 
 export interface TeacherProfileData {
   id: string;
@@ -17,7 +18,7 @@ export const TEACHER_PROFILES: TeacherProfileData[] = [
   {
     id: "teacher-elena-volkova", initials: "ЕВ", name: "Елена Волкова",
     department: "Кафедра прикладной математики", position: "Доцент",
-    email: "e.volkova@university.ru", subjects: SUBJECTS.map((subject) => subject.name),
+    email: "e.volkova@university.ru", subjects: DEMO_SUBJECTS.map((subject) => subject.name),
     groups: 10, workload: STUDY_PLAN_TOTAL_HOURS,
   },
   { id: "teacher-orlova", initials: "НО", name: "Наталья Орлова", department: "Кафедра информатики", position: "Доцент", email: "n.orlova@university.ru", subjects: ["Информатика", "Алгоритмы"], groups: 5, workload: 312 },
@@ -25,4 +26,18 @@ export const TEACHER_PROFILES: TeacherProfileData[] = [
   { id: "teacher-belova", initials: "ЕБ", name: "Екатерина Белова", department: "Учебная часть", position: "Методист", email: "e.belova@university.ru", subjects: ["Организация учебного процесса"], groups: 7, workload: 244 },
 ];
 
-export const getTeacherProfile = (id?: string) => TEACHER_PROFILES.find((teacher) => teacher.id === id);
+export const getTeacherProfile = (id?: string): TeacherProfileData | undefined => {
+  const existing = TEACHER_PROFILES.find((teacher) => teacher.id === id);
+  if (typeof localStorage === "undefined") return existing;
+  const account = readAccountsState().accounts.find((item) => item.id === id);
+  if (account && account.role !== "teacher") return undefined;
+  if (!account) return existing;
+  const subjects = account.memberships.map((entry) => SUBJECTS.find((subject) => subject.id === entry.subjectId)?.name ?? entry.subjectId);
+  const groups = new Set(account.memberships.flatMap((entry) => entry.groupIds)).size;
+  if (existing) return { ...existing, subjects, groups };
+  return {
+    id: account.id, name: account.name, initials: account.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join(""),
+    department: "Подразделение не указано", position: "Преподаватель", email: "Не указана",
+    subjects, groups, workload: 0,
+  };
+};

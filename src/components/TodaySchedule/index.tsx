@@ -6,10 +6,14 @@ import { getDemoWeekSchedule, getPersonalSchedule } from "../../data/schedule";
 import { toLocalDateKey } from "../../domain/schedule";
 import styles from "./index.module.scss";
 import ArrowCircle from "../ArrowCircle";
+import useManagedScheduleUpdate from "../../hooks/useManagedScheduleUpdate";
+import { readManagedScheduleState } from "../../data/managedScheduleStore";
 
 interface Props { date?: Date }
 export default function TodaySchedule({ date }: Props) {
-  const { role } = useRole();
+  const { currentUser } = useRole();
+  useManagedScheduleUpdate();
+  const scheduleError = readManagedScheduleState().error;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 15000);
@@ -18,13 +22,13 @@ export default function TodaySchedule({ date }: Props) {
   const selectedDate = date ?? now;
   const key = toLocalDateKey(selectedDate);
   const isToday = key === toLocalDateKey(now);
-  const schedule = getPersonalSchedule(getDemoWeekSchedule(selectedDate), role).filter((lesson) => lesson.date === key);
+  const schedule = getPersonalSchedule(getDemoWeekSchedule(selectedDate), currentUser).filter((lesson) => lesson.date === key);
   let nextDate: Date | undefined;
   if (!schedule.length) {
     for (let offset = 1; offset <= 14; offset++) {
       const candidate = new Date(selectedDate);
       candidate.setDate(candidate.getDate() + offset);
-      if (getPersonalSchedule(getDemoWeekSchedule(candidate), role).some((lesson) => lesson.date === toLocalDateKey(candidate))) { nextDate = candidate; break; }
+      if (getPersonalSchedule(getDemoWeekSchedule(candidate), currentUser).some((lesson) => lesson.date === toLocalDateKey(candidate))) { nextDate = candidate; break; }
     }
   }
 
@@ -35,7 +39,7 @@ export default function TodaySchedule({ date }: Props) {
     </div>
     <p className={styles.caption}>{selectedDate.toLocaleDateString("ru-RU", { weekday: "long" })} · демонстрационное расписание</p>
     <div className={styles.body}>
-      {schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : nextDate && <div className={styles.nextDay}><span>Следующий учебный день</span><Link to={`/schedule?date=${toLocalDateKey(nextDate)}`}>{nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}<ArrowCircle /></Link></div>}
+      {scheduleError ? <p className={styles.error} role="alert">{scheduleError}</p> : schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : nextDate && <div className={styles.nextDay}><span>Следующий учебный день</span><Link to={`/schedule?date=${toLocalDateKey(nextDate)}`}>{nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}<ArrowCircle /></Link></div>}
     </div>
   </section>;
 }

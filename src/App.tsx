@@ -1,13 +1,15 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { createBrowserRouter, RouterProvider, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Nav from "./components/Navigation";
 import NavigationScroll from "./components/NavigationScroll";
+import PageNavigation from "./components/PageNavigation";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { RoleProvider, useRole } from "./components/RoleContext";
 import { ThemeProvider } from "./components/ThemeContext";
 import RoleRoute from "./components/RoleRoute";
 import { UnsavedChangesProvider } from "./components/UnsavedChangesProvider";
 import './styles/global.scss';
+import { connectAdministrationPolicies } from "./data/administrationIntegration";
 
 const Home = lazy(() => import("./pages/home"));
 const Schedule = lazy(() => import("./pages/schedule"));
@@ -18,25 +20,33 @@ const Planner = lazy(() => import("./pages/planner"));
 const Stats = lazy(() => import("./pages/stats"));
 const StudentPage = lazy(() => import("./pages/student"));
 const MessagesPage = lazy(() => import("./pages/messages"));
+const NotificationsPage = lazy(() => import("./pages/notifications"));
 const TeacherPage = lazy(() => import("./pages/teacher"));
 const StudentHome = lazy(() => import("./pages/studentHome"));
 const StudentCabinet = lazy(() => import("./pages/studentCabinet"));
 const StudentJournal = lazy(() => import("./pages/studentJournal"));
 const NotFound = lazy(() => import("./pages/notFound"));
+const AdminSchedule = lazy(() => import("./pages/adminSchedule"));
+const AdminAccounts = lazy(() => import("./pages/adminAccounts"));
+const AdminSubjects = lazy(() => import("./pages/adminSubjects"));
+const academicRoles = ["teacher", "student"] as const;
 
 const LayoutWithNav = () => {
     const location = useLocation();
-    const { role } = useRole();
+    const { role, currentUser, accountError, refreshAccounts } = useRole();
     const [blobs] = useState(() => Array.from({ length: 6 }, (_, index) => ({
         top: `${12 + index * 14}%`, left: `${index % 2 === 0 ? 22 : 78}%`,
     })));
 
+    if (accountError) return <div className="dashboard-layout"><PageNavigation /><main id="main-content" className="main-content" tabIndex={-1}><section className="pageContainer" role="alert"><h1>Учётные записи временно недоступны</h1><p>{accountError}</p><button type="button" onClick={refreshAccounts}>Повторить чтение</button></section></main></div>;
+
     return (
         <div className="dashboard-layout">
-            <Nav />
+            <PageNavigation />
+            <Nav key={currentUser.id} />
             <NavigationScroll />
 
-            <main className="main-content">
+            <main id="main-content" className="main-content" tabIndex={-1}>
                 {blobs.map((style, index) => (
                     <div 
                         key={index} 
@@ -45,19 +55,22 @@ const LayoutWithNav = () => {
                     ></div>
                 ))}
 
-                <ErrorBoundary key={`${role}:${location.pathname}`}><Suspense fallback={<div className="page-loader" role="status"><span /><p>Загружаем раздел…</p></div>}><Routes>
-                    <Route path="/" element={role === "student" ? <StudentHome /> : <Home />} />
+                <ErrorBoundary key={`${currentUser.id}:${role}:${location.pathname}`}><Suspense fallback={<div className="page-loader" role="status"><span /><p>Загружаем раздел…</p></div>}><Routes>
+                    <Route path="/" element={role === "configurator" ? <Navigate to="/admin/schedule" replace /> : role === "student" ? <StudentHome /> : <Home />} />
                     <Route path="/schedule" element={<Schedule />} />
-                    <Route path="/cabinet" element={role === "student" ? <StudentCabinet /> : <Cabinet />} />
-                    <Route path="/journal/:subjectId/:groupId" element={role === "student" ? <StudentJournal /> : <Journal />} />
-                    <Route path="/journal/:subjectId" element={role === "student" ? <StudentJournal /> : <JournalCatalog />} />
-                    <Route path="/journal" element={role === "student" ? <StudentJournal /> : <JournalCatalog />} />
+                    <Route path="/admin/schedule" element={<RoleRoute allow="configurator"><AdminSchedule /></RoleRoute>} />
+                    <Route path="/admin/accounts" element={<RoleRoute allow="configurator"><AdminAccounts /></RoleRoute>} />
+                    <Route path="/admin/subjects" element={<RoleRoute allow="configurator"><AdminSubjects /></RoleRoute>} />
+                    <Route path="/cabinet" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentCabinet /> : <Cabinet />}</RoleRoute>} />
+                    <Route path="/journal/:subjectId/:groupId" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <Journal />}</RoleRoute>} />
+                    <Route path="/journal/:subjectId" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <JournalCatalog />}</RoleRoute>} />
+                    <Route path="/journal" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <JournalCatalog />}</RoleRoute>} />
                     <Route path="/planner" element={<RoleRoute allow="teacher"><Planner /></RoleRoute>} />
                     <Route path="/stats" element={<RoleRoute allow="teacher"><Stats /></RoleRoute>} />
-                    <Route path="/students/:studentId" element={<StudentPage />} />
-                    <Route path="/teachers/:teacherId" element={<TeacherPage />} />
-                    <Route path="/messages" element={<MessagesPage />} />
-                    <Route path="/notifications" element={<Navigate to="/?notifications=open" replace />} />
+                    <Route path="/students/:studentId" element={<RoleRoute allow={academicRoles}><StudentPage /></RoleRoute>} />
+                    <Route path="/teachers/:teacherId" element={<RoleRoute allow={academicRoles}><TeacherPage /></RoleRoute>} />
+                    <Route path="/messages" element={<RoleRoute allow={academicRoles}><MessagesPage /></RoleRoute>} />
+                    <Route path="/notifications" element={<RoleRoute allow={academicRoles}><NotificationsPage /></RoleRoute>} />
                     <Route path="*" element={<NotFound />} />
                 </Routes></Suspense></ErrorBoundary>
             </main>
@@ -66,6 +79,7 @@ const LayoutWithNav = () => {
 };
 
 const AppProviders = () => {
+    useEffect(connectAdministrationPolicies, []);
     return (
         <ThemeProvider>
             <RoleProvider>

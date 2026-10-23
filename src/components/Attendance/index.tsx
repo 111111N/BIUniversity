@@ -31,9 +31,9 @@ const END_DATE = new Date(2025, 9, 30);
 
 const STATUS_COLORS = {
   unmarked: { fill: 'transparent', color2: 'color-mix(in srgb, var(--ui-text-secondary) 65%, transparent)' },
-  present: { fill: 'var(--color-visit)', color2: 'var(--color-visit)' },
+  present: { fill: 'var(--color-visit)', color2: 'var(--journal-present-ring)' },
   sick: { fill: 'var(--color-sick)', color2: 'var(--color-sick)' },
-  absent: { fill: 'var(--color-no-visit)', color2: 'var(--ui-error)' },
+  absent: { fill: 'var(--color-no-visit)', color2: 'var(--journal-outline)' },
 };
 
 const GRADE_COLORS: Record<Exclude<Grade, null>, string> = {
@@ -202,13 +202,13 @@ const TableCellComponent: React.FC<TableCellProps> = React.memo(({
           : status === 'absent'
           ? 'var(--color-no-visit-active)'
           : 'transparent';
-      color2 = status === 'absent' ? 'var(--ui-error)' : 'var(--color-border-active)';
+      color2 = status === 'absent' ? 'var(--journal-outline)' : 'var(--color-border-active)';
     } else if (isHovered) {
-      color2 = status === 'absent' ? 'var(--ui-error)' : 'var(--color-border-hover)';
+      color2 = status === 'absent' ? 'var(--journal-outline)' : 'var(--color-border-hover)';
     }
 
-    const label = `${student.name}, ${format(date, 'd MMMM', { locale: ru })}: ${status === 'present' ? 'Присутствие' : status === 'sick' ? 'Болезнь' : status === 'absent' ? 'Пропуск' : 'Не отмечено'}`;
-    const mark = <MemoVisitMarkIcon color="var(--color-border)" size={32} fill={fill} color2={color2} />;
+    const label = `${student.name}, ${format(date, 'd MMMM', { locale: ru })}: ${status === 'present' ? 'Присутствие' : status === 'sick' ? 'Уважительная причина' : status === 'absent' ? 'Пропуск' : 'Не отмечено'}`;
+    const mark = <MemoVisitMarkIcon color="var(--color-border)" size={32} fill={fill} color2={color2} showInner={status !== 'sick'} />;
 
     return (
       <td
@@ -283,7 +283,6 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
   const { groupId } = useParams<{ groupId: string }>();
   // Мемоизированные значения
   const columns = useMemo(() => lessons ?? (dates ?? generateDates(START_DATE, END_DATE)).map((date) => ({ id: getDateKey(date), date: getDateKey(date) })), [dates, lessons]);
-  const workDays = useMemo(() => columns.map((column) => new Date(`${column.date}T00:00:00`)), [columns]);
   const dateKeys = useMemo(() => columns.map((column) => column.id), [columns]);
 
   // Состояния
@@ -687,7 +686,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
     >
       <div className={styles.layoutWithControls}>
         <header className={styles.tableHeading}>
-          <div><h2 id={headingId} className={styles.tableName}>{isEditing ? 'Редактирование журнала' : 'Журнал занятий'}</h2><p>{workDays[0] && format(workDays[0], 'LLLL yyyy', { locale: ru })} · Учеников: {(isEditing ? draftStudents : students).length} · Занятий: {columns.length}</p></div>
+          <div><h2 id={headingId} className={styles.tableName}>{isEditing ? 'Редактирование журнала' : 'Журнал занятий'}</h2><p className={styles.tableMeta}><span>Учеников: {displayedStudents.length}</span><span>Занятий: {columns.length}</span><span role="status" aria-live="polite">{searching ? `Найдено: ${visibleRows.length} из ${displayedStudents.length}` : `В списке: ${displayedStudents.length}`}</span></p></div>
           <div className={styles.tableActions}>
             <div className={styles.modeSwitch} role="group" aria-label="Отображение журнала">
               <button type="button" onClick={() => setMode('attendance')} aria-pressed={mode === 'attendance'}>Посещаемость</button>
@@ -703,11 +702,10 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
         {isEditing && editError && <p className={styles.editError} role="alert">{editError}</p>}
         {(!readOnly || students.length > 1) && <div className={styles.studentSearch}>
           <SearchField label="Найти студента" value={studentQuery} onChange={changeStudentQuery} placeholder="Имя или фамилия" />
-          <div className={styles.searchSummary}>
-            <span role="status" aria-live="polite">{searching ? `Найдено: ${visibleRows.length} из ${displayedStudents.length}` : `В списке: ${displayedStudents.length}`}</span>
-            {searching && <small>{isEditing ? 'Сохраняется весь журнал, включая скрытые строки.' : 'Поиск не меняет показатели и экспорт журнала.'}</small>}
-            {searching && isRosterEditing && <small>Чтобы менять порядок строк, очистите поиск.</small>}
-          </div>
+          {searching && <div className={styles.searchSummary}>
+            <small>{isEditing ? 'Сохраняется весь журнал, включая скрытые строки.' : 'Поиск не меняет показатели и экспорт журнала.'}</small>
+            {isRosterEditing && <small>Чтобы менять порядок строк, очистите поиск.</small>}
+          </div>}
         </div>}
         <div ref={tableWrapperRef} data-profile-scroll="journal-table" className={styles.tableWrapper} tabIndex={isEditing ? -1 : 0} role="region" aria-label="Таблица журнала, прокручивается по горизонтали и вертикали" aria-describedby={isEditing ? keyboardHintId : undefined} onKeyDown={handleTableKeys}>
           <table>

@@ -74,6 +74,7 @@ export default function AssignmentCenter({ subject, group }: { subject?: string;
     return () => cancelAnimationFrame(frame);
   }, [c.creating, c.expanded]);
 
+  if (c.role === "configurator") return null;
   if (c.storageError && !c.creating && !selected) return <section className={styles.error} role="alert"><h2>Задания временно недоступны</h2><p>{c.storageError}</p><button type="button" onClick={c.reload}>Повторить загрузку</button></section>;
 
   return <div className={styles.layout} data-assignment-center>

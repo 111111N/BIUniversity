@@ -2,9 +2,15 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { SetStateAction } from "react";
 import type { Grade, Student } from "../components/Attendance/data/students";
 import { createSubjectLessons } from "./lessons";
-import { getAcademicGroup, getAcademicSubjectDefinition, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
+import { DEMO_SUBJECTS, SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
 import { JournalDraftConflictError } from "../domain/journalDraft";
 import { createJournalDemoAdditions } from "./demo/journals";
+import { readAccountsState, subscribeAccounts } from "./accountStore";
+import { includeRegisteredJournalStudents } from "../domain/journalAccounts";
+import { withCreatedSubjectMemberships } from "../domain/studentMemberships";
+import type { UserRole } from "../domain/accounts";
+import { readManagedScheduleState } from "./managedScheduleStore";
+import useManagedScheduleUpdate from "../hooks/useManagedScheduleUpdate";
 
 export const CURRENT_STUDENT_ID = "anna-smirnova";
 export const JOURNAL_PERIOD = "Сентябрь — ноябрь 2026 · демонстрационные занятия";
@@ -17,7 +23,7 @@ const historyKey = (subject: string, group: string) => `bi-university-journal-hi
 export type JournalActor = {
   id: string;
   name: string;
-  role?: "teacher" | "student";
+  role?: UserRole;
   memberships?: Array<{ subjectId: string; groupIds: string[] }>;
 };
 export type JournalChange = {
@@ -33,7 +39,8 @@ export type JournalChange = {
 };
 
 export const createDemoJournal = (subject: string, group: string): Student[] => {
-  const lessons = createSubjectLessons(subject, group).filter((lesson) => !lesson.id.includes(":weekly:"));
+  const legacyPrefix = `${subject}:${group}:2026-fall:`;
+  const lessons = createSubjectLessons(subject, group).filter((lesson) => lesson.id.startsWith(legacyPrefix) && /^[0-9]+$/.test(lesson.id.slice(legacyPrefix.length)));
   const seed = [...`${subject}:${group}`].reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
   const names = [
     "Анна Смирнова", "Иван Иванов", "Мария Петрова", "Алексей Сидоров", "Елена Козлова",
@@ -118,9 +125,13 @@ const collectChanges = (previous: Student[], next: Student[], actor: JournalActo
 
 const migrateLessonKeys = (students: Student[], subject: string, group: string) => {
   const lessons = createSubjectLessons(subject, group);
-  const lessonByDate = new Map(lessons.map((lesson) => [lesson.date, lesson.id]));
+  const lessonByDate = new Map(lessons.filter((lesson) => !lesson.id.startsWith("managed:")).map((lesson) => [lesson.date, lesson.id]));
   const migrateRecord = <T,>(record: Record<string, T>) => Object.fromEntries(Object.entries(record).map(([key, value]) => [lessonByDate.get(key) ?? key, value]));
-  return students.map((student) => {
+  // The original demo student's membership remains owned by the existing saved roster.
+  const accounts = typeof localStorage === "undefined" ? [] : readAccountsState().accounts;
+  const createdSubjectIds = new Set(SUBJECTS.filter((item) => !DEMO_SUBJECTS.some((seed) => seed.id === item.id)).map((item) => item.id));
+  const registeredStudents = includeRegisteredJournalStudents(students, accounts.map((account) => withCreatedSubjectMemberships(account, accounts, createdSubjectIds)), subject, group, new Set([CURRENT_STUDENT_ID]));
+  return registeredStudents.map((student) => {
     const grades = migrateRecord(student.grades);
     lessons.forEach((lesson) => { if (lesson.type === "lecture") grades[lesson.id] = null; });
     return { ...student, attendance: migrateRecord(student.attendance), grades };
@@ -184,6 +195,8 @@ export const appendJournalDemoRecords = (subject: string, group: string, actor: 
 };
 
 export const useJournal = (subject: string, group: string, actor: JournalActor = { id: "demo-user", name: "Демо-пользователь" }) => {
+  const scheduleRevision = useManagedScheduleUpdate();
+  const scheduleError = readManagedScheduleState().error;
   const key = journalKey(subject, group);
   const auditKey = historyKey(subject, group);
   const [error, setError] = useState("");
@@ -191,20 +204,23 @@ export const useJournal = (subject: string, group: string, actor: JournalActor =
     try { return localStorage.getItem(key); } catch { return "unavailable"; }
   }, [key]);
   const raw = useSyncExternalStore(subscribeJournalStore, getSnapshot);
+  const accountRevision = useSyncExternalStore(subscribeAccounts, () => readAccountsState().revision);
   const decoded = useMemo(() => {
     const students = raw === null ? createDemoJournal(subject, group) : decodeJournal(raw);
     return students ? migrateLessonKeys(students, subject, group) : null;
-  }, [raw, subject, group]);
+  }, [raw, subject, group, accountRevision, scheduleRevision]);
   const students = decoded ?? [];
   const historyState = readHistoryState(auditKey);
   const history = historyState.changes;
-  const canEdit = actor.role === "teacher" && actor.memberships?.some((membership) => membership.subjectId === subject && membership.groupIds.includes(group)) === true;
+  const canEdit = !scheduleError && actor.role === "teacher" && actor.memberships?.some((membership) => membership.subjectId === subject && membership.groupIds.includes(group)) === true;
   const setStudents = useCallback((action: SetStateAction<Student[]>) => {
     if (!canEdit) {
       setError("Недостаточно прав для изменения журнала этой группы.");
       throw new Error("Journal access denied");
     }
     try {
+      const latestSchedule = readManagedScheduleState();
+      if (latestSchedule.error) throw new JournalWriteError(latestSchedule.error);
       const current = localStorage.getItem(key);
       const saved = current === null ? createDemoJournal(subject, group) : decodeJournal(current);
       const previous = saved ? migrateLessonKeys(saved, subject, group) : null;
@@ -234,5 +250,5 @@ export const useJournal = (subject: string, group: string, actor: JournalActor =
       throw new Error(message);
     }
   }, [key, auditKey, subject, group, actor, canEdit]);
-  return { students, setStudents, canEdit, history, historyError: historyState.error, lastSavedAt: history[0]?.changedAt ?? null, error: error || (decoded === null ? "Не удалось прочитать журнал. Сохранённые данные не изменены." : "") };
+  return { students, setStudents, canEdit, history, historyError: historyState.error, lastSavedAt: history[0]?.changedAt ?? null, error: scheduleError || error || (decoded === null ? "Не удалось прочитать журнал. Сохранённые данные не изменены." : "") };
 };

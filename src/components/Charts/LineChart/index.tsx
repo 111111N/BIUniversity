@@ -19,11 +19,13 @@ const formatValue = (value: number | null) => value === null ? "Нет отме�
 export default function LineChart({ data, labels, length, height = 350, label = "Динамика посещаемости", onPointSelect, selectedIndex }: LineChartProps) {
   const id = `line-chart-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const pointRefs = useRef<Record<number, SVGGElement | null>>({});
   const [width, setWidth] = useState(360);
   const [hovered, setHovered] = useState<number | null>(null);
   const [focused, setFocused] = useState<number | null>(null);
   const [tabStop, setTabStop] = useState(0);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 8, top: 8 });
   const points = useMemo<Point[]>(() => {
     const count = Number.isFinite(length) ? Math.max(0, Math.floor(length!)) : data?.length ?? 0;
     return (data ?? []).slice(0, count).map((value, index) => ({ index, label: labels?.[index] ?? `${index + 1}`, value: typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : null }));
@@ -62,6 +64,15 @@ export default function LineChart({ data, labels, length, height = 350, label = 
   const activeY = active ? margin.top + y(active.value!) : 0;
 
   useLayoutEffect(() => {
+    const tooltip = tooltipRef.current;
+    if (!tooltip) return;
+    const bounds = tooltip.getBoundingClientRect();
+    const left = Math.max(8, Math.min(width - bounds.width - 8, activeX + 14));
+    const top = Math.max(8, activeY - bounds.height - 12);
+    setTooltipPosition((current) => current.left === left && current.top === top ? current : { left, top });
+  }, [active?.label, active?.value, activeX, activeY, width]);
+
+  useLayoutEffect(() => {
     const node = containerRef.current;
     if (!node) return;
     const update = () => {
@@ -85,11 +96,12 @@ export default function LineChart({ data, labels, length, height = 350, label = 
     event.preventDefault();
     const current = available.findIndex((point) => point.index === index);
     const next = event.key === "Home" ? 0 : event.key === "End" ? available.length - 1 : Math.max(0, Math.min(available.length - 1, current + (event.key === "ArrowRight" ? 1 : -1)));
+    setFocused(available[next].index);
     pointRefs.current[available[next].index]?.focus();
   };
 
   return <figure className={styles.figure}>
-    <div ref={containerRef} className={`${sharedStyles.chartContainer} ${styles.chart}`}>
+    <div ref={containerRef} className={`${sharedStyles.chartContainer} ${styles.chart}`} onPointerLeave={() => setHovered(null)} onPointerCancel={() => setHovered(null)}>
       {available.length ? <svg width="100%" height={chartHeight} viewBox={`0 0 ${width} ${chartHeight}`} role="group" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
         <title id={`${id}-title`}>{label}</title><desc id={`${id}-description`}>Стрелки влево и вправо переключают точки. Home и End — первая и последняя точка. {onPointSelect ? "Enter или пробел — выбрать неделю для фильтрации. " : ""}Значения также доступны в раскрываемом списке под графиком.</desc>
         <defs><linearGradient id={`${id}-line`} x1="0%" x2="100%" y1="0%" y2="0%"><stop offset="0%" stopColor="var(--line-start)" stopOpacity="var(--line-opacity)" /><stop offset="100%" stopColor="var(--line-end)" stopOpacity="var(--line-opacity)" /></linearGradient><linearGradient id={`${id}-area`} x1="0%" x2="0%" y1="0%" y2="100%"><stop offset="0%" stopColor="var(--area-start)" stopOpacity="var(--area-opacity)" /><stop offset="100%" stopColor="var(--area-end)" stopOpacity="0" /></linearGradient></defs>
@@ -99,14 +111,14 @@ export default function LineChart({ data, labels, length, height = 350, label = 
           <path d={area(points) ?? undefined} fill={`url(#${id}-area)`} className={styles.area} />
           <path d={line(points) ?? undefined} stroke={`url(#${id}-line)`} className={styles.line} />
           {active && <line x1={x(active.index)} x2={x(active.index)} y1={y(active.value!)} y2={innerHeight} className={styles.guide} />}
-          {available.map((point) => <g key={point.index} ref={(node) => { pointRefs.current[point.index] = node; }} transform={`translate(${x(point.index)},${y(point.value!)})`} role={onPointSelect ? "button" : "img"} aria-pressed={onPointSelect ? selectedIndex === point.index : undefined} aria-label={`${point.label}: ${formatValue(point.value)}${onPointSelect ? ". Фильтровать по этой неделе" : ""}`} tabIndex={point.index === effectiveTabStop ? 0 : -1} className={styles.point} onClick={() => onPointSelect?.(point.index)} onPointerEnter={() => setHovered(point.index)} onPointerLeave={() => setHovered(null)} onFocus={() => { setFocused(point.index); setTabStop(point.index); }} onBlur={() => setFocused(null)} onKeyDown={(event) => movePoint(event, point.index)}>
+          {available.map((point) => <g key={point.index} ref={(node) => { pointRefs.current[point.index] = node; }} transform={`translate(${x(point.index)},${y(point.value!)})`} role={onPointSelect ? "button" : "img"} aria-pressed={onPointSelect ? selectedIndex === point.index : undefined} aria-label={`${point.label}: ${formatValue(point.value)}${onPointSelect ? ". Фильтровать по этой неделе" : ""}`} tabIndex={point.index === effectiveTabStop ? 0 : -1} className={styles.point} onClick={() => onPointSelect?.(point.index)} onPointerEnter={() => setHovered(point.index)} onPointerLeave={() => setHovered(null)} onPointerDown={() => setFocused(null)} onFocus={(event) => { setFocused(event.currentTarget.matches(":focus-visible") ? point.index : null); setTabStop(point.index); }} onBlur={() => setFocused(null)} onKeyDown={(event) => movePoint(event, point.index)}>
             <circle r="13" fill="transparent" />
             {(point.index === activeIndex || point.index === selectedIndex) && <circle r="9" className={styles.focusRing} />}
             <circle r={point.index === activeIndex ? 6 : points.length > 15 ? 3.5 : 5} className={`${styles.dot} ${point.index === activeIndex ? styles.activeDot : ""}`} />
           </g>)}
         </g>
       </svg> : <div className={styles.empty} style={{ minHeight: chartHeight }}><strong>Нет данных для графика</strong><span>Заполненные отметки появятся здесь после внесения в журнал.</span></div>}
-      {active && <div className={styles.tooltip} style={{ left: Math.max(8, Math.min(width - 228, activeX - 100)), top: Math.max(4, activeY - 48) }} role="tooltip"><strong>{active.label}</strong><span>{formatValue(active.value)}</span></div>}
+      {active && <div ref={tooltipRef} className={styles.tooltip} style={tooltipPosition} role="tooltip"><strong>{active.label}</strong><span>{formatValue(active.value)}</span></div>}
     </div>
     {points.length > 0 && <ChartDataList points={points} label={label} selectedIndex={selectedIndex} onSelect={onPointSelect} />}
   </figure>;

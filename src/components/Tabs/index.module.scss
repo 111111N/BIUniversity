@@ -1,11 +1,13 @@
 @use "../../styles/switches";
 
 .tabs {
-  @include switches.group(true, "> span");
   flex-wrap: nowrap;
   min-width: 0;
   margin-bottom: 16px;
   overflow-x: auto;
 }
 .tabs > button { flex-shrink: 0; }
-.tabs .active { @include switches.selected(true); }
+.navigation { @include switches.group(true, "> span"); flex-wrap: nowrap; }
+.navigation .active { @include switches.selected(true); }
+.filter { @include switches.group(false, "> span"); flex-wrap: nowrap; }
+.filter .active { @include switches.selected(false); }

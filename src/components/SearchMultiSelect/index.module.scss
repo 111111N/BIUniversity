@@ -1,0 +1,11 @@
+@use "../../styles/variables" as *;
+
+.picker { display: grid; gap: 12px; min-width: 0; }
+.summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; color: $color-text-secondary; font-size: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.selected { list-style: none; padding: 0; margin: 0; max-height: 240px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid $color-border; border-radius: 8px; scrollbar-width: thin; }
+.selected li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 2px 12px; min-height: 44px; border-bottom: 1px solid $color-border; font-size: 13px; > span { overflow-wrap: anywhere; } &:last-child { border-bottom: 0; } }
+.selected li > button { min-width: 44px; min-height: 44px; flex-shrink: 0; font-size: 22px; }
+.empty { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
+.selected li.empty { padding: 12px; }
+@media (max-width: 480px) { .summary { align-items: flex-start; flex-direction: column; } .actions { width: 100%; > button { flex: 1; } } }

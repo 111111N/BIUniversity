@@ -33,6 +33,8 @@
 @media (max-width: 620px) {
   .header { align-items: flex-start; flex-direction: column; }
   .exportButton { width: 100%; }
+  .studentTabs { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 4px; overflow: visible; }
+  .studentTabs > button { padding-inline: 8px; font-size: 12px; }
 }
 .saveStatus {
   margin: 0 0 12px;

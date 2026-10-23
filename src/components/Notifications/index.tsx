@@ -1,14 +1,15 @@
 import { useId, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { type AppNotification, readNotificationState, saveNotifications } from "../../data/notificationStore";
 import { useRole } from "../RoleContext";
 import SearchField from "../SearchField";
 import Dropdown from "../Dropdown";
 import { matchesSearchText } from "../../domain/search";
+import useNotificationView from "../../hooks/useNotificationView";
 import NotificationItem, { notificationKindLabels } from "./NotificationItem";
 import { useNotificationItems } from "./useNotifications";
 import styles from "./index.module.scss";
 
-type NotificationFilter = "all" | "unread";
 type NotificationDayGroup = { label: string; items: AppNotification[] };
 const dayFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
 const yearDayFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" });
@@ -26,10 +27,10 @@ interface Props { compact?: boolean; onNavigate?(): void }
 const Notifications = ({ compact = false, onNavigate }: Props) => {
   const { currentUser } = useRole();
   const [items, setItems, readError, refreshItems] = useNotificationItems();
-  const [filter, setFilter] = useState<NotificationFilter>("all");
-  const [query, setQuery] = useState("");
+  const { filter, query, kind, change } = useNotificationView(compact);
+  const setFilter = (filter: "all" | "unread") => change({ filter });
+  const setQuery = (query: string) => change({ query });
   const [searchOpen, setSearchOpen] = useState(false);
-  const [kind, setKind] = useState<"all" | AppNotification["kind"]>("all");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const searchId = useId();
@@ -49,7 +50,7 @@ const Notifications = ({ compact = false, onNavigate }: Props) => {
     group.items.push(item);
     groups.set(key, group);
   });
-  const resetFilters = () => { setQuery(""); setKind("all"); setFilter("all"); restoreFilterFocus(); };
+  const resetFilters = () => { change({ query: "", kind: "all", filter: "all" }); restoreFilterFocus(); };
   const toggleSearch = () => {
     if (searchOpen) setQuery("");
     else requestAnimationFrame(() => searchRef.current?.querySelector<HTMLInputElement>("input")?.focus());
@@ -99,7 +100,7 @@ const Notifications = ({ compact = false, onNavigate }: Props) => {
           </div>
           {compact && <button type="button" className={`${styles.searchToggle} ${searchOpen ? styles.searchActive : ""}`} aria-label={searchOpen ? "Закрыть поиск уведомлений" : "Найти уведомление"} title={searchOpen ? "Закрыть поиск" : "Поиск уведомлений"} aria-expanded={searchOpen} aria-controls={searchOpen ? searchId : undefined} onClick={toggleSearch}><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{searchOpen ? <path d="m5 5 10 10M15 5 5 15" /> : <><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></>}</svg></button>}
         </div>
-        {(!compact || searchOpen) && <div id={searchId} ref={searchRef} className={`${styles.searchTools} ${compact ? styles.compactSearch : ""}`}><SearchField label="Поиск уведомлений" placeholder="Название, событие или комментарий" value={query} onChange={setQuery} />{!compact && <Dropdown label="Тип события" value={kind} onChange={(value) => setKind(value as typeof kind)} options={[{ value: "all", label: "Все события" }, ...Object.entries(notificationKindLabels).map(([value, label]) => ({ value, label }))]} />}</div>}
+        {(!compact || searchOpen) && <div id={searchId} ref={searchRef} className={`${styles.searchTools} ${compact ? styles.compactSearch : ""}`}><SearchField label="Поиск уведомлений" placeholder="Название, событие или комментарий" value={query} onChange={setQuery} />{!compact && <Dropdown label="Тип события" value={kind} onChange={(value) => change({ kind: value as typeof kind })} options={[{ value: "all", label: "Все события" }, ...Object.entries(notificationKindLabels).map(([value, label]) => ({ value, label }))]} />}</div>}
       </>}
       {(readError || error) && <div className={styles.error} role="alert"><span>{readError || error}</span>{readError && <button type="button" onClick={() => { setError(""); setMessage(""); refreshItems(); }}>Повторить чтение</button>}</div>}
       <p className={styles.srOnly} role="status">{message}</p>
@@ -111,10 +112,10 @@ const Notifications = ({ compact = false, onNavigate }: Props) => {
         <span className={styles.emptyIcon} aria-hidden="true">{searching ? "⌕" : "✓"}</span>
         <strong>{searching ? "Ничего не найдено" : filter === "unread" ? "Всё прочитано" : "Здесь пока тихо"}</strong>
         <p>{searching ? "Попробуйте другое название или сбросьте фильтры." : filter === "unread" ? "Новых уведомлений нет. Прочитанные события доступны во вкладке «Все»." : "Новые задания, ответы и изменения расписания появятся здесь."}</p>
-        {(searching || filter === "unread") && userItems.length > 0 && <button type="button" onClick={resetFilters}>Показать все уведомления</button>}
+        {(searching || filter === "unread") && <button type="button" onClick={resetFilters}>Показать все уведомления</button>}
       </div>}
     </div>
-    {userItems.length > 0 && <footer className={styles.footer}>{readError ? "Показан последний доступный список. Статусы не изменяются, пока чтение не восстановится." : "Открытие события отмечает его прочитанным."}</footer>}
+    {(userItems.length > 0 || compact) && <footer className={styles.footer}><span>{readError ? "Показан последний доступный список. Статусы не изменяются, пока чтение не восстановится." : "Открытие события отмечает его прочитанным."}</span>{compact && <Link className={styles.historyLink} to="/notifications" onClick={onNavigate}>Вся история уведомлений <span aria-hidden="true">→</span></Link>}</footer>}
   </section>;
 };
 

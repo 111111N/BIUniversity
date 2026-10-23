@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import TodaySchedule from ".";
 
 const session = vi.hoisted(() => ({ role: "teacher" }));
-vi.mock("../RoleContext", () => ({ useRole: () => session }));
+vi.mock("../RoleContext", () => ({ useRole: () => ({ ...session, currentUser: { id: session.role === "teacher" ? "teacher-elena-volkova" : "anna-smirnova", name: "", role: session.role, scheduleName: "Волкова Е.В.", memberships: [{ subjectId: "theory-of-probability", groupIds: ["112-mko"] }] } }) }));
 
 describe("home schedule on a free day", () => {
   it.each(["teacher", "student"])("shows only the next teaching day link for %s", (role) => {

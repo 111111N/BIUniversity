@@ -42,6 +42,8 @@
 .dayGroup ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .footer { flex: 0 0 auto; margin-top: 14px; padding-top: 12px; border-top: 1px solid $color-border; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.5; }
 .compact .footer { margin-top: 0; padding: 10px 16px; }
+.historyLink { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; margin-top: 4px; color: $color-accent-hover; font-size: 13px; font-weight: 500; text-decoration: none; }
+.historyLink:hover { text-decoration: underline; text-underline-offset: 3px; }
 .empty { display: grid; justify-items: center; align-content: center; gap: 9px; min-height: 210px; box-sizing: border-box; padding: 28px 16px; color: $color-text-secondary; text-align: center; }
 .emptyIcon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 3px; border-radius: 14px; background: theme-alpha($color-success, .09); color: $color-success; font-size: 1.2rem; }
 .empty strong { color: $color-text-light; font-size: readability.$body; font-weight: 600; }

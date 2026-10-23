@@ -15,15 +15,16 @@ interface DropdownProps {
   className?: string;
   hideLabel?: boolean;
   variant?: DropdownVariant;
+  searchable?: boolean;
 }
 
-const createDropdownStyles = (variant: DropdownVariant): StylesConfig<DropdownOption, false> => {
+export const createDropdownStyles = <IsMulti extends boolean = false,>(variant: DropdownVariant): StylesConfig<DropdownOption, IsMulti> => {
   const main = variant === "main";
   const borderWidth = main ? 3 : 1;
   return {
     control: (base, state) => ({
       ...base,
-      minHeight: main ? 46 : "var(--dropdown-control-height, 36px)",
+      minHeight: main ? 46 : state.selectProps.isSearchable ? 44 : "var(--dropdown-control-height, 36px)",
       padding: main ? "2px 8px" : "0 6px",
       borderWidth,
       borderTopWidth: main ? 0 : borderWidth,
@@ -34,7 +35,7 @@ const createDropdownStyles = (variant: DropdownVariant): StylesConfig<DropdownOp
       borderRadius: main ? "17px 17px 0 0" : state.menuIsOpen ? "8px 8px 0 0" : "8px",
       background: state.menuIsOpen || !state.isFocused ? "var(--dropdown-panel)" : "var(--dropdown-active)",
       boxShadow: "none",
-      cursor: state.isDisabled ? "not-allowed" : "pointer",
+      cursor: state.isDisabled ? "not-allowed" : state.selectProps.isSearchable ? "text" : "pointer",
       transition: "border-color .18s ease, background .18s ease",
       opacity: state.isDisabled ? .55 : 1,
       ":hover": {
@@ -46,6 +47,7 @@ const createDropdownStyles = (variant: DropdownVariant): StylesConfig<DropdownOp
     valueContainer: (base) => ({ ...base, minWidth: 0, padding: main ? "2px 6px" : "0 4px" }),
     singleValue: (base) => ({ ...base, color: "var(--dropdown-text)", fontSize: main ? 13 : 12, lineHeight: 1.4 }),
     placeholder: (base) => ({ ...base, color: "var(--dropdown-muted)", fontSize: main ? 13 : 12, lineHeight: 1.4 }),
+    input: (base) => ({ ...base, color: "var(--dropdown-text)", fontSize: main ? 13 : 12 }),
     menuPortal: (base) => ({ ...base, zIndex: 3500 }),
     menu: (base, state) => ({
       ...base,
@@ -61,8 +63,13 @@ const createDropdownStyles = (variant: DropdownVariant): StylesConfig<DropdownOp
       boxShadow: "0 18px 35px var(--dropdown-shadow)",
     }),
     menuList: (base, state) => ({ ...base, padding: main ? 6 : 4, maxHeight: Math.min(260, state.maxHeight), scrollbarWidth: "thin", scrollbarColor: "var(--dropdown-border) var(--dropdown-panel)" }),
+    noOptionsMessage: (base) => ({ ...base, color: "var(--dropdown-muted)", fontSize: 13, lineHeight: 1.5 }),
     option: (base, state) => ({
       ...base,
+      minHeight: state.selectProps.isSearchable ? 44 : undefined,
+      display: "flex",
+      alignItems: "center",
+      overflowWrap: "anywhere",
       marginBottom: main ? 3 : 2,
       padding: main ? "9px 11px" : "7px 9px",
       border: `${main ? 2 : 1}px solid ${state.isSelected ? "var(--dropdown-panel)" : state.isFocused ? "var(--dropdown-accent)" : "transparent"}`,
@@ -90,7 +97,7 @@ const createDropdownStyles = (variant: DropdownVariant): StylesConfig<DropdownOp
 export const dropdownStyles = createDropdownStyles("compact");
 const mainDropdownStyles = createDropdownStyles("main");
 
-const Dropdown = ({ label, value, options, onChange, disabled = false, placeholder = "Выберите значение", className, hideLabel = false, variant = "compact" }: DropdownProps) => {
+const Dropdown = ({ label, value, options, onChange, disabled = false, placeholder, className, hideLabel = false, variant = "compact", searchable = false }: DropdownProps) => {
   const inputId = useId();
   return <div className={`${styles.field} ${className ?? ""}`}>
     <label className={hideLabel ? styles.visuallyHidden : undefined} htmlFor={inputId}>{label}</label>
@@ -102,9 +109,10 @@ const Dropdown = ({ label, value, options, onChange, disabled = false, placehold
       onChange={(option: SingleValue<DropdownOption>) => option && onChange(option.value)}
       styles={variant === "main" ? mainDropdownStyles : dropdownStyles}
       isDisabled={disabled}
-      isSearchable={false}
-      placeholder={placeholder}
-      noOptionsMessage={() => "Нет доступных вариантов"}
+      isSearchable={searchable}
+      placeholder={placeholder ?? (searchable ? "" : "Выберите значение")}
+      noOptionsMessage={({ inputValue }) => inputValue ? "Ничего не найдено" : "Нет доступных вариантов"}
+      screenReaderStatus={({ count }) => `Найдено вариантов: ${count}`}
       maxMenuHeight={260}
       minMenuHeight={80}
       menuPosition="fixed"

@@ -1,4 +1,4 @@
-import { SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition } from "./academicCatalog";
+import { DEMO_SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition } from "./academicCatalog";
 import { appendLearningDemoRecords, deleteAssignmentFile, getAssignments, getSubmissions, saveAssignmentFile } from "./assignmentStore";
 import { createLearningDemo, createPlannerDemo } from "./demo/learning";
 import { materialRepository } from "./materialRepository";
@@ -83,10 +83,10 @@ const runDemoImport = async (anchor: Date, options: DemoImportOptions): Promise<
   } catch {
     result.warnings.push("Не удалось добавить задания и ответы. Проверьте доступ к хранилищу браузера.");
   } finally { await cleanupUnusedFiles(); }
-  try { result.tasks = appendPlannerDemoNotes(createPlannerDemo(anchor)); }
+  try { result.tasks = appendPlannerDemoNotes(createPlannerDemo(anchor), actor?.id); }
   catch { result.warnings.push("Задачи не добавлены: проверьте хранилище планировщика."); }
 
-  for (const subject of SUBJECTS) {
+  for (const subject of DEMO_SUBJECTS) {
     const scope = `group:${subject.id}:112-mko`;
     try {
       const existing = new Set((await materialRepository.list(scope)).map((file) => file.id));
@@ -107,7 +107,7 @@ const runDemoImport = async (anchor: Date, options: DemoImportOptions): Promise<
   if (result.assignments) {
     try {
       const assignments = getAssignments();
-      for (const subject of SUBJECTS) {
+      for (const subject of DEMO_SUBJECTS) {
         const assignment = assignments.find((item) => item.id === `demo-expanded-v1:${subject.id}:112-mko:2`);
         if (!assignment) continue;
         addNotification({ recipientUserId: "teacher-elena-volkova", kind: "submission", title: "Демонстрационные работы готовы к проверке", body: `${subject.name} · 112-МКо`, href: getAssignmentHref(assignment), dedupeKey: `demo-expanded-v1:teacher:${subject.id}` });

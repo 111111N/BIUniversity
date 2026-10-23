@@ -15,10 +15,11 @@
 .empty strong { display: block; margin-bottom: 7px; }
 
 @media (max-width: 620px) {
+  .history { padding: 16px; }
   .history > header { flex-direction: column; }
 }
 
-.history > header > button { display: inline-flex; align-items: center; gap: 12px; min-height: 36px; padding: 8px 12px; border-width: 1px; background: transparent; color: $color-text-secondary; font-size: .7rem; white-space: nowrap; }
+.history > header > button { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 12px; border-width: 1px; background: transparent; color: $color-text-secondary; font-size: .7rem; white-space: nowrap; }
 .tools { display: grid; gap: 14px; padding: 18px 0 0; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; }
 .resultLine { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 16px 0; color: $color-text-secondary; font-size: .65rem; }

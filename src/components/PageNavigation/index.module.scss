@@ -1,0 +1,4 @@
+@use "../../styles/variables" as *;
+
+.skipLink { position: fixed; z-index: 3000; top: 12px; left: 12px; display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 10px 16px; border: 1px solid $color-accent-primary; border-radius: 8px; color: $color-text-light; background: $color-dark-primary; font-size: 14px; font-weight: 500; text-decoration: none; box-shadow: 0 4px 18px $color-shadow; transform: translateY(calc(-100% - 24px)); }
+.skipLink:focus { transform: translateY(0); }

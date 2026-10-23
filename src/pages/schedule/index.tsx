@@ -11,11 +11,15 @@ import ChevronIcon from "../../components/ChevronIcon";
 import { parseCalendarDate } from "../../domain/calendar";
 import { toLocalDateKey } from "../../domain/schedule";
 import styles from "./index.module.scss";
+import useManagedScheduleUpdate from "../../hooks/useManagedScheduleUpdate";
+import { readManagedScheduleState } from "../../data/managedScheduleStore";
 
 const CONTEXT_LABELS = { group: "Группа", auditory: "Аудитория", teacher: "Преподаватель" };
 
 export default function ScheduleIndex() {
-  const { role } = useRole();
+  const { currentUser } = useRole();
+  const scheduleRevision = useManagedScheduleUpdate();
+  const scheduleError = readManagedScheduleState().error;
   const [searchParams, setSearchParams] = useSearchParams();
   const filterType = searchParams.get("type");
   const filterQuery = searchParams.get("query")?.trim() ?? "";
@@ -48,13 +52,14 @@ export default function ScheduleIndex() {
     setSearchParams((current) => { const next = new URLSearchParams(current); next.set("type", result.type); next.set("query", result.title); return next; });
     closeSearch();
   };
-  const sourceSchedule = useMemo(() => getDemoWeekSchedule(selectedWeek), [selectedWeek]);
+  const sourceSchedule = useMemo(() => getDemoWeekSchedule(selectedWeek), [selectedWeek, scheduleRevision]);
   const scheduleForWeek = useMemo(() => {
-    if (!filterQuery || (filterType !== "group" && filterType !== "auditory" && filterType !== "teacher")) return getPersonalSchedule(sourceSchedule, role);
+    if (!filterQuery || (filterType !== "group" && filterType !== "auditory" && filterType !== "teacher")) return getPersonalSchedule(sourceSchedule, currentUser);
     return filterSchedule(sourceSchedule, filterType, filterQuery);
-  }, [sourceSchedule, filterType, filterQuery, role]);
+  }, [sourceSchedule, filterType, filterQuery, currentUser]);
 
   return <div className={`pageContainer ${styles.page}`}>
+    {scheduleError && <p className={styles.error} role="alert">{scheduleError}</p>}
     <WeekPicker value={selectedWeek} onWeekChange={(week) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set("date", toLocalDateKey(week)); return next; })} />
     <WeeklySchedule schedule={scheduleForWeek} selectedWeek={selectedWeek}
       context={<div className={styles.context}><span>{selectedSchedule ? `${CONTEXT_LABELS[selectedSchedule.type]} · ${selectedSchedule.title}` : "Моё расписание"}</span>{selectedSchedule && <button type="button" onClick={() => setSearchParams((current) => { const next = new URLSearchParams(current); next.delete("type"); next.delete("query"); return next; })}>Моё расписание</button>}</div>}

@@ -9,6 +9,7 @@ interface IconProps {
   textColor?: string;  
   text?: string;       
   className?: string;
+  showInner?: boolean;
 
 }
 
@@ -96,7 +97,8 @@ export const VisitMarkIcon: React.FC<IconProps> = ({
   color = "currentColor",
   color2 = "currentColor",
   fill = "currentColor",
-  className
+  className,
+  showInner = true,
 }) => {
   return (
     <svg
@@ -117,14 +119,14 @@ export const VisitMarkIcon: React.FC<IconProps> = ({
         strokeWidth="4"
       />
 
-      <circle
+      {showInner && <circle
         cx="24"
         cy="24.06"
         r="12.11"
         fill={fill}
         stroke={color}
         strokeWidth="4"
-      />
+      />}
     </svg>
   );
 };

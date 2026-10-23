@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useRole, UserRole } from "../RoleContext";
 
 interface RoleRouteProps {
-  allow: UserRole;
+  allow: UserRole | readonly UserRole[];
   children: ReactNode;
 }
 
@@ -11,8 +11,8 @@ const RoleRoute = ({ allow, children }: RoleRouteProps) => {
   const { role } = useRole();
   const location = useLocation();
 
-  if (role !== allow) {
-    return <Navigate to={role === "student" ? "/journal" : "/"} replace state={{ deniedPath: location.pathname }} />;
+  if (!(Array.isArray(allow) ? allow.includes(role) : role === allow)) {
+    return <Navigate to={role === "configurator" ? "/admin/schedule" : role === "student" ? "/journal" : "/"} replace state={{ deniedPath: location.pathname }} />;
   }
 
   return children;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { materialRepository } from "../../data/materialRepository";
+import { readMaterialScope } from "../../domain/libraryNavigation";
 import FileStorage from "../FileStorage";
 import Tabs from "../Tabs";
 import styles from "./index.module.scss";
@@ -13,7 +14,7 @@ interface Props {
 
 const JournalMaterials = ({ subject, group, readOnly = false }: Props) => {
   const [params, setParams] = useSearchParams();
-  const scope = params.get("materials") === "group" ? "group" : "subject";
+  const scope = readMaterialScope(params);
   const subjectKey = `subject:${subject.id}`;
   const groupKey = `group:${subject.id}:${group.id}`;
   const [counts, setCounts] = useState<{ subject?: number; group?: number }>({});
@@ -39,12 +40,12 @@ const JournalMaterials = ({ subject, group, readOnly = false }: Props) => {
   }, [subjectKey, groupKey]);
   const changeScope = (value: string) => setParams((current) => {
     const next = new URLSearchParams(current);
-    if (value === "subject") next.delete("materials"); else next.set("materials", "group");
+    if (value === "group") next.delete("materials"); else next.set("materials", "subject");
     return next;
   });
   const common = scope === "subject";
   return <section className={styles.materials} aria-label="Учебные материалы">
-    <Tabs ariaLabel="Область учебных материалов" value={scope} onChange={changeScope} items={[{ value: "subject", label: "Дисциплина", count: counts.subject }, { value: "group", label: "Группа", count: counts.group }]} />
+    <Tabs variant="filter" className={styles.scopeTabs} ariaLabel="Область учебных материалов" value={scope} onChange={changeScope} items={[{ value: "group", label: "Группа", count: counts.group }, { value: "subject", label: "Общее", count: counts.subject }]} />
     <p className={styles.audience}>{common ? "Видят все группы дисциплины" : `Видит только группа ${group.name}`}{readOnly ? " · Загрузку выполняет преподаватель" : " · Новые файлы попадут в выбранный раздел"}</p>
     {countError && <p className={styles.countError} role="status">Количество файлов пока недоступно. Состояние загрузки — в библиотеке ниже.</p>}
     <FileStorage key={common ? subjectKey : groupKey} storageKey={common ? subjectKey : groupKey} eyebrow={common ? "Для всех групп дисциплины" : "Только для этой группы"} title={common ? "Конспекты и материалы" : `Материалы группы · ${group.name}`} description={`Дисциплина «${subject.name}». Файлы хранятся в этом браузере.`} emptyTitle={common ? "Общих материалов пока нет" : "Материалов группы пока нет"} emptyDescription={readOnly ? "Когда преподаватель добавит файлы, они появятся здесь." : "Добавьте конспекты, презентации или рекомендации для выбранной аудитории."} readOnly={readOnly} />

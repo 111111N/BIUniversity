@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { PlannerDraftConflictError } from "../domain/plannerDraft";
+import { useRole } from "../components/RoleContext";
 
 export interface PlannerNote {
   id: string;
@@ -14,6 +15,8 @@ export interface PlannerNote {
 }
 
 const STORAGE_KEY = "bi-university-demo-planner";
+const LEGACY_OWNER_ID = "teacher-elena-volkova";
+export const getPlannerStorageKey = (userId: string) => userId === LEGACY_OWNER_ID ? STORAGE_KEY : `${STORAGE_KEY}:${encodeURIComponent(userId)}`;
 const CHANGE_EVENT = "bi-university-planner-change";
 export class PlannerWriteError extends Error {}
 const validDate = (value: unknown) => {
@@ -22,9 +25,9 @@ const validDate = (value: unknown) => {
   return Number.isFinite(date.getTime()) ? date : undefined;
 };
 
-export const readPlannerState = (): { notes: PlannerNote[]; error: string } => {
+export const readPlannerState = (userId = LEGACY_OWNER_ID): { notes: PlannerNote[]; error: string } => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(getPlannerStorageKey(userId));
     if (!saved) return { notes: [], error: "" };
     const payload: unknown = JSON.parse(saved);
     if (!Array.isArray(payload)) throw new Error("Invalid planner data");
@@ -42,38 +45,41 @@ export const readPlannerState = (): { notes: PlannerNote[]; error: string } => {
   }
 };
 
-export const subscribePlannerStore = (listener: () => void) => {
-  const onStorage = (event: StorageEvent) => { if (!event.key || event.key === STORAGE_KEY) listener(); };
+export const subscribePlannerStore = (listener: () => void, userId = LEGACY_OWNER_ID) => {
+  const onStorage = (event: StorageEvent) => { if (!event.key || event.key === getPlannerStorageKey(userId)) listener(); };
   window.addEventListener(CHANGE_EVENT, listener);
   window.addEventListener("storage", onStorage);
   return () => { window.removeEventListener(CHANGE_EVENT, listener); window.removeEventListener("storage", onStorage); };
 };
 
-export const appendPlannerDemoNotes = (notes: PlannerNote[]) => {
-  const current = readPlannerState();
+export const appendPlannerDemoNotes = (notes: PlannerNote[], userId = LEGACY_OWNER_ID) => {
+  const current = readPlannerState(userId);
   if (current.error) throw new PlannerWriteError(current.error);
   const ids = new Set(current.notes.map((note) => note.id));
   const added = notes.filter((note) => !ids.has(note.id));
   if (!added.length) return 0;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...current.notes, ...added]));
+  localStorage.setItem(getPlannerStorageKey(userId), JSON.stringify([...current.notes, ...added]));
   window.dispatchEvent(new Event(CHANGE_EVENT));
   return added.length;
 };
 
 export const usePlannerNotes = () => {
-  const [state, setState] = useState(readPlannerState);
-  const refreshNotes = useCallback(() => setState(readPlannerState()), []);
-  useEffect(() => subscribePlannerStore(refreshNotes), [refreshNotes]);
+  const { currentUser } = useRole();
+  const userId = currentUser.id;
+  const [state, setState] = useState(() => readPlannerState(userId));
+  const refreshNotes = useCallback(() => setState(readPlannerState(userId)), [userId]);
+  useEffect(() => subscribePlannerStore(refreshNotes, userId), [refreshNotes, userId]);
   const setNotes = (update: PlannerNote[] | ((notes: PlannerNote[]) => PlannerNote[])) => {
     try {
-      const current = readPlannerState();
+      const current = readPlannerState(userId);
       if (current.error) throw new PlannerWriteError(`${current.error} Сохранение отменено, чтобы не перезаписать данные.`);
       const notes = typeof update === "function" ? update(current.notes) : update;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+      localStorage.setItem(getPlannerStorageKey(userId), JSON.stringify(notes));
       setState({ notes, error: "" });
       window.dispatchEvent(new Event(CHANGE_EVENT));
       return true;
     } catch (error) {
+      console.error("Не удалось сохранить задачи планировщика:", error);
       setState((current) => ({ ...current, error: error instanceof PlannerWriteError || error instanceof PlannerDraftConflictError ? error.message : "Не удалось сохранить изменения. Данные не изменены — повторите попытку." }));
       return false;
     }

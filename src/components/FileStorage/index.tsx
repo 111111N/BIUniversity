@@ -4,6 +4,7 @@ import { formatFileSize, MAX_ATTACHMENT_SIZE } from "../../domain/files";
 import { matchesSearchText } from "../../domain/search";
 import { changesMaterialScope } from "../../domain/unsavedNavigation";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
+import { useFileView } from "../../hooks/useLibraryView";
 import Checkbox from "../Checkbox";
 import ConfirmDialog from "../ConfirmDialog";
 import Dropdown from "../Dropdown";
@@ -50,9 +51,7 @@ const FileStorage = ({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState(FILE_CATEGORIES[0]);
-  const [categoryFilter, setCategoryFilter] = useState("Все");
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<"date" | "name" | "size">("date");
+  const { category: categoryFilter, query, sort, change: changeView } = useFileView();
   const [materialDescription, setMaterialDescription] = useState("");
   const [pinned, setPinned] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<StoredMaterial | null>(null);
@@ -72,7 +71,7 @@ const FileStorage = ({
   const visibleFiles = files
     .filter((file) => (categoryFilter === "Все" || (file.category ?? "Материал") === categoryFilter) && matchesSearchText([file.name, file.description, file.category, file.uploadedBy].filter(Boolean).join(" "), query))
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (sort === "name" ? a.name.localeCompare(b.name, "ru-RU") : sort === "size" ? b.size - a.size : b.createdAt - a.createdAt));
-  const availableCategories = ["Все", ...Array.from(new Set(files.map((file) => file.category ?? "Материал")))];
+  const availableCategories = ["Все", ...Array.from(new Set([...files.map((file) => file.category ?? "Материал"), ...(categoryFilter !== "Все" ? [categoryFilter] : [])]))];
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
   useEffect(() => {
@@ -91,8 +90,6 @@ const FileStorage = ({
     setPinningId(null);
     setPendingDelete(null);
     setPreviewFile(null);
-    setCategoryFilter("Все");
-    setQuery("");
     setMaterialDescription("");
     setPinned(false);
     const load = () => {
@@ -114,14 +111,10 @@ const FileStorage = ({
   }, [storageKey]);
 
   useEffect(() => {
-    if (categoryFilter !== "Все" && !files.some((file) => (file.category ?? "Материал") === categoryFilter)) setCategoryFilter("Все");
-  }, [files, categoryFilter]);
-
-  useEffect(() => {
     if (readOnly) { setUploadOpen(false); setPendingDelete(null); }
   }, [readOnly]);
 
-  const resetFilters = () => { setQuery(""); setCategoryFilter("Все"); };
+  const resetFilters = () => changeView({ query: "", category: "Все" });
   const selectFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -236,14 +229,14 @@ const FileStorage = ({
     {loadError && <div className={styles.error} role="alert"><span>{loadError}</span><button type="button" onClick={() => reloadRef.current()}>Повторить загрузку</button></div>}
     {loading && <div className={styles.loading} role="status"><span className={styles.loadingDot} aria-hidden="true" />{files.length ? "Обновляем список материалов…" : "Загружаем материалы…"}</div>}
 
-    {files.length > 0 && <>
-      <div className={styles.libraryTools}><SearchField label="Поиск материалов" value={query} onChange={setQuery} placeholder="Название, описание или автор" /><Dropdown label="Порядок в списке" value={sort} onChange={(value) => setSort(value as typeof sort)} options={[{ value: "date", label: "Сначала новые" }, { value: "name", label: "По названию" }, { value: "size", label: "По размеру" }]} /></div>
-      <div className={styles.categoryFilters} role="group" aria-label="Категории материалов">{availableCategories.map((item) => <button type="button" aria-pressed={categoryFilter === item} className={categoryFilter === item ? styles.categoryActive : ""} onClick={() => setCategoryFilter(item)} key={item}>{item}<span>{item === "Все" ? files.length : files.filter((file) => (file.category ?? "Материал") === item).length}</span></button>)}</div>
+    {(files.length > 0 || hasFilters) && <>
+      <div className={styles.libraryTools}><SearchField label="Поиск материалов" value={query} onChange={(query) => changeView({ query })} placeholder="Название, описание или автор" /><Dropdown label="Порядок в списке" value={sort} onChange={(value) => changeView({ sort: value as typeof sort })} options={[{ value: "date", label: "Сначала новые" }, { value: "name", label: "По названию" }, { value: "size", label: "По размеру" }]} /></div>
+      <div className={styles.categoryFilters} role="group" aria-label="Категории материалов">{availableCategories.map((item) => <button type="button" aria-pressed={categoryFilter === item} className={categoryFilter === item ? styles.categoryActive : ""} onClick={() => changeView({ category: item })} key={item}>{item}<span>{item === "Все" ? files.length : files.filter((file) => (file.category ?? "Материал") === item).length}</span></button>)}</div>
       <div className={styles.resultsSummary}><span>{hasFilters ? "Найдено: " + visibleFiles.length + " из " + files.length : "Материалов: " + files.length + " · " + formatFileSize(totalSize)}</span><span>{hasFilters ? <button type="button" onClick={resetFilters}>Сбросить фильтры</button> : "Закреплённые — в начале"}</span></div>
-      {visibleFiles.length ? <div className={styles.fileList}>{visibleFiles.map((file) => <MaterialCard key={file.id} file={file} readOnly={readOnly} busy={busy} pinning={pinningId === file.id} onDownload={() => materialRepository.download(file)} onPreview={() => setPreviewFile(file)} onPin={() => { void togglePinned(file); }} onDelete={() => { setDeleteError(""); setPendingDelete(file); }} />)}</div> : <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">⌕</span><strong>Материалы не найдены</strong><p>Попробуйте другое название или покажите все категории.</p><button type="button" onClick={resetFilters}>Показать все материалы</button></div>}
+      {visibleFiles.length ? <div className={styles.fileList}>{visibleFiles.map((file) => <MaterialCard key={file.id} file={file} readOnly={readOnly} busy={busy} pinning={pinningId === file.id} onDownload={() => materialRepository.download(file)} onPreview={() => setPreviewFile(file)} onPin={() => { void togglePinned(file); }} onDelete={() => { setDeleteError(""); setPendingDelete(file); }} />)}</div> : !loading && !loadError && <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">⌕</span><strong>Материалы не найдены</strong><p>Попробуйте другое название или покажите все категории.</p><button type="button" onClick={resetFilters}>Показать все материалы</button></div>}
     </>}
 
-    {!loading && !loadError && files.length === 0 && !uploadOpen && <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">{readOnly ? "≡" : <ArrowIcon direction="up" size={22} />}</span><strong>{emptyHeading}</strong><p>{emptyHint}</p></div>}
+    {!loading && !loadError && files.length === 0 && !hasFilters && !uploadOpen && <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">{readOnly ? "≡" : <ArrowIcon direction="up" size={22} />}</span><strong>{emptyHeading}</strong><p>{emptyHint}</p></div>}
     {pendingDelete && !readOnly && <ConfirmDialog title="Удалить материал?" busy={deleting} error={deleteError} onCancel={() => setPendingDelete(null)} onConfirm={() => { void deleteFile(pendingDelete.id); }}><p><strong>{pendingDelete.name}</strong></p><p>Файл исчезнет из этого раздела. Восстановить его можно только повторной загрузкой.</p></ConfirmDialog>}
     {previewFile && <FilePreview key={previewFile.id} name={previewFile.name} blob={previewFile.blob} onDownload={() => materialRepository.download(previewFile)} onClose={() => setPreviewFile(null)} />}
   </section>;

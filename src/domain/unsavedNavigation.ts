@@ -1,4 +1,5 @@
 import { getJournalSection } from "./journalNavigation";
+import { readMaterialScope } from "./libraryNavigation";
 
 interface NavigationLocation { pathname: string; search: string }
 export interface NavigationTransition { currentLocation: NavigationLocation; nextLocation: NavigationLocation }
@@ -9,7 +10,8 @@ export const changesPage: UnsavedNavigationCheck = ({ currentLocation, nextLocat
 export const changesLocation: UnsavedNavigationCheck = (transition) => changesPage(transition) || transition.currentLocation.search !== transition.nextLocation.search;
 
 export const changesMaterialScope: UnsavedNavigationCheck = (transition) => changesPage(transition)
-  || ["tab", "materials"].some((key) => new URLSearchParams(transition.currentLocation.search).get(key) !== new URLSearchParams(transition.nextLocation.search).get(key));
+  || new URLSearchParams(transition.currentLocation.search).get("tab") !== new URLSearchParams(transition.nextLocation.search).get("tab")
+  || readMaterialScope(new URLSearchParams(transition.currentLocation.search)) !== readMaterialScope(new URLSearchParams(transition.nextLocation.search));
 
 export const changesJournalSection: UnsavedNavigationCheck = (transition) => changesPage(transition)
   || getJournalSection(new URLSearchParams(transition.currentLocation.search), true) !== getJournalSection(new URLSearchParams(transition.nextLocation.search), true);

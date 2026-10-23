@@ -20,6 +20,12 @@ const letter = (id = 100, text = "Сообщение студента"): StoredM
 const mailbox = (contactId: string, messages: StoredMessage[]): MessagingState => ({ ...createEmptyMessagingState(), dialogIds: [contactId], messages: { [contactId]: messages } });
 
 describe("message repository", () => {
+  it("never falls back from a new identity or configurator to a demo mailbox", () => {
+    messageRepository.save("teacher", mailbox("anna-smirnova", [letter()]));
+    expect(messageRepository.readState("teacher", "new-teacher")).toEqual({ state: null, error: "" });
+    expect(messageRepository.readState("configurator", "configurator-demo")).toEqual({ state: null, error: "" });
+    expect(messageRepository.readState("configurator").error).not.toBe("");
+  });
   it("stores teacher and student conversations separately", () => {
     const state: MessagingState = { dialogIds: ["teacher-1"], messages: { "teacher-1": [{ id: 1, incoming: false, text: "Ответ", time: "12:00" }] }, unread: { students: 0, teachers: 1, groups: 0 } };
     expect(messageRepository.save("student", state)).toBe(true);

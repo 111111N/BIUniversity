@@ -93,7 +93,7 @@ const Journal = () => {
         </div>
         {journal.error ? <p className={styles.pageError} role="alert">{journal.error}</p> : journal.lastSavedAt && <p className={styles.saveStatus} role="status">Сохранено {new Date(journal.lastSavedAt).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}</p>}
         <div className={styles.tableFilters}><LessonTypeFilter lessons={lessons} value={lessonType} onChange={setLessonType} /><AttendanceLegend /></div>
-        <AttendanceTable students={students} setStudents={setStudents} lessons={visibleLessons} />
+        <AttendanceTable students={students} setStudents={setStudents} lessons={visibleLessons} readOnly={!journal.canEdit} />
         <div className={styles.inlineAnalytics}>
           <div className={styles.sectionHeading}><div><span>Срез данных</span><h2>Аналитика группы</h2></div><strong>Проведённые занятия по текущему фильтру</strong></div>
           <JournalSummary students={students} lessons={visibleLessons} period={JOURNAL_PERIOD} />
@@ -101,18 +101,16 @@ const Journal = () => {
             <div className={styles.chartCard}>
               <h3>Лидеры по посещаемости</h3>
               <BarChartTop labels={chartsData.topAttendance.map((item) => item.s.name)} values={chartsData.topAttendance.map((item) => item.value)} maxValue={chartsData.daysCount} segments={5} height={100} colorMode={8} />
-              <RadarChart labels={chartsData.radarLabels} data={chartsData.attendanceRadarData} maxValue={chartsData.maxAttendanceValue} size={300} colorMode={7} />
+              <RadarChart labels={chartsData.radarLabels} data={chartsData.attendanceRadarData} size={300} colorMode={7} />
               <h3>Требуют внимания</h3>
               <BarChartTop labels={chartsData.bottomAttendance.map((item) => item.s.name)} values={chartsData.bottomAttendance.map((item) => item.value)} maxValue={chartsData.daysCount} segments={5} height={100} colorMode={2} />
             </div>
             <div className={styles.chartCard}>
-              <p className={styles.chartHint}>Только практики и лабораторные · без оценок занятия не отображаются</p>
               {chartsData.topGrades.length ? <><h3>Лидеры по успеваемости</h3>
               <BarChartTop labels={chartsData.topGrades.map((item) => item.s.name)} values={chartsData.topGrades.map((item) => item.value)} maxValue={5} segments={5} height={100} colorMode={7} />
-              <h3>Оценки по занятиям</h3>
-              <RadarChart labels={chartsData.gradeRadarLabels} data={chartsData.radarDataGrades} maxValue={chartsData.maxRadarValue} size={300} colorMode={6} />
+              <RadarChart labels={chartsData.gradeRadarLabels} data={chartsData.radarDataGrades} size={300} colorMode={6} />
               <h3>Низкая успеваемость</h3>
-              <BarChartTop labels={chartsData.bottomGrades.map((item) => item.s.name)} values={chartsData.bottomGrades.map((item) => item.value)} maxValue={5} segments={5} height={100} colorMode={15} /></> : <p className={styles.chartEmpty}>За выбранные занятия нет оценок для графика.</p>}
+              <BarChartTop labels={chartsData.bottomGrades.map((item) => item.s.name)} values={chartsData.bottomGrades.map((item) => item.value)} maxValue={5} segments={5} height={100} colorMode={1} /></> : <p className={styles.chartEmpty}>За выбранные занятия нет оценок для графика.</p>}
             </div>
           </div>
         </div>
