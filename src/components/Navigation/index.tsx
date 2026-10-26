@@ -11,6 +11,7 @@ import {
   LogoIcon,
   MessagesIcon,
   NotificationsIcon,
+  GroupsIcon,
 } from "./icons";
 import RoleSwitcher from "../RoleSwitcher";
 import Modal from "../Modal";
@@ -80,14 +81,16 @@ export default function Nav() {
   ];
   const configuratorItems = [
     { to: "/admin/schedule", label: "Расписание", Icon: ScheduleIcon },
+    { to: "/admin/groups", label: "Группы", Icon: GroupsIcon },
+    { to: "/admin/students", activePath: "/admin/students", label: "Студенты", Icon: CabinetIcon },
     { to: "/admin/subjects", label: "Дисциплины", Icon: JournalIcon },
-    { to: "/admin/accounts", label: "Учётные записи", Icon: CabinetIcon },
+    { to: "/admin/accounts", activePath: "/admin/accounts", label: "Учётные записи", Icon: CabinetIcon },
   ];
   const navItems = isConfigurator ? configuratorItems : role === "student" ? studentItems : teacherItems;
-  const mobileItems = isConfigurator ? configuratorItems : studentItems;
+  const mobileItems = isConfigurator ? configuratorItems.filter((item) => item.to !== "/admin/accounts") : studentItems;
   const extraItems = navItems.filter((item) => !mobileItems.some((mobile) => mobile.to === item.to));
   const cabinetItem = { to: "/cabinet", label: role === "student" ? "Профиль" : "Кабинет", Icon: CabinetIcon };
-  const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || extraItems.some((item) => location.pathname === item.to);
+  const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || extraItems.some((item) => location.pathname === item.to || ("activePath" in item && typeof item.activePath === "string" && location.pathname.startsWith(item.activePath)));
   const notificationLabel = notificationError ? "Уведомления недоступны — открыть восстановление чтения" : unreadNotifications ? `Уведомления: ${unreadNotifications} непрочитанных` : "Уведомления — всё прочитано";
   const notificationBadge = isConfigurator ? null : notificationError ? "!" : unreadNotifications > 99 ? "99+" : unreadNotifications || null;
 
@@ -131,7 +134,7 @@ export default function Nav() {
       {moreOpen && <Modal labelledBy={`${moreId}-title`} initialFocusRef={moreCloseRef} onClose={() => setMoreOpen(false)} className={styles.morePanel}>
         <header className={styles.moreHeading}><h2 id={`${moreId}-title`}>Ещё</h2><button ref={moreCloseRef} type="button" aria-label="Закрыть меню" onClick={() => setMoreOpen(false)}>×</button></header>
         <div id={moreId} className={styles.moreContent}>
-          {!isConfigurator && <ul className={styles.extraList}>{[...extraItems, cabinetItem].map(renderItem)}</ul>}
+          {(extraItems.length > 0 || !isConfigurator) && <ul className={styles.extraList}>{(isConfigurator ? extraItems : [...extraItems, cabinetItem]).map(renderItem)}</ul>}
           {!isConfigurator && <button type="button" className={styles.moreAction} onClick={() => { setMoreOpen(false); setNotificationsOpen(true); }}><NotificationsIcon className={styles.icon} aria-hidden="true"/><span>Уведомления</span>{notificationBadge && <strong>{notificationBadge}</strong>}</button>}
           <button type="button" className={styles.moreAction} onClick={toggleTheme}><svg className={styles.icon} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">{theme === "dark" ? <><circle cx="10" cy="10" r="3.5"/><path d="M10 1v2m0 14v2M1 10h2m14 0h2M3.6 3.6 5 5m10 10 1.4 1.4M3.6 16.4 5 15M15 5l1.4-1.4"/></> : <path d="M16.9 12.6A7.5 7.5 0 0 1 7.4 3.1 7.5 7.5 0 1 0 16.9 12.6Z"/>}</svg><span>{theme === "dark" ? "Светлая тема" : "Тёмная тема"}</span></button>
           <RoleSwitcher />

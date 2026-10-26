@@ -48,6 +48,15 @@ $color-warning: var(--ui-warning);
 $color-error: var(--ui-error);
 $color-border: var(--ui-border);
 $color-shadow: var(--ui-shadow);
+$color-link: var(--ui-link);
+$color-danger-text: var(--ui-danger-text);
+$color-panel: var(--ui-panel);
+$color-panel-muted: var(--ui-panel-muted);
+$color-field: var(--ui-field);
+$color-control-border: var(--ui-control-border);
+$color-control-hover: var(--ui-control-hover);
+$color-action-primary: var(--ui-action-primary);
+$color-action-hover: var(--ui-action-hover);
 
 @function theme-alpha($value, $opacity) {
   @return string.unquote("color-mix(in srgb, #{$value} #{$opacity * 100%}, transparent)");

@@ -1,3 +1,4 @@
+@use "../../styles/administration" as admin;
 @use "../../styles/variables" as *;
 
 .picker { display: grid; gap: 12px; min-width: 0; }
@@ -9,3 +10,5 @@
 .empty { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
 .selected li.empty { padding: 12px; }
 @media (max-width: 480px) { .summary { align-items: flex-start; flex-direction: column; } .actions { width: 100%; > button { flex: 1; } } }
+
+.actions > button, .selected li > button { @include admin.button; }.selected { background: $color-field; }.selected li > button { font-size: 22px; padding: 4px; }

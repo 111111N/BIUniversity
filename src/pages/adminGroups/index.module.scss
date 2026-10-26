@@ -1,0 +1,35 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.page { @include admin.workspace; position: relative; z-index: 1; display: grid; align-content: start; gap: 20px; min-width: 0; --dropdown-control-height: 44px; }
+.page :where(.topline, .heading, .formActions, .actions, .pagination, .empty, .error) > button, .actions a, .student > a { @include admin.button; }
+
+.page .primary { @include admin.primary; }
+.topline, .heading, .summary, .resultLine { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; }
+.topline > a, .empty > a { color: $color-link; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+.toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 14px; align-items: end; }
+.toolbar > :only-child { grid-column: 1 / -1; }
+.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.group, .student, .summary, .editor { min-width: 0; border: 1px solid $color-border; border-radius: 12px; padding: 18px; background: $color-panel; }
+.group { display: grid; gap: 14px; color: $color-text-light; text-decoration: none; transition: border-color .15s ease; &:hover { border-color: $color-link; } > div { display: grid; gap: 6px; } strong { font-size: 16px; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; } .open { color: $color-link; } }
+.summary h2, .heading h2 { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.summary > div:first-child { min-width: 0; }
+.summary p { margin: 8px 0; color: $color-text-secondary; font-size: 13px; }
+.summary span, .note, .resultLine p { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.students { display: grid; gap: 10px; }
+.student { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; > div { display: grid; gap: 6px; min-width: 0; } strong { overflow-wrap: anywhere; font-size: 14px; } div span { color: $color-text-secondary; font-size: 12px; overflow-wrap: anywhere; } }
+.blocked { color: $color-danger-text; font-size: 12px; }
+.editor { display: grid; gap: 18px; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; border: 0; padding: 0; margin: 0; min-width: 0; > label { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 12px; } input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-field; color: $color-text-light; font: inherit; font-size: 14px; } }
+.pagination { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.empty { border: 1px dashed $color-border; border-radius: 12px; text-align: center; padding: 30px 18px; color: $color-text-secondary; line-height: 1.7; strong { color: $color-text-light; } p { margin: 8px auto 12px; max-width: 600px; font-size: 13px; } }
+.error, .message { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+.error { color: $color-danger-text; }.message { color: $color-success; }
+.review { display: grid; gap: 14px; min-width: 0; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; h3 { margin: 0; font-size: 17px; } }
+.blockers { margin: 0; padding-left: 22px; color: $color-danger-text; font-size: 13px; line-height: 1.7; }
+.history { min-width: 0; summary { box-sizing: border-box; min-height: 44px; padding: 10px 0; color: $color-text-secondary; cursor: pointer; font-size: 13px; } ol { display: grid; gap: 10px; max-height: 400px; overflow: auto; list-style: none; padding: 0; margin: 10px 0 0; } li { padding: 14px; border: 1px solid $color-border; border-radius: 8px; display: grid; gap: 7px; } strong { font-size: 13px; } span, p { font-size: 12px; color: $color-text-secondary; line-height: 1.6; margin: 0; overflow-wrap: anywhere; } }
+@media(max-width: 720px) { .student { grid-template-columns: minmax(0, 1fr) auto; > a { grid-column: 1 / -1; } } .summary { align-items: stretch; flex-direction: column; } }
+@media(max-width: 600px) { .page { padding: 18px 14px; } .toolbar, .fields { grid-template-columns: minmax(0, 1fr); } .editor, .summary, .student, .group { padding: 14px; } }
+@media(max-width: 420px) { .topline { align-items: stretch; flex-direction: column; } .actions { flex-direction: column; } .formActions > button { width: 100%; } .student { grid-template-columns: minmax(0, 1fr); } }
+
+.page .error { @include admin.notice($color-error); }.page .message { @include admin.notice($color-success); }

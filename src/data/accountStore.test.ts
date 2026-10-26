@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ACCOUNTS_STORAGE_KEY, accountService, createInitialAccountsDocument, readAccountsState, registerAccountRoleChangeGuard, registerTeachingAssignmentGuard } from "./accountStore";
+import { getStudentNumberYear } from "../domain/studentRecord";
 
-const context = { actorId: "configurator-demo", actorRevision: 1, expectedRevision: 0 };
-const draft = { name: "Новый студент", login: "new.student", role: "student" as const, memberships: [{ subjectId: "data-analysis", groupIds: ["112-mko"] }] };
+const context = { actorId: "configurator-demo", actorRevision: 1, expectedRevision: 0, expectedStudentNumber: `${getStudentNumberYear(new Date().toISOString())}10001` };
+const draft = { name: "Новый студент", login: "new.student", role: "student" as const, studentCampus: 1, memberships: [{ subjectId: "data-analysis", groupIds: ["112-mko"] }] };
 let values: Map<string, string>;
 beforeEach(() => {
   values = new Map();

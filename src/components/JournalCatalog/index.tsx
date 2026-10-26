@@ -1,4 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
+import { DEMO_GROUPS } from "../../data/academicCatalog";
+import { countRegisteredStudentsByGroup } from "../../domain/accounts";
 import { getSubject, JOURNAL_SUBJECTS } from "../../pages/journal/data";
 import { matchesSearchText } from "../../domain/search";
 import { formatCount } from "../../domain/formatCount";
@@ -10,7 +13,8 @@ import styles from "./index.module.scss";
 
 const JournalCatalog = () => {
   const { subjectId } = useParams();
-  const { currentUser } = useRole();
+  const { currentUser, accounts } = useRole();
+  const registeredCounts = useMemo(() => countRegisteredStudentsByGroup(accounts), [accounts]);
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
   const selectedSubject = getSubject(subjectId);
@@ -35,7 +39,7 @@ const JournalCatalog = () => {
     {filtered.length ? <div className={`${styles.subjectsGrid} ${selectedSubject ? styles.singleSubject : ""}`}>
       {filtered.map((subject) => <section className={`${styles.subjectCard} ${styles[subject.color]}`} key={subject.id}>
         <header className={styles.subjectHeader}><div className={styles.subjectIcon}>{subject.shortName}</div><div><Link className={styles.subjectLink} to={`/journal/${subject.id}`}><h2>{subject.name}</h2></Link><p>{subject.semester}</p></div><span className={styles.groupsCounter}>{subject.groups.length} гр.</span></header>
-        <div className={styles.groupsGrid}>{subject.groups.map((group) => <Link className={styles.groupCard} to={`/journal/${subject.id}/${group.id}`} key={group.id}><div className={styles.groupTopline}><strong>{group.name}</strong><ArrowCircle className={styles.arrow} hoverBackground="var(--subject-accent)" /></div><span>{group.course} курс · {formatCount(group.students, ["студент", "студента", "студентов"])}</span></Link>)}</div>
+        <div className={styles.groupsGrid}>{subject.groups.map((group) => <Link className={styles.groupCard} to={`/journal/${subject.id}/${group.id}`} key={group.id}><div className={styles.groupTopline}><strong>{group.name}</strong><ArrowCircle className={styles.arrow} hoverBackground="var(--subject-accent)" /></div><span>{group.course} курс · {formatCount(DEMO_GROUPS.some((seed) => seed.id === group.id) ? group.students : registeredCounts.get(group.id) ?? 0, ["студент", "студента", "студентов"])}</span></Link>)}</div>
       </section>)}
     </div> : <div className={styles.empty}><strong>{groupsCount ? "Журналы не найдены" : "Журналов пока нет"}</strong><p>{groupsCount ? "Измените запрос, чтобы увидеть доступные группы." : "Здесь появятся дисциплины и группы, назначенные преподавателю."}</p>{groupsCount > 0 && <button type="button" onClick={() => setQuery("")}>Показать все журналы</button>}</div>}
     {selectedSubject && subjects.length > 0 && <div className={styles.materials}><FileStorage key={selectedSubject.id} storageKey={`subject:${selectedSubject.id}`} eyebrow="Материалы дисциплины" title="Конспекты и материалы" description={`Общие материалы по дисциплине «${selectedSubject.name}». Доступны студентам всех её групп.`} emptyTitle="Добавьте материалы по предмету" emptyDescription="Конспекты, презентации, методические пособия и литература" /></div>}

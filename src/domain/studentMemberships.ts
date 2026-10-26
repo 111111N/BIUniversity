@@ -1,9 +1,10 @@
-import type { CurrentUser } from "./accounts";
+import { getStudentGroupId, type CurrentUser } from "./accounts";
 
 /** New subjects follow an existing student group when a teacher is assigned to it. */
 export const withCreatedSubjectMemberships = <T extends CurrentUser,>(account: T, accounts: CurrentUser[], createdSubjectIds: ReadonlySet<string>): T => {
   if (account.role !== "student" || !createdSubjectIds.size) return account;
-  const groupIds = new Set(account.memberships.flatMap((entry) => entry.groupIds));
+  const groupId = getStudentGroupId(account);
+  const groupIds = new Set(groupId ? [groupId] : []);
   const knownSubjects = new Set(account.memberships.map((entry) => entry.subjectId));
   const added = new Map<string, Set<string>>();
   for (const teacher of accounts) {

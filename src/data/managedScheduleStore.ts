@@ -4,6 +4,8 @@ import { readAccountsState } from "./accountStore";
 import { createDemoWeekSchedule } from "./demoSchedule";
 import { parseCalendarDate } from "../domain/calendar";
 import { executeAdministrationWrite } from "./administrationWrite";
+import { isAccountActive } from "../domain/accounts";
+import { isGroupActive } from "../domain/groupCatalog";
 
 const CHANGE_EVENT = "bi-university-managed-schedule-change";
 export interface ManagedScheduleRead { snapshot: ManagedScheduleSnapshot; error: string }
@@ -37,7 +39,7 @@ export const getManagedScheduleWeek = (snapshot: ManagedScheduleSnapshot, weekSt
 
 export const getManagedScheduleTeachers = () => {
   const state = readAccountsState();
-  return state.accounts.filter((account) => account.role === "teacher").map((account) => ({ id: account.id, name: account.scheduleName || account.name, memberships: account.memberships }));
+  return state.accounts.filter((account) => account.role === "teacher" && isAccountActive(account)).map((account) => ({ id: account.id, name: account.scheduleName || account.name, memberships: account.memberships }));
 };
 const getOtherPublishedLessons = (snapshot: ManagedScheduleSnapshot, weekStart: string, groupId: string) => {
   const replacedGroups = new Set(snapshot.published.filter((week) => week.weekStart === weekStart).map((week) => week.groupId));
@@ -59,11 +61,13 @@ const updateSnapshot = async (command: ScheduleCommand, mutate: (snapshot: Manag
       if (refreshAcademicCatalog().error) throw new Error("Каталог дисциплин недоступен. Изменение расписания остановлено.");
       const accounts = readAccountsState();
       if (accounts.error) throw new Error("Справочник учётных записей недоступен. Изменение расписания остановлено.");
-      if (accounts.accounts.find((account) => account.id === command.actorId)?.role !== "configurator") throw new Error("Изменять расписание может только настройщик с актуальным доступом.");
+      const actor = accounts.accounts.find((account) => account.id === command.actorId);
+      if (!actor || actor.role !== "configurator" || !isAccountActive(actor)) throw new Error("Изменять расписание может только активный настройщик с актуальным доступом.");
       const { snapshot, error } = readManagedScheduleState();
       if (error) throw new Error(error);
       if (snapshot.revision !== command.expectedRevision) throw new Error("Расписание изменено в другой вкладке. Обновите данные и повторите действие.");
       if (getManagedWeekKey(command.weekStart) !== command.weekStart || !ACADEMIC_GROUPS.some((group) => group.id === command.groupId)) throw new Error("Выберите корректную неделю и группу.");
+      if (!isGroupActive(ACADEMIC_GROUPS.find((group) => group.id === command.groupId)!)) throw new Error("Группа находится в архиве. Новые черновики и публикации недоступны.");
       const next = mutate(snapshot);
       next.revision = snapshot.revision + 1;
       if (!decodeManagedSchedule(JSON.stringify(next))) throw new Error("Не удалось проверить целостность расписания. Ничего не сохранено.");

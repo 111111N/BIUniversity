@@ -1,6 +1,6 @@
 import type { AcademicLesson, LessonType } from "../domain/academic";
 import { readManagedScheduleState } from "./managedScheduleStore";
-import { DEMO_SUBJECTS } from "./academicCatalog";
+import { DEMO_GROUPS, DEMO_SUBJECTS } from "./academicCatalog";
 
 const initialLessonTemplates: Array<{ date: string; startsAt: string; type: LessonType; topic: string; room: string }> = [
   { date: "2026-09-04", startsAt: "10:10", type: "lecture", topic: "Введение в дисциплину", room: "305" },
@@ -19,7 +19,7 @@ const weeklySlots: Array<{ day: number; startsAt: string; type: LessonType; room
 
 /** Stable catalog: old lesson IDs remain valid; new dates are empty until an explicit demo import. */
 export const createSubjectLessons = (subjectId: string, groupId: string): AcademicLesson[] => {
-  const legacy = DEMO_SUBJECTS.some((subject) => subject.id === subjectId);
+  const legacy = DEMO_SUBJECTS.some((subject) => subject.id === subjectId) && DEMO_GROUPS.some((group) => group.id === groupId);
   const initial: AcademicLesson[] = (legacy ? initialLessonTemplates : []).map((lesson, index) => ({
     ...lesson,
     id: `${subjectId}:${groupId}:2026-fall:${index + 1}`,

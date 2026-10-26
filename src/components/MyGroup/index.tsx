@@ -8,10 +8,11 @@ import SearchField from "../SearchField";
 import { matchesSearchText } from "../../domain/search";
 import { formatCount } from "../../domain/formatCount";
 import styles from "./index.module.scss";
+import { getStudentGroupId } from "../../domain/accounts";
 
 const MyGroup = () => {
   const { currentUser } = useRole();
-  const groupId = currentUser.memberships[0]?.groupIds[0];
+  const groupId = getStudentGroupId(currentUser);
   const group = getAcademicGroup(groupId);
   const [params, setParams] = useSearchParams();
   const query = params.get("groupQ") ?? "";

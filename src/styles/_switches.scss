@@ -61,7 +61,7 @@
   padding: 0 4px;
   border-radius: 5px;
   background: $color-ghost;
-  color: $color-text-secondary;
+  color: $color-text-light;
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
@@ -70,7 +70,7 @@
 
 @mixin active-counter($navigation: false) {
   background: $color-accent-background-hover;
-  color: $color-accent-hover;
+  color: $color-link;
   @if $navigation {
     background: theme-alpha($color-on-accent, .18);
     color: $color-on-accent;

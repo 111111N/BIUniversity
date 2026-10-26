@@ -29,7 +29,7 @@ describe("created subjects across the portal", () => {
     expect(createSubjectLessons(subject.id, "112-mko")).toEqual([]);
     expect(createDemoWeekSchedule(new Date(2026, 9, 19))).toEqual(legacyWeek);
     expect(createLearningDemo(new Date(2026, 9, 19)).assignments.every((assignment) => DEMO_SUBJECTS.some((entry) => entry.id === assignment.subjectId))).toBe(true);
-    const student = await accountService.create({ ...context, draft: { name: "Новый Студент", login: "new.student", role: "student", memberships: [{ subjectId: "theory-of-probability", groupIds: ["112-mko"] }] } });
+    const student = await accountService.create({ ...context, expectedStudentNumber: (await accountService.previewStudentNumber({ ...context, campus: 1 })).number, draft: { name: "Новый Студент", login: "new.student", role: "student", studentCampus: 1, memberships: [{ subjectId: "theory-of-probability", groupIds: ["112-mko"] }] } });
     const teacher = readAccountsState().accounts.find((account) => account.id === "teacher-elena-volkova")!;
     await accountService.updateAssignments({ ...context, expectedRevision: 1, accountId: teacher.id, accountRevision: teacher.revision, memberships: [...teacher.memberships, { subjectId: subject.id, groupIds: ["112-mko"] }] });
     const roster = getJournalSnapshot(subject.id, "112-mko");

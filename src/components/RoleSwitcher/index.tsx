@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../RoleContext";
-import { ACCOUNT_ROLE_LABELS } from "../../domain/accounts";
+import { ACCOUNT_ROLE_LABELS, isAccountActive } from "../../domain/accounts";
 import Dropdown from "../Dropdown";
 import styles from "./index.module.scss";
 import DemoDataManager from "../DemoDataManager";
@@ -22,7 +22,7 @@ const RoleSwitcher = () => {
   return (
     <div className={styles.wrapper}>
       <span className={styles.label}>Демо-режим</span>
-      <Dropdown label="Демонстрационная учётная запись" hideLabel value={currentUser.id} options={accounts.map((account) => ({ value: account.id, label: `${account.name} · ${ACCOUNT_ROLE_LABELS[account.role]}` }))} onChange={selectDemoAccount} disabled={Boolean(accountError)} />
+      <Dropdown label="Демонстрационная учётная запись" searchable hideLabel value={currentUser.id} options={accounts.filter(isAccountActive).map((account) => ({ value: account.id, label: `${account.name} · ${ACCOUNT_ROLE_LABELS[account.role]}`, searchText: account.login }))} onChange={selectDemoAccount} disabled={Boolean(accountError)} />
       {accountError && <p className={styles.error} role="alert">{accountError}</p>}
       <DemoDataManager />
     </div>

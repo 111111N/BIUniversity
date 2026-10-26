@@ -5,6 +5,7 @@ import { readAccountsState, subscribeAccounts } from "../../data/accountStore";
 import { DEMO_SUBJECTS } from "../../data/academicCatalog";
 import { useSubjectCatalog } from "../../hooks/useSubjectCatalog";
 import { withCreatedSubjectMemberships } from "../../domain/studentMemberships";
+import { isAccountActive } from "../../domain/accounts";
 export type { UserRole, CurrentUser, AcademicMembership } from "../../domain/accounts";
 
 type RoleContextValue = {
@@ -37,8 +38,9 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   const [selectedId, setSelectedId] = useState(readSelectedAccount);
   useEffect(() => subscribeAccounts(() => setState(readAccountsState())), []);
   // A corrupt store never grants configurator access through a seeded fallback.
-  const currentUser = useMemo(() => withCreatedSubjectMemberships(state.accounts.find((account) => account.id === selectedId) ?? state.accounts[0] ?? unavailableUser, state.accounts,
-    new Set(catalog.subjects.filter((subject) => !DEMO_SUBJECTS.some((seed) => seed.id === subject.id)).map((subject) => subject.id))), [state.accounts, selectedId, catalog.subjects]);
+  const storedUser = state.accounts.find((account) => account.id === selectedId) ?? state.accounts[0] ?? unavailableUser;
+  const currentUser = useMemo(() => withCreatedSubjectMemberships(storedUser, state.accounts,
+    new Set(catalog.subjects.filter((subject) => storedUser.studentGroupId || !DEMO_SUBJECTS.some((seed) => seed.id === subject.id)).map((subject) => subject.id))), [storedUser, state.accounts, catalog.subjects]);
   const refreshAccounts = useCallback(() => setState(readAccountsState()), []);
   useEffect(() => {
     if (state.error) return;
@@ -47,7 +49,7 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser.id, currentUser.role, state.error]);
   const selectAccount = useCallback((id: string) => {
     const latest = readAccountsState(); setState(latest);
-    if (!latest.error && latest.accounts.some((account) => account.id === id)) setSelectedId(id);
+    if (!latest.error && latest.accounts.some((account) => account.id === id && isAccountActive(account))) setSelectedId(id);
   }, []);
   const setRole: Dispatch<SetStateAction<UserRole>> = useCallback((action) => {
     const nextRole = typeof action === "function" ? action(currentUser.role) : action;
@@ -56,7 +58,7 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser.role, selectAccount, state.accounts]);
   const value = useMemo(() => ({
     role: currentUser.role, currentUser, accounts: state.accounts, accountError: state.error, refreshAccounts, setRole, selectAccount,
-    canAccessJournal: (subjectId: string, groupId: string) => !state.error && currentUser.role !== "configurator" && currentUser.memberships.some((membership) => membership.subjectId === subjectId && membership.groupIds.includes(groupId)),
+    canAccessJournal: (subjectId: string, groupId: string) => !state.error && isAccountActive(currentUser) && currentUser.role !== "configurator" && currentUser.memberships.some((membership) => membership.subjectId === subjectId && membership.groupIds.includes(groupId)),
   }), [currentUser, state, refreshAccounts, setRole, selectAccount]);
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
 };

@@ -1,0 +1,15 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.composition { display: grid; min-width: 0; gap: 16px; color: $color-text-light; }
+.dateRow { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; padding: 16px; border: 1px solid $color-border; background: $color-panel; border-radius: 10px; > p { flex: 1 1 260px; align-self: center; } }
+.date { display: grid; gap: 8px; min-width: 0; > span { font-size: 12px; color: $color-text-secondary; } }
+.composition :where(.dateRow, .pagination, .empty, .error) > button, .row > a { @include admin.button; }
+.composition .note { margin: 0; font-size: 12px; color: $color-text-secondary; line-height: 1.7; overflow-wrap: anywhere; }
+.resultLine { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; p { margin: 0; font-size: 12px; color: $color-text-secondary; line-height: 1.6; } }.pagination { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.rows { display: grid; gap: 10px; min-width: 0; }.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 18px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; min-width: 0; > div { min-width: 0; display: grid; gap: 6px; } strong { font-size: 14px; overflow-wrap: anywhere; } span { font-size: 12px; color: $color-text-secondary; line-height: 1.6; overflow-wrap: anywhere; } }
+.empty { padding: 24px 16px; border: 1px dashed $color-border; border-radius: 10px; text-align: center; line-height: 1.7; font-size: 13px; p { margin: 8px 0; color: $color-text-secondary; } }.error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px; border: 1px solid $color-border; border-radius: 8px; color: $color-error; font-size: 13px; line-height: 1.6; }
+@media(max-width: 760px) { .row { grid-template-columns: repeat(2, minmax(0, 1fr)); > a { grid-column: 1 / -1; justify-self: start; } } }
+@media(max-width: 600px) { .composition > [role="tablist"] { flex-wrap: wrap; overflow: visible; > button { flex: 1 1 140px; white-space: normal; } }.row { padding: 14px; } }
+@media(max-width: 420px) { .row { grid-template-columns: minmax(0, 1fr); > a { justify-self: stretch; } }.dateRow { padding: 12px; }.date { flex: 1 1 auto; } }
+
+.error { @include admin.notice($color-error); }

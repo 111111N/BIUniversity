@@ -2,19 +2,22 @@
 @use "../../styles/variables" as *;
 
 :root {
-  --dropdown-base: #{$color-dark-tertiary};
-  --dropdown-panel: #{$color-dark-primary};
-  --dropdown-border: #{$color-border};
+  --dropdown-control: #{$color-dark-primary};
+  --dropdown-control-border: #{$color-border};
+  --dropdown-control-active: #{$color-accent-background-hover};
+  --dropdown-base: #{$color-field};
+  --dropdown-panel: #{$color-panel};
+  --dropdown-border: #{$color-control-border};
   --dropdown-accent: #{$color-accent-primary};
   --dropdown-text: #{$color-text-light};
   --dropdown-muted: #{$color-text-secondary};
-  --dropdown-hover: #{$color-accent-background};
-  --dropdown-active: #{$color-accent-background-hover};
-  --dropdown-gradient: #{$gradient-color-logo};
+  --dropdown-hover: #{$color-control-hover};
+  --dropdown-active: color-mix(in srgb, #{$color-accent-primary} 9%, #{$color-panel});
+  --dropdown-gradient: linear-gradient(to left, #{$color-action-primary}, #{$color-accent-secondary});
   --dropdown-on-accent: #{$color-on-accent};
   --dropdown-shadow: #{$color-shadow};
 }
-:root[data-theme="light"] { --dropdown-panel: #{$color-dark-secondary}; }
+:root[data-theme="light"] { --dropdown-control: #{$color-dark-secondary}; }
 
 .field { min-width: 0; }
 .field > label { display: block; margin: 0 0 7px; color: $color-text-secondary; font-size: readability.$caption; font-weight: 600; }

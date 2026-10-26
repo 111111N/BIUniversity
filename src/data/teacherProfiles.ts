@@ -34,10 +34,10 @@ export const getTeacherProfile = (id?: string): TeacherProfileData | undefined =
   if (!account) return existing;
   const subjects = account.memberships.map((entry) => SUBJECTS.find((subject) => subject.id === entry.subjectId)?.name ?? entry.subjectId);
   const groups = new Set(account.memberships.flatMap((entry) => entry.groupIds)).size;
-  if (existing) return { ...existing, subjects, groups };
+  if (existing) return { ...existing, name: account.name, initials: account.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join(""), email: account.email ?? existing.email, subjects, groups };
   return {
     id: account.id, name: account.name, initials: account.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join(""),
-    department: "Подразделение не указано", position: "Преподаватель", email: "Не указана",
+    department: "Подразделение не указано", position: "Преподаватель", email: account.email ?? "Не указана",
     subjects, groups, workload: 0,
   };
 };

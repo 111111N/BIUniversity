@@ -1,6 +1,7 @@
 import type { WeeklyScheduleData } from "../types/sched";
 import { getWeekStart, toLocalDateKey } from "../domain/schedule";
-import { DEMO_SUBJECTS, getSubjectGroups } from "./academicCatalog";
+import { DEMO_GROUPS, DEMO_SUBJECTS, getAcademicGroupByName, getAcademicGroupNameAt, getSubjectGroups } from "./academicCatalog";
+import { isGroupActive } from "../domain/groupCatalog";
 import { DEMO_SCHEDULE_SLOTS } from "./scheduleSlots";
 
 export const DEMO_STUDENT_GROUP = "112-МКо";
@@ -28,7 +29,7 @@ export const createDemoWeekSchedule = (date: Date): WeeklyScheduleData => {
         location: `Ауд. ${[101, 202, 303, 101, 405, 406, 407][slot]}`,
         teacher: slot === 1 ? "Петров П.П." : DEMO_TEACHER,
         teacherId: slot === 1 ? "teacher-pavel-petrov" : "teacher-elena-volkova",
-        group: slot >= 3 ? getSubjectGroups(subject.id).find((group) => group.name !== DEMO_STUDENT_GROUP)?.name ?? DEMO_STUDENT_GROUP : DEMO_STUDENT_GROUP,
+        group: getAcademicGroupNameAt(slot >= 3 ? getSubjectGroups(subject.id).find((group) => group.id !== "112-mko" && DEMO_GROUPS.some((seed) => seed.id === group.id))?.id ?? "112-mko" : "112-mko", `${dateKey}T${startTime}:00+03:00`),
       };
     });
     // A parallel class keeps the student's lesson with another teacher visible,
@@ -41,9 +42,9 @@ export const createDemoWeekSchedule = (date: Date): WeeklyScheduleData => {
         date: dateKey, dayOfWeek: day + 1, subject: subject.name, type: "Пр.",
         startTime, endTime, location: "Ауд. 405", teacher: DEMO_TEACHER,
         teacherId: "teacher-elena-volkova",
-        group: getSubjectGroups(subject.id).find((group) => group.name !== DEMO_STUDENT_GROUP)?.name ?? DEMO_STUDENT_GROUP,
+        group: getAcademicGroupNameAt(getSubjectGroups(subject.id).find((group) => group.id !== "112-mko" && DEMO_GROUPS.some((seed) => seed.id === group.id))?.id ?? "112-mko", `${dateKey}T${startTime}:00+03:00`),
       });
     }
     return lessons.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.id - b.id);
-  }).flat();
+  }).flat().filter((lesson) => { const group = getAcademicGroupByName(lesson.group); return !group || isGroupActive(group) || Date.parse(`${lesson.date}T${lesson.endTime}:00+03:00`) <= Date.now(); });
 };

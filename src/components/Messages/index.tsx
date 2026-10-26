@@ -9,6 +9,7 @@ import { deliverDirectMessage, recoverDemoDirectMessages } from "../../data/mess
 import { getAttachmentError } from "../../domain/files";
 import { matchesSearchText } from "../../domain/search";
 import type { MessagingContact } from "../../domain/messaging";
+import { getStudentGroupId } from "../../domain/accounts";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import { changesMessageContact } from "../../domain/unsavedNavigation";
 import useMessageDrafts from "../../hooks/useMessageDrafts";
@@ -55,11 +56,11 @@ const AcademicMessages = ({ initialContactId, initialThreadTop, role }: Messages
   const editorHeadingId = useId();
   const self: Contact = { id: currentUser.id, name: currentUser.name, initials: initialsFor(currentUser.name), subtitle: "Вы", kind: role };
   const people = useMemo<Contact[]>(() => [
-    ...accounts.filter((account) => account.role !== "configurator").map((account) => ({ id: account.id, initials: initialsFor(account.name), name: account.name, subtitle: account.role === "student" ? getAcademicGroup(account.memberships[0]?.groupIds[0])?.name ?? "Группа не указана" : TEACHER_PROFILES.find((teacher) => teacher.id === account.id)?.department ?? "Преподаватель", kind: account.role as "teacher" | "student" })),
+    ...accounts.filter((account) => account.role !== "configurator").map((account) => ({ id: account.id, initials: initialsFor(account.name), name: account.name, subtitle: account.role === "student" ? getAcademicGroup(getStudentGroupId(account))?.name ?? "Группа не указана" : TEACHER_PROFILES.find((teacher) => teacher.id === account.id)?.department ?? "Преподаватель", kind: account.role as "teacher" | "student" })),
     ...STUDENT_PROFILES.map((student) => ({ id: student.id, initials: student.initials, name: student.name, subtitle: student.group, kind: "student" as const })),
     ...TEACHER_PROFILES.map((teacher) => ({ id: teacher.id, initials: teacher.initials, name: teacher.name, subtitle: teacher.department, kind: "teacher" as const })),
   ].filter((person, index, list) => person.id !== currentUser.id && !accounts.some((account) => account.id === person.id && account.role === "configurator") && list.findIndex((item) => item.id === person.id) === index), [currentUser.id, accounts]);
-  const relatedGroupIds = useMemo(() => new Set(currentUser.memberships.flatMap((membership) => membership.groupIds)), [currentUser.memberships]);
+  const relatedGroupIds = useMemo(() => new Set([...currentUser.memberships.flatMap((membership) => membership.groupIds), ...getStudentGroupId(currentUser) ? [getStudentGroupId(currentUser)!] : []]), [currentUser]);
   const studentSubjects = new Set(currentUser.memberships.map((membership) => membership.subjectId));
   const initialPeople = people.filter((person) => {
     if (person.kind === "student") return relatedGroupIds.has(getAcademicGroupByName(person.subtitle)?.id ?? "");

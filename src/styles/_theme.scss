@@ -8,6 +8,15 @@
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --ui-link: #ff8892;
+  --ui-danger-text: #ff9196;
+  --ui-panel: #262629;
+  --ui-panel-muted: #1c1c20;
+  --ui-field: #1c1c20;
+  --ui-control-border: #62636d;
+  --ui-control-hover: #333338;
+  --ui-action-primary: #c13743;
+  --ui-action-hover: #a92b37;
   --ui-dark-primary: #{map.get(dark.$dark-theme, "dark-primary")};
   --ui-dark-secondary: #{map.get(dark.$dark-theme, "dark-secondary")};
   --ui-dark-tertiary: #{map.get(dark.$dark-theme, "dark-tertiary")};
@@ -36,6 +45,15 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
+  --ui-link: #a1263e;
+  --ui-danger-text: #b42338;
+  --ui-panel: #ffffff;
+  --ui-panel-muted: #f0f2f6;
+  --ui-field: #ffffff;
+  --ui-control-border: #939eaf;
+  --ui-control-hover: #e9edf4;
+  --ui-action-primary: #b92d45;
+  --ui-action-hover: #9c1e37;
   --ui-dark-primary: #{light.$color-dark-primary};
   --ui-dark-secondary: #{light.$color-dark-secondary};
   --ui-dark-tertiary: #{light.$color-dark-tertiary};

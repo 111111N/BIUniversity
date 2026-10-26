@@ -1,18 +1,24 @@
 @use "../../styles/variables" as *;
 
 .state {
+  box-sizing: border-box;
   width: min(560px, calc(100% - 32px));
   margin: clamp(48px, 12vh, 120px) auto;
   padding: clamp(28px, 5vw, 52px);
   border: 1px solid $color-border;
   border-radius: 20px;
-  background: theme-alpha($color-dark-primary, .92);
+  background: $color-dark-primary;
   box-shadow: 0 24px 80px $color-shadow;
   text-align: center;
 
-  h1 { margin: 12px 0; font-size: clamp(24px, 4vw, 38px); }
+  h1 { margin: 12px 0; font-size: clamp(24px, 4vw, 38px); &:focus { outline: none; } }
   p { margin: 0 auto 28px; max-width: 430px; color: $color-text-secondary; line-height: 1.6; }
-  button { border: 0; border-radius: $border-radius; padding: 12px 20px; background: $color-accent-primary; color: $color-on-accent; cursor: pointer; }
+  button, a { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid $color-accent-primary; border-radius: $border-radius; padding: 10px 16px; background: $color-accent-primary; color: $color-on-accent; font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
+  .secondary, a { background: $color-ghost; border-color: $color-border; color: $color-text-light; }
+  .note { margin: 22px auto 0; font-size: 12px; }
 }
+
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+@media (max-width: 480px) { .state { padding: 24px 18px; } .actions { flex-direction: column; } }
 
 .code { color: $color-accent-primary; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }

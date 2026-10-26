@@ -9,7 +9,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: theme-alpha($color-shadow, .9);
+  background: rgba(0, 0, 0, .62);
   backdrop-filter: blur(8px);
 }
 
@@ -24,7 +24,9 @@
 }
 
 .overlay > .dialog {
-  background-color: $color-dark-primary;
+  background-color: $color-panel;
+  color: $color-text-light;
+  box-shadow: 0 22px 65px $color-shadow;
 }
 
 :root[data-theme="light"] .overlay {

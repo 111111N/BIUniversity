@@ -2,6 +2,8 @@ import { INITIAL_STUDENTS } from "../components/Attendance/data/students";
 import { ACADEMIC_GROUPS, getAcademicGroup, getAcademicGroupByName, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
 import { createDemoJournal } from "./journalStore";
 import { readStudentGroupJournals } from "./studentProfileMetrics";
+import { readAccountsState } from "./accountStore";
+import { getStudentGroupId, type PortalAccount } from "../domain/accounts";
 
 export interface StudentProfileData {
   id: string;
@@ -10,14 +12,18 @@ export interface StudentProfileData {
   group: string;
   email: string;
   course: number;
+  studentNumber?: string;
+  campus?: number;
 }
 
 const initialsFor = (name: string) => name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2);
-const profileFor = (student: { id: string; name: string }, groupId: string): StudentProfileData => {
+const profileFor = (student: { id: string; name: string }, groupId: string, account?: PortalAccount): StudentProfileData => {
   const group = getAcademicGroup(groupId)!;
+  const name = account && (account.createdAt || account.updatedAt) ? account.name : student.name;
   return {
-    id: student.id, name: student.name, initials: initialsFor(student.name), group: group.name, course: group.course,
-    email: student.id === "anna-smirnova" ? "a.smirnova@student.university.ru" : `student${student.id}@student.university.ru`,
+    id: student.id, name, initials: initialsFor(name), group: group.name, course: group.course,
+    email: account?.email ?? (student.id === "anna-smirnova" ? "a.smirnova@student.university.ru" : account ? "Почта не указана" : `student${student.id}@student.university.ru`),
+    ...(account?.studentRecord ? { studentNumber: account.studentRecord.number, campus: account.studentRecord.campus } : {}),
   };
 };
 
@@ -45,14 +51,17 @@ export const getGroupStudentProfiles = (groupName: string) => {
   if (!group) return [];
   const { journals } = readStudentGroupJournals(group.id);
   const students = new Map(journals.flatMap((journal) => journal.students).map((student) => [student.id, student]));
-  return Array.from(students.values()).map((student) => profileFor(student, group.id));
+  const accounts = new Map((typeof localStorage === "undefined" ? [] : readAccountsState().accounts).map((account) => [account.id, account]));
+  for (const account of accounts.values()) if ((account.studentGroupId || account.createdAt) && getStudentGroupId(account) === group.id && !students.has(account.id)) students.set(account.id, { id: account.id, name: account.name, attendance: {}, grades: {} });
+  return Array.from(students.values()).map((student) => profileFor(student, group.id, accounts.get(student.id)));
 };
 
 export const getStudentProfile = (id?: string, groupId?: string) => {
   if (!id) return undefined;
   const inferredGroup = ACADEMIC_GROUPS.find((group) => id.startsWith(`${group.id}-`));
   const known = STUDENT_PROFILES.find((student) => student.id === id);
-  const group = groupId ? getAcademicGroup(groupId) : inferredGroup ?? getAcademicGroupByName(known?.group);
+  const account = typeof localStorage === "undefined" ? undefined : readAccountsState().accounts.find((entry) => entry.id === id && entry.role === "student");
+  const group = groupId ? getAcademicGroup(groupId) : getAcademicGroup(account ? getStudentGroupId(account) : undefined) ?? inferredGroup ?? getAcademicGroupByName(known?.group);
   if (groupId && !group) return undefined;
   if (group) {
     const savedProfile = getGroupStudentProfiles(group.name).find((student) => student.id === id);

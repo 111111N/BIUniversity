@@ -20,7 +20,7 @@ const StudentHome = () => {
   const [query, setQuery] = useState("");
   const tasksHeading = useId();
   const summaryHeading = useId();
-  const dashboard = getStudentDashboard({ studentId: currentUser.id, memberships: currentUser.memberships, now });
+  const dashboard = getStudentDashboard({ studentId: currentUser.id, memberships: currentUser.memberships, studentGroupId: currentUser.studentGroupId, now });
   const activeTasks = dashboard.tasks.filter((task) => !task.completed);
 
   return <div className="pageContainer">

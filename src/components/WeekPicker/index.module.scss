@@ -49,3 +49,5 @@
   .weekPickerCurrentButton { margin: 0 5px; padding: 8px 12px; }
 }
 @media print { .weekPickerArrow, .weekPickerCurrentButton { display: none; } }
+
+.weekPickerArrow { color: $color-text-secondary; }.weekPickerCurrentButton { min-height: 44px; background: $color-panel; color: $color-text-light; border: 1px solid $color-control-border; }.weekPickerCurrentButton:not(:disabled):hover { background: $color-control-hover; color: $color-text-light; border-color: $color-accent-primary; }

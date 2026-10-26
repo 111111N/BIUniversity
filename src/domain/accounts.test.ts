@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { changeAccountRole, createAccount, decodeAccountsDocument, normalizeAccountLogin, replaceSubjectTeachingGroups, updateTeacherAssignments, type AccountDraft } from "./accounts";
 import { createInitialAccountsDocument } from "../data/accountStore";
 
-const context = { actorId: "configurator-demo", actorRevision: 1, expectedRevision: 0 };
-const draft: AccountDraft = { name: "  Новый   студент  ", login: " New.Student ", role: "student", memberships: [{ subjectId: "data-analysis", groupIds: ["112-mko"] }] };
+const context = { actorId: "configurator-demo", actorRevision: 1, expectedRevision: 0, studentCampus: 1, expectedStudentNumber: "202610001" };
+const draft: AccountDraft = { name: "  Новый   студент  ", login: " New.Student ", role: "student", studentCampus: 1, memberships: [{ subjectId: "data-analysis", groupIds: ["112-mko"] }] };
 const date = "2026-10-23T10:00:00.000Z";
 describe("account commands", () => {
   it("normalizes logins and rejects duplicates regardless of case and compatibility characters", () => {

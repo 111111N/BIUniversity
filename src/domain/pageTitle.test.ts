@@ -16,6 +16,9 @@ describe("portal page titles", () => {
   it("names configurator sections separately from the teacher cabinet", () => {
     expect(getPortalPageTitle("/admin/schedule", "configurator")).toBe("Настройка расписания · BIUniversity");
     expect(getPortalPageTitle("/admin/accounts/", "configurator")).toBe("Учётные записи · BIUniversity");
+    expect(getPortalPageTitle("/admin/groups", "configurator")).toBe("Учебные группы · BIUniversity");
+    expect(getPortalPageTitle("/admin/accounts/import", "configurator")).toBe("Импорт студентов · BIUniversity");
+    expect(getPortalPageTitle("/admin/students", "configurator")).toBe("Реестр студентов · BIUniversity");
     expect(getPortalPageTitle("/", "configurator")).toBe("Настройка расписания · BIUniversity");
   });
 });

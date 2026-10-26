@@ -1,6 +1,6 @@
 import { createMemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import { changesAssignmentAnswer, changesAssignmentEditor, changesJournalSection, changesLocation, changesMaterialScope, changesMessageContact, changesPlannerTask, createUnsavedChangesRegistry } from "./unsavedNavigation";
+import { changesAdminAccount, changesAdminSubject, changesAssignmentAnswer, changesAssignmentEditor, changesJournalSection, changesLocation, changesMaterialScope, changesMessageContact, changesPlannerTask, createUnsavedChangesRegistry } from "./unsavedNavigation";
 
 const transition = (current: string, next: string) => {
   const currentLocation = new URL(current, "https://example.test");
@@ -9,6 +9,22 @@ const transition = (current: string, next: string) => {
 };
 
 describe("unsaved form navigation", () => {
+  it("protects the selected account and mode while keeping registry filters usable", () => {
+    const current = "/admin/accounts?account=one&mode=details&type=student";
+    expect(changesAdminAccount(transition(current, current + "&q=ivan&group=group-1&page=2"))).toBe(false);
+    expect(changesAdminAccount(transition(current, "/admin/accounts?account=one&mode=role"))).toBe(true);
+    expect(changesAdminAccount(transition(current, "/admin/accounts?account=two&mode=details"))).toBe(true);
+    expect(changesAdminAccount(transition(current, "/admin/accounts?create=student&group=group-1"))).toBe(true);
+    expect(changesAdminAccount(transition(current, "/admin/groups"))).toBe(true);
+  });
+  it("keeps an assignment draft while searching or paging, and protects subject changes", () => {
+    const current = "/admin/subjects?subject=math&q=volkova&page=2";
+    expect(changesAdminSubject(transition(current, "/admin/subjects?subject=math&q=112&page=1"))).toBe(false);
+    expect(changesAdminSubject(transition(current, "/admin/subjects?subject=math&notifications=open"))).toBe(false);
+    expect(changesAdminSubject(transition(current, "/admin/subjects?subject=physics"))).toBe(true);
+    expect(changesAdminSubject(transition(current, "/admin/subjects"))).toBe(true);
+    expect(changesAdminSubject(transition(current, "/admin/accounts"))).toBe(true);
+  });
   it("protects uploads when changing the effective material scope, without blocking equivalent group URLs or filters", () => {
     const current = "/journal/math/group?tab=materials";
     expect(changesMaterialScope(transition(current, current + "&materials=group"))).toBe(false);

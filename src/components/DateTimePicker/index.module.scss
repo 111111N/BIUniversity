@@ -1,3 +1,4 @@
+@use "../../styles/administration" as admin;
 @use "../../styles/variables" as *;
 @use "../../styles/mixins" as *;
 
@@ -7,6 +8,9 @@
 
 .trigger {
   @include input(12px, 11px);
+  background: $color-field;
+  border-width: 1px;
+  border-color: $color-control-border;
   display: flex;
   justify-content: space-between;
   min-height: 45px;
@@ -55,9 +59,9 @@
   z-index: 1100;
   width: 446px;
   padding: 12px;
-  border: 3px solid $color-border;
+  border: 1px solid $color-control-border;
   border-radius: 12px;
-  background: $color-dark-primary;
+  background: $color-panel;
   box-shadow: 0 22px 55px $color-shadow;
   max-height: calc(100dvh - 20px);
   box-sizing: border-box;
@@ -85,7 +89,7 @@
 }
 .pickerBody { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; }
 .calendarBody { min-width: 0; }
-.periodSelector { display: flex; align-items: center; justify-content: center; gap: 3px; }.periodSelector button { padding: 5px 4px; border: 0; background: transparent; color: $color-text-light; font-size: .82rem; text-transform: capitalize; }.periodSelector button:hover { color: $color-accent-hover; background: $color-accent-background-hover; }
+.periodSelector { display: flex; align-items: center; justify-content: center; gap: 3px; }.periodSelector button { padding: 5px 4px; border: 0; background: transparent; color: $color-text-light; font-size: .82rem; text-transform: capitalize; }.periodSelector button:hover { color: $color-text-light; background: $color-control-hover; }
 
 .arrowButton {
   width: 28px;
@@ -133,8 +137,8 @@
     color: $color-text-light;
   }
 }
-.monthsGrid, .yearsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; min-height: 230px; align-content: center; }.monthsGrid button, .yearsGrid button { padding: 11px 4px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: .72rem; }.monthsGrid button:hover, .yearsGrid button:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }.monthsGrid .selectedPeriod, .yearsGrid .selectedPeriod { border-color: $color-accent-primary; background: $gradient-color-logo; color: $color-on-accent; }
-.monthsGrid .selectedPeriod:hover, .yearsGrid .selectedPeriod:hover { background: $gradient-color-logo; color: $color-on-accent; }
+.monthsGrid, .yearsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; min-height: 230px; align-content: center; }.monthsGrid button, .yearsGrid button { padding: 11px 4px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: .72rem; }.monthsGrid button:hover, .yearsGrid button:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }.monthsGrid .selectedPeriod, .yearsGrid .selectedPeriod { border-color: $color-accent-primary; background: $color-action-primary; color: $color-on-accent; }
+.monthsGrid .selectedPeriod:hover, .yearsGrid .selectedPeriod:hover { background: $color-action-primary; color: $color-on-accent; }
 
 .outsideDay {
   color: $color-text-secondary;
@@ -142,13 +146,13 @@
 
 .today {
   border-color: $color-accent-primary;
-  color: $color-accent-hover;
+  color: $color-link;
 }
 
 .selectedDay,
 .selectedDay:hover {
   border-color: $color-accent-primary;
-  background: $gradient-color-logo;
+  background: $color-action-primary;
   color: $color-on-accent;
 }
 
@@ -178,7 +182,7 @@
 
 .doneButton {
   border-color: $color-accent-primary;
-  background: $color-accent-primary;
+  background: $color-action-primary;
   color: $color-on-accent;
 }
 
@@ -199,3 +203,5 @@
 
 .dateOnly { width: 310px; max-width: calc(100vw - 24px); }
 .dateOnly .pickerBody { grid-template-columns: minmax(0, 1fr); }
+
+.footerActions button { @include admin.button; min-height: 36px; padding: 8px 10px; font-size: 12px; }.footerActions .doneButton { @include admin.primary; }

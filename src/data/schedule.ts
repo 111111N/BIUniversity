@@ -1,6 +1,6 @@
 import type { WeeklyScheduleData } from "../types/sched";
 import { getWeekStart, toLocalDateKey } from "../domain/schedule";
-import { getAcademicGroup, getAcademicGroupByName, getAcademicSubjectDefinition } from "./academicCatalog";
+import { getAcademicGroupByName, getAcademicGroupNameAt, getAcademicSubjectDefinition } from "./academicCatalog";
 import { createDemoWeekSchedule, DEMO_STUDENT_GROUP, DEMO_TEACHER } from "./demoSchedule";
 import { readManagedScheduleState } from "./managedScheduleStore";
 import type { AcademicMembership } from "./academicCatalog";
@@ -13,11 +13,11 @@ export const getDemoWeekSchedule = (date: Date): WeeklyScheduleData => {
   const { snapshot, error } = readManagedScheduleState();
   if (error) return [];
   const managed = snapshot.published.filter((week) => week.weekStart === weekStart);
-  const replacedGroups = new Set(managed.map((week) => getAcademicGroup(week.groupId)?.name));
-  return [...createDemoWeekSchedule(date).filter((lesson) => !replacedGroups.has(lesson.group)), ...managed.flatMap((week) => week.lessons.map((lesson) => ({
+  const replacedGroups = new Set(managed.map((week) => week.groupId));
+  return [...createDemoWeekSchedule(date).filter((lesson) => !replacedGroups.has(getAcademicGroupByName(lesson.group)?.id ?? "")), ...managed.flatMap((week) => week.lessons.map((lesson) => ({
     id: lesson.scheduleId, date: lesson.date, dayOfWeek: new Date(`${lesson.date}T12:00`).getDay(),
     subject: getAcademicSubjectDefinition(lesson.subjectId)?.name ?? lesson.subjectId,
-    group: getAcademicGroup(lesson.groupId)?.name ?? lesson.groupId,
+    group: getAcademicGroupNameAt(lesson.groupId, `${lesson.date}T${lesson.startsAt}:00+03:00`),
     teacherId: lesson.teacherId, teacher: lesson.teacherName, startTime: lesson.startsAt, endTime: lesson.endsAt,
     type: lesson.type === "lecture" ? "Лек." as const : lesson.type === "laboratory" ? "Лаб." as const : "Пр." as const,
     location: `Ауд. ${lesson.room.replace(/^ауд[.]?\s*/iu, "")}`,

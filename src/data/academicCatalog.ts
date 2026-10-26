@@ -1,10 +1,16 @@
 import { decodeSubjectCatalog, type SubjectCatalogDocument } from "../domain/subjectCatalog";
+import { groupNameKey, type GroupCatalogDocument, type GroupStatus, type GroupChange } from "../domain/groupCatalog";
+import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY, readGroupCatalogDocument } from "./groupCatalogRead";
 
 export interface AcademicGroup {
   id: string;
   name: string;
   students: number;
   course: number;
+  campus?: number;
+  admissionYear?: number;
+  status?: GroupStatus;
+  previousNames?: string[];
 }
 
 export interface AcademicSubjectDefinition {
@@ -39,13 +45,15 @@ export const DEMO_SUBJECTS: AcademicSubjectDefinition[] = [
 
 export const SUBJECTS: AcademicSubjectDefinition[] = [...DEMO_SUBJECTS];
 
-export const ACADEMIC_GROUPS: AcademicGroup[] = [
+export const DEMO_GROUPS: AcademicGroup[] = [
   { id: "112-mko", name: "112-МКо", students: 32, course: 2 }, { id: "113-mko", name: "113-МКо", students: 27, course: 2 },
   { id: "211-ivt", name: "211-ИВТ", students: 25, course: 2 }, { id: "311-pmi", name: "311-ПМИ", students: 24, course: 3 },
   { id: "312-pmi", name: "312-ПМИ", students: 26, course: 3 }, { id: "411-bi", name: "411-БИ", students: 22, course: 4 },
   { id: "412-bi", name: "412-БИ", students: 21, course: 4 }, { id: "413-bi", name: "413-БИ", students: 19, course: 4 },
   { id: "111-is", name: "111-ИС", students: 28, course: 1 }, { id: "112-is", name: "112-ИС", students: 29, course: 1 },
 ];
+
+export const ACADEMIC_GROUPS: AcademicGroup[] = [...DEMO_GROUPS];
 
 const DEMO_SUBJECT_GROUP_OFFERINGS: SubjectGroupOffering[] = [
   { subjectId: "theory-of-probability", groupId: "112-mko", attendance: 84 }, { subjectId: "theory-of-probability", groupId: "113-mko", attendance: 79 }, { subjectId: "theory-of-probability", groupId: "211-ivt", attendance: 88 },
@@ -72,11 +80,14 @@ export const readSubjectCatalogDocument = (): SubjectCatalogDocument => {
   return document;
 };
 
-const updateReadModel = (subjects: AcademicSubjectDefinition[]) => {
+const updateReadModel = (subjects: AcademicSubjectDefinition[], groups: GroupCatalogDocument["groups"] = []) => {
+  const managedById = new Map(groups.map((group) => [group.id, group]));
+  ACADEMIC_GROUPS.splice(0, ACADEMIC_GROUPS.length, ...DEMO_GROUPS.map((group) => ({ ...group, ...managedById.get(group.id) })), ...groups.filter((group) => !DEMO_GROUPS.some((seed) => seed.id === group.id)).map((group) => ({ ...group, students: 0 })));
   SUBJECTS.splice(0, SUBJECTS.length, ...subjects);
   const custom = subjects.filter((subject) => !DEMO_SUBJECTS.some((entry) => entry.id === subject.id));
   SUBJECT_GROUP_OFFERINGS.splice(0, SUBJECT_GROUP_OFFERINGS.length, ...DEMO_SUBJECT_GROUP_OFFERINGS,
-    ...custom.flatMap((subject) => ACADEMIC_GROUPS.map((group) => ({ subjectId: subject.id, groupId: group.id, attendance: 0 }))));
+    ...custom.flatMap((subject) => ACADEMIC_GROUPS.map((group) => ({ subjectId: subject.id, groupId: group.id, attendance: 0 }))),
+    ...DEMO_SUBJECTS.flatMap((subject) => groups.filter((group) => !DEMO_GROUPS.some((seed) => seed.id === group.id)).map((group) => ({ subjectId: subject.id, groupId: group.id, attendance: 0 }))));
   const groupsById = new Map(ACADEMIC_GROUPS.map((group) => [group.id, group]));
   const groupsBySubject = new Map<string, AcademicSubject["groups"]>();
   for (const offering of SUBJECT_GROUP_OFFERINGS) {
@@ -91,41 +102,57 @@ const updateReadModel = (subjects: AcademicSubjectDefinition[]) => {
 
 /** Compatibility views share one persisted source; original IDs and offerings stay unchanged. */
 let readModelDocument: SubjectCatalogDocument | undefined;
+let readModelGroups: GroupCatalogDocument | undefined;
 let catalogWasUnavailable = false;
+let nameChangesByGroup = new Map<string, GroupChange[]>();
 export const refreshAcademicCatalog = () => {
   try {
     const document = readSubjectCatalogDocument();
-    if (readModelDocument !== document || catalogWasUnavailable) updateReadModel(document.subjects);
+    const groups = readGroupCatalogDocument();
+    if (readModelGroups !== groups || catalogWasUnavailable) for (const group of groups.groups) {
+      if (DEMO_GROUPS.some((seed) => seed.id === group.id && group.source !== "initial") || (group.source === "initial" && !DEMO_GROUPS.some((seed) => seed.id === group.id)) || [group.name, ...(group.previousNames ?? [])].some((name) => DEMO_GROUPS.some((seed) => seed.id !== group.id && groupNameKey(seed.name) === groupNameKey(name)))) throw new Error("В справочнике групп повторяются исходные группы.");
+    }
+    if (readModelDocument !== document || readModelGroups !== groups || catalogWasUnavailable) {
+      updateReadModel(document.subjects, groups.groups);
+      const changesByGroup = new Map<string, GroupChange[]>();
+      for (const change of groups.history) if (change.before && change.after) { const changes = changesByGroup.get(change.groupId) ?? []; changes.push(change); changesByGroup.set(change.groupId, changes); }
+      for (const changes of changesByGroup.values()) changes.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt));
+      nameChangesByGroup = changesByGroup;
+    }
     readModelDocument = document;
+    readModelGroups = groups;
     catalogWasUnavailable = false;
     return { subjects: document.subjects, revision: document.revision, error: "" };
   }
   catch (error) {
     if (!catalogWasUnavailable) {
-      console.error("Не удалось прочитать каталог дисциплин. Исходное хранилище не изменено:", error);
+      console.error("Не удалось прочитать учебный каталог дисциплин и групп. Исходное хранилище не изменено:", error);
       updateReadModel(DEMO_SUBJECTS.map((subject) => ({ ...subject })));
     }
     catalogWasUnavailable = true;
-    return { subjects: [...SUBJECTS], revision: 0, error: "Не удалось прочитать каталог дисциплин. Исходные данные не изменены; создание и изменение приостановлены." };
+    return { subjects: [...SUBJECTS], revision: 0, error: "Не удалось прочитать учебный каталог дисциплин и групп. Исходные данные не изменены; создание и изменение приостановлены." };
   }
 };
 
 refreshAcademicCatalog();
 if (typeof window !== "undefined") {
   window.addEventListener(SUBJECT_CATALOG_CHANGE_EVENT, refreshAcademicCatalog);
-  window.addEventListener("storage", (event) => { if (event.key === SUBJECT_CATALOG_STORAGE_KEY || event.key === null) refreshAcademicCatalog(); });
+  window.addEventListener(GROUP_CATALOG_CHANGE_EVENT, refreshAcademicCatalog);
+  window.addEventListener("storage", (event) => { if (event.key === SUBJECT_CATALOG_STORAGE_KEY || event.key === GROUP_CATALOG_STORAGE_KEY || event.key === null) refreshAcademicCatalog(); });
 }
 
 export const getAcademicGroup = (groupId?: string) => ACADEMIC_GROUPS.find((group) => group.id === groupId);
-export const getAcademicGroupByName = (name?: string) => ACADEMIC_GROUPS.find((group) => group.name === name);
+export const getAcademicGroupByName = (name?: string) => name ? ACADEMIC_GROUPS.find((group) => groupNameKey(group.name) === groupNameKey(name)) ?? ACADEMIC_GROUPS.find((group) => group.previousNames?.some((previous) => groupNameKey(previous) === groupNameKey(name))) : undefined;
+export const getAcademicGroupNameAt = (groupId: string, occurredAt: string) => {
+  const group = getAcademicGroup(groupId);
+  const changes = catalogWasUnavailable ? [] : nameChangesByGroup.get(groupId) ?? [];
+  let name = changes[0]?.before?.name ?? group?.name ?? groupId;
+  for (const change of changes) { if (Date.parse(change.occurredAt) > Date.parse(occurredAt)) break; name = change.after!.name; }
+  return name;
+};
 export const getAcademicSubjectDefinition = (subjectId?: string) => { refreshAcademicCatalog(); return SUBJECTS.find((subject) => subject.id === subjectId); };
 export const getAcademicSubjectByName = (name?: string) => { refreshAcademicCatalog(); return SUBJECTS.find((subject) => subject.name === name); };
-export const getSubjectGroups = (subjectId: string) => { refreshAcademicCatalog(); return SUBJECT_GROUP_OFFERINGS
-  .filter((offering) => offering.subjectId === subjectId)
-  .flatMap((offering) => {
-    const group = getAcademicGroup(offering.groupId);
-    return group ? [{ ...group, attendance: offering.attendance }] : [];
-  }); };
+export const getSubjectGroups = (subjectId: string) => { refreshAcademicCatalog(); return ACADEMIC_SUBJECTS.find((subject) => subject.id === subjectId)?.groups.map((group) => ({ ...group })) ?? []; };
 
 export const getAcademicSubject = (subjectId?: string) => { refreshAcademicCatalog(); return ACADEMIC_SUBJECTS.find((subject) => subject.id === subjectId); };
 

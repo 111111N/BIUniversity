@@ -5,7 +5,9 @@
 .field { display: grid; min-width: 0; gap: 5px; }
 .field > label { color: $color-text-secondary; font-size: readability.$caption; font-weight: 600; }
 .row { position: relative; min-width: 0; }
-.row input { @include input(12px, 10px); min-height: 46px; font-size: readability.$body; }
+.row input { @include input(12px, 10px); background: $color-field; border-width: 1px; border-color: $color-control-border; min-height: 46px; font-size: readability.$body; }
 .row .hasValue { padding-right: 82px; }
 .row input::-webkit-search-cancel-button { display: none; }
 .row button { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); padding: 7px; border-width: 1px; background: transparent; font-size: readability.$caption; }
+
+.row button { min-height: 36px; color: $color-text-secondary; border-color: transparent; }.row button:not(:disabled):hover { color: $color-text-light; background: $color-control-hover; border-color: $color-control-border; }

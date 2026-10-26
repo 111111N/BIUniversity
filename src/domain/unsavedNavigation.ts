@@ -9,6 +9,12 @@ export const changesPage: UnsavedNavigationCheck = ({ currentLocation, nextLocat
 
 export const changesLocation: UnsavedNavigationCheck = (transition) => changesPage(transition) || transition.currentLocation.search !== transition.nextLocation.search;
 
+export const changesAdminSubject: UnsavedNavigationCheck = (transition) => changesPage(transition)
+  || new URLSearchParams(transition.currentLocation.search).get("subject") !== new URLSearchParams(transition.nextLocation.search).get("subject");
+
+export const changesAdminAccount: UnsavedNavigationCheck = (transition) => changesPage(transition)
+  || ["account", "create", "mode"].some((key) => new URLSearchParams(transition.currentLocation.search).get(key) !== new URLSearchParams(transition.nextLocation.search).get(key));
+
 export const changesMaterialScope: UnsavedNavigationCheck = (transition) => changesPage(transition)
   || new URLSearchParams(transition.currentLocation.search).get("tab") !== new URLSearchParams(transition.nextLocation.search).get("tab")
   || readMaterialScope(new URLSearchParams(transition.currentLocation.search)) !== readMaterialScope(new URLSearchParams(transition.nextLocation.search));

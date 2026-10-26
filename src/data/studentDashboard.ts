@@ -46,12 +46,14 @@ export const getStudentDashboard = ({
   studentId,
   memberships,
   now,
+  studentGroupId,
 }: {
   studentId: string;
   memberships: DashboardMembership[];
   now: Date;
+  studentGroupId?: string;
 }) => {
-  const groupId = memberships[0]?.groupIds[0];
+  const groupId = studentGroupId ?? memberships[0]?.groupIds[0];
   const groupName = getAcademicGroup(groupId)?.name;
   const journals = readMembershipJournals(memberships);
   const journal = calculateDashboardJournalMetrics(journals, studentId);

@@ -4,6 +4,7 @@ import { createDropdownStyles, type DropdownOption } from "../Dropdown";
 import SearchField from "../SearchField";
 import fieldStyles from "../Dropdown/index.module.scss";
 import styles from "./index.module.scss";
+import { matchesSearchOption } from "../../domain/search";
 
 interface Props {
   label: string;
@@ -21,9 +22,10 @@ const SearchMultiSelect = ({ label, options, value, onChange, disabled = false }
   const [selectedQuery, setSelectedQuery] = useState("");
   const byId = useMemo(() => new Map(options.map((option) => [option.value, option])), [options]);
   const selected = useMemo(() => value.map((id) => byId.get(id) ?? { value: id, label: id }), [byId, value]);
-  const query = value.length > 10 ? selectedQuery.trim().toLocaleLowerCase("ru") : "";
-  const shown = selected.filter((option) => option.label.toLocaleLowerCase("ru").includes(query));
-  const allSelected = options.every((option) => value.includes(option.value));
+  const query = value.length > 10 ? selectedQuery : "";
+  const shown = selected.filter((option) => matchesSearchOption(option, query));
+  const selectedIds = new Set(value);
+  const allSelected = options.every((option) => selectedIds.has(option.value));
 
   return <div className={styles.picker}>
     <div className={fieldStyles.field}>
@@ -33,6 +35,7 @@ const SearchMultiSelect = ({ label, options, value, onChange, disabled = false }
         aria-label={label}
         aria-describedby={summaryId}
         options={options}
+        filterOption={(option, input) => matchesSearchOption(option.data, input)}
         value={selected}
         onChange={(next) => onChange(next.map((option) => option.value))}
         isMulti

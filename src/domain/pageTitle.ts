@@ -11,7 +11,7 @@ export const getPortalPageTitle = (pathname: string, role: UserRole) => {
   else if (path.startsWith("/teachers/")) title = "Профиль преподавателя";
   else {
     const pages: Record<string, string> = { "/": role === "configurator" ? "Настройка расписания" : "Главная", "/admin/schedule": "Настройка расписания", "/admin/accounts": "Учётные записи", "/schedule": "Расписание", "/planner": "Планировщик", "/journal": "Журнал", "/stats": "Статистика", "/messages": "Сообщения", "/notifications": "Уведомления", "/cabinet": role === "student" ? "Мой профиль" : "Кабинет преподавателя" };
-    title = path === "/admin/subjects" ? "Дисциплины" : pages[path] ?? "Страница не найдена";
+    title = path.startsWith("/admin/students/") ? "История обучения" : path === "/admin/students" ? "Реестр студентов" : path === "/admin/accounts/import" ? "Импорт студентов" : path === "/admin/groups" ? "Учебные группы" : path === "/admin/subjects" ? "Дисциплины" : pages[path] ?? "Страница не найдена";
   }
   return `${title} · BIUniversity`;
 };

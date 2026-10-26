@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getSemesterSubjects, getSubjectHours } from "../../data/studyPlan";
 import { useRole } from "../RoleContext";
 import styles from "./index.module.scss";
+import { getStudentGroupId } from "../../domain/accounts";
+import { DEMO_GROUPS } from "../../data/academicCatalog";
 
 const semesters = [3, 4] as const;
 
@@ -19,6 +21,8 @@ const StudyPlan = ({ teacher = false }: { teacher?: boolean }) => {
     all: result.all + getSubjectHours(subject),
   }), { lectures: 0, practice: 0, labs: 0, independent: 0, all: 0 }), [subjects]);
   const classroomHours = totals.lectures + totals.practice + totals.labs;
+
+  if (!teacher && !DEMO_GROUPS.some((group) => group.id === getStudentGroupId(currentUser))) return <section className={styles.plan}><h2>Учебный план пока не назначен</h2><p>Дисциплины, часы и формы контроля появятся после назначения учебного плана вашей группе.</p></section>;
 
   return <section className={styles.plan} aria-labelledby="study-plan-title">
     <header className={styles.header}>

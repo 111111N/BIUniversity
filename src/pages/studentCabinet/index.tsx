@@ -11,11 +11,12 @@ import { getAcademicGroup } from "../../data/academicCatalog";
 import { getStudentProfile } from "../../data/studentProfiles";
 import { useDashboardUpdate } from "../../data/studentDashboard";
 import styles from "../cabinet/index.module.scss";
+import { getStudentGroupId } from "../../domain/accounts";
 
 const StudentCabinet = () => {
   const { currentUser } = useRole();
   useDashboardUpdate();
-  const groupId = currentUser.memberships[0]?.groupIds[0];
+  const groupId = getStudentGroupId(currentUser);
   const group = getAcademicGroup(groupId);
   const student = getStudentProfile(currentUser.id, groupId);
   const { items, activeTab, setActiveTab } = useCabinetTabs(true);
@@ -31,7 +32,8 @@ const StudentCabinet = () => {
           <div className={styles.detailGrid}>
             <div><span>Группа</span><strong>{group?.name ?? "Не указано"}</strong></div>
             <div><span>Курс</span><strong>{group ? `${group.course} курс` : "Не указано"}</strong></div>
-            <div><span>Студенческий билет</span><strong>Не указано</strong></div>
+            <div><span>Номер зачетки</span><strong>{currentUser.studentRecord?.number ?? "Не выдан"}</strong></div>
+            <div><span>Учебный корпус</span><strong>{currentUser.studentRecord ? `Корпус ${currentUser.studentRecord.campus}` : "Не указан"}</strong></div>
             <div><span>Форма обучения</span><strong>Не указано</strong></div>
           </div>
         </section>

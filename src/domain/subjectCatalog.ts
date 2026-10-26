@@ -1,4 +1,4 @@
-import type { PortalAccount } from "./accounts";
+import { isAccountActive, type PortalAccount } from "./accounts";
 
 export interface SubjectDefinition {
   id: string;
@@ -34,7 +34,7 @@ export const validateSubjectDraft = (draft: SubjectDraft, subjects: SubjectDefin
 };
 
 export const createSubject = (state: SubjectCatalogDocument, command: CreateSubjectCommand, actor: PortalAccount | undefined, id: string, changeId: string, occurredAt: string): SubjectCatalogDocument => {
-  if (!actor || actor.id !== command.actorId || actor.role !== "configurator") throw new Error("Создание дисциплин доступно только настройщику.");
+  if (!actor || actor.id !== command.actorId || actor.role !== "configurator" || !isAccountActive(actor)) throw new Error("Создание дисциплин доступно только активному настройщику.");
   if (actor.revision !== command.actorRevision || state.revision !== command.expectedRevision) throw new Error("Каталог или учётная запись изменились. Обновите данные и повторите действие.");
   if (!id || state.subjects.some((subject) => subject.id === id)) throw new Error("Не удалось создать уникальную дисциплину.");
   const draft = validateSubjectDraft(command.draft, state.subjects);

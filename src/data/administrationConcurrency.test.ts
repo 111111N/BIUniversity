@@ -3,12 +3,13 @@ import { ACCOUNTS_STORAGE_KEY, accountService, readAccountsState } from "./accou
 import { connectAdministrationPolicies } from "./administrationIntegration";
 import { publishManagedScheduleDraft, readManagedScheduleState, saveManagedScheduleDraft } from "./managedScheduleStore";
 import { getManagedWeekKey, MANAGED_SCHEDULE_KEY, type ManagedLesson } from "../domain/scheduleManagement";
+import { getStudentNumberYear } from "../domain/studentRecord";
 
 const weekStart = getManagedWeekKey("2099-10-19");
 const actorId = "configurator-demo";
 const lesson: ManagedLesson = { id: "managed:concurrency", scheduleId: 424242, subjectId: "theory-of-probability", groupId: "112-mko", teacherId: "teacher-elena-volkova", teacherName: "Волкова Е.В.", date: weekStart, startsAt: "07:00", endsAt: "08:00", type: "practice", room: "QA-700" };
 const scope = { actorId, weekStart, groupId: lesson.groupId };
-const roleChange = { actorId, actorRevision: 1, expectedRevision: 0, accountId: lesson.teacherId, accountRevision: 1, role: "student" as const, memberships: [{ subjectId: lesson.subjectId, groupIds: [lesson.groupId] }] };
+const roleChange = { actorId, actorRevision: 1, expectedRevision: 0, accountId: lesson.teacherId, accountRevision: 1, role: "student" as const, studentCampus: 1, expectedStudentNumber: `${getStudentNumberYear(new Date().toISOString())}10001`, memberships: [{ subjectId: lesson.subjectId, groupIds: [lesson.groupId] }] };
 let values: Map<string, string>;
 let disconnect: () => void;
 beforeEach(() => {

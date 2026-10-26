@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { SetStateAction } from "react";
 import type { Grade, Student } from "../components/Attendance/data/students";
 import { createSubjectLessons } from "./lessons";
-import { DEMO_SUBJECTS, SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
+import { DEMO_GROUPS, DEMO_SUBJECTS, SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
 import { JournalDraftConflictError } from "../domain/journalDraft";
 import { createJournalDemoAdditions } from "./demo/journals";
 import { readAccountsState, subscribeAccounts } from "./accountStore";
@@ -39,6 +39,7 @@ export type JournalChange = {
 };
 
 export const createDemoJournal = (subject: string, group: string): Student[] => {
+  if (!DEMO_GROUPS.some((entry) => entry.id === group)) return [];
   const legacyPrefix = `${subject}:${group}:2026-fall:`;
   const lessons = createSubjectLessons(subject, group).filter((lesson) => lesson.id.startsWith(legacyPrefix) && /^[0-9]+$/.test(lesson.id.slice(legacyPrefix.length)));
   const seed = [...`${subject}:${group}`].reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
@@ -130,7 +131,9 @@ const migrateLessonKeys = (students: Student[], subject: string, group: string) 
   // The original demo student's membership remains owned by the existing saved roster.
   const accounts = typeof localStorage === "undefined" ? [] : readAccountsState().accounts;
   const createdSubjectIds = new Set(SUBJECTS.filter((item) => !DEMO_SUBJECTS.some((seed) => seed.id === item.id)).map((item) => item.id));
-  const registeredStudents = includeRegisteredJournalStudents(students, accounts.map((account) => withCreatedSubjectMemberships(account, accounts, createdSubjectIds)), subject, group, new Set([CURRENT_STUDENT_ID]));
+  const allSubjectIds = new Set(SUBJECTS.map((item) => item.id));
+  const preservedIds = new Set(accounts.filter((account) => account.id === CURRENT_STUDENT_ID && !account.studentGroupId).map((account) => account.id));
+  const registeredStudents = includeRegisteredJournalStudents(students, accounts.map((account) => withCreatedSubjectMemberships(account, accounts, account.studentGroupId ? allSubjectIds : createdSubjectIds)), subject, group, preservedIds);
   return registeredStudents.map((student) => {
     const grades = migrateRecord(student.grades);
     lessons.forEach((lesson) => { if (lesson.type === "lecture") grades[lesson.id] = null; });

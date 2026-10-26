@@ -2,15 +2,17 @@ import { createSubject, type CreateSubjectCommand } from "../domain/subjectCatal
 import { readAccountsState } from "./accountStore";
 import { readSubjectCatalogDocument, refreshAcademicCatalog, SUBJECT_CATALOG_CHANGE_EVENT, SUBJECT_CATALOG_STORAGE_KEY, type AcademicSubjectDefinition } from "./academicCatalog";
 import { executeAdministrationWrite } from "./administrationWrite";
+import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY } from "./groupCatalogRead";
 
 export { SUBJECT_CATALOG_STORAGE_KEY } from "./academicCatalog";
 export const readSubjectCatalogState = refreshAcademicCatalog;
 export const subscribeSubjectCatalog = (listener: () => void) => {
   const notify = () => { refreshAcademicCatalog(); listener(); };
-  const onStorage = (event: StorageEvent) => { if (event.key === SUBJECT_CATALOG_STORAGE_KEY || event.key === null) notify(); };
+  const onStorage = (event: StorageEvent) => { if (event.key === SUBJECT_CATALOG_STORAGE_KEY || event.key === GROUP_CATALOG_STORAGE_KEY || event.key === null) notify(); };
   window.addEventListener(SUBJECT_CATALOG_CHANGE_EVENT, notify);
+  window.addEventListener(GROUP_CATALOG_CHANGE_EVENT, notify);
   window.addEventListener("storage", onStorage);
-  return () => { window.removeEventListener(SUBJECT_CATALOG_CHANGE_EVENT, notify); window.removeEventListener("storage", onStorage); };
+  return () => { window.removeEventListener(SUBJECT_CATALOG_CHANGE_EVENT, notify); window.removeEventListener(GROUP_CATALOG_CHANGE_EVENT, notify); window.removeEventListener("storage", onStorage); };
 };
 
 export interface SubjectCatalogService {
