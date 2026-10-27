@@ -17,6 +17,7 @@ interface DropdownProps {
   hideLabel?: boolean;
   variant?: DropdownVariant;
   searchable?: boolean;
+  error?: string;
 }
 
 export const createDropdownStyles = <IsMulti extends boolean = false,>(variant: DropdownVariant): StylesConfig<DropdownOption, IsMulti> => {
@@ -30,18 +31,18 @@ export const createDropdownStyles = <IsMulti extends boolean = false,>(variant: 
       borderWidth,
       borderTopWidth: main ? 0 : borderWidth,
       borderStyle: "solid",
-      borderColor: state.isFocused && !state.menuIsOpen ? "var(--dropdown-accent)" : "var(--dropdown-control-border)",
+      borderColor: state.selectProps["aria-invalid"] ? "var(--ui-danger-text)" : state.isFocused && !state.menuIsOpen ? "var(--dropdown-accent)" : "var(--dropdown-control-border)",
       // The lower edge joins the menu. Keep this neutral even while focused/hovered.
-      borderBottomColor: state.menuIsOpen ? "var(--dropdown-control-border)" : state.isFocused ? "var(--dropdown-accent)" : "var(--dropdown-control-border)",
+      borderBottomColor: state.selectProps["aria-invalid"] ? "var(--ui-danger-text)" : state.menuIsOpen ? "var(--dropdown-control-border)" : state.isFocused ? "var(--dropdown-accent)" : "var(--dropdown-control-border)",
       borderRadius: main ? "17px 17px 0 0" : state.menuIsOpen ? "8px 8px 0 0" : "8px",
       background: state.menuIsOpen || !state.isFocused ? "var(--dropdown-control)" : "var(--dropdown-control-active)",
-      boxShadow: "none",
+      boxShadow: state.isFocused && state.selectProps["aria-invalid"] ? "0 0 0 2px var(--dropdown-accent)" : "none",
       cursor: state.isDisabled ? "not-allowed" : state.selectProps.isSearchable ? "text" : "pointer",
       transition: "border-color .18s ease, background .18s ease",
       opacity: state.isDisabled ? .55 : 1,
       ":hover": {
-        borderColor: state.menuIsOpen || state.isDisabled ? "var(--dropdown-control-border)" : "var(--dropdown-accent)",
-        borderBottomColor: state.menuIsOpen || state.isDisabled ? "var(--dropdown-control-border)" : "var(--dropdown-accent)",
+        borderColor: state.selectProps["aria-invalid"] ? "var(--ui-danger-text)" : state.menuIsOpen || state.isDisabled ? "var(--dropdown-control-border)" : "var(--dropdown-accent)",
+        borderBottomColor: state.selectProps["aria-invalid"] ? "var(--ui-danger-text)" : state.menuIsOpen || state.isDisabled ? "var(--dropdown-control-border)" : "var(--dropdown-accent)",
         background: state.menuIsOpen || state.isDisabled ? "var(--dropdown-control)" : "var(--dropdown-control-active)",
       },
     }),
@@ -99,13 +100,15 @@ export const createDropdownStyles = <IsMulti extends boolean = false,>(variant: 
 export const dropdownStyles = createDropdownStyles("compact");
 const mainDropdownStyles = createDropdownStyles("main");
 
-const Dropdown = ({ label, value, options, onChange, disabled = false, placeholder, className, hideLabel = false, variant = "compact", searchable = false }: DropdownProps) => {
+const Dropdown = ({ label, value, options, onChange, disabled = false, placeholder, className, hideLabel = false, variant = "compact", searchable = false, error }: DropdownProps) => {
   const inputId = useId();
   return <div className={`${styles.field} ${className ?? ""}`}>
     <label className={hideLabel ? styles.visuallyHidden : undefined} htmlFor={inputId}>{label}</label>
     <Select<DropdownOption, false>
       inputId={inputId}
       aria-label={label}
+      aria-invalid={error ? true : undefined}
+      aria-errormessage={error ? `${inputId}-error` : undefined}
       value={options.find((option) => option.value === value) ?? null}
       options={options}
       filterOption={(option, query) => matchesSearchOption(option.data, query)}
@@ -121,6 +124,7 @@ const Dropdown = ({ label, value, options, onChange, disabled = false, placehold
       menuPosition="fixed"
       menuPortalTarget={typeof document === "undefined" ? undefined : document.body}
     />
+    {error && <span className={styles.error} id={`${inputId}-error`}>{error}</span>}
   </div>;
 };
 

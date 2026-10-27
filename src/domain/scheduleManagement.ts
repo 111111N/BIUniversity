@@ -41,18 +41,19 @@ export const getManagedWeekKey = (date: string) => {
   return parsed ? toLocalDateKey(getWeekStart(parsed)) : "";
 };
 const timeIsValid = (time: string) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(time);
-export const validateManagedLesson = (lesson: ManagedLesson): string[] => {
-  const errors: string[] = [];
+export const getManagedLessonIssues = (lesson: ManagedLesson): { field: keyof ManagedLesson; message: string }[] => {
+  const errors: { field: keyof ManagedLesson; message: string }[] = [];
   const date = parseCalendarDate(lesson.date);
-  if (!date || date.getDay() === 0) errors.push("Выберите дату с понедельника по субботу.");
-  if (!timeIsValid(lesson.startsAt) || !timeIsValid(lesson.endsAt) || lesson.startsAt >= lesson.endsAt) errors.push("Время окончания должно быть позже начала в пределах одного дня.");
-  if (!lesson.subjectId.trim() || !lesson.groupId.trim()) errors.push("Выберите предмет и группу.");
-  if (!lesson.teacherId.trim() || !lesson.teacherName.trim()) errors.push("Выберите преподавателя.");
-  if (!lesson.room.trim() || lesson.room.length > 100) errors.push("Укажите аудиторию, не более 100 символов.");
-  if (!["lecture", "practice", "laboratory"].includes(lesson.type)) errors.push("Выберите тип занятия.");
-  if (!lesson.id.startsWith("managed:") || !Number.isSafeInteger(lesson.scheduleId) || lesson.scheduleId <= 0) errors.push("Некорректный идентификатор занятия.");
+  if (!date || date.getDay() === 0) errors.push({ field: "date", message: "Выберите дату с понедельника по субботу." });
+  if (!timeIsValid(lesson.startsAt) || !timeIsValid(lesson.endsAt) || lesson.startsAt >= lesson.endsAt) errors.push({ field: !timeIsValid(lesson.startsAt) ? "startsAt" : "endsAt", message: "Время окончания должно быть позже начала в пределах одного дня." });
+  if (!lesson.subjectId.trim() || !lesson.groupId.trim()) errors.push({ field: !lesson.subjectId.trim() ? "subjectId" : "groupId", message: "Выберите предмет и группу." });
+  if (!lesson.teacherId.trim() || !lesson.teacherName.trim()) errors.push({ field: "teacherId", message: "Выберите преподавателя." });
+  if (!lesson.room.trim() || lesson.room.length > 100) errors.push({ field: "room", message: "Укажите аудиторию, не более 100 символов." });
+  if (!["lecture", "practice", "laboratory"].includes(lesson.type)) errors.push({ field: "type", message: "Выберите тип занятия." });
+  if (!lesson.id.startsWith("managed:") || !Number.isSafeInteger(lesson.scheduleId) || lesson.scheduleId <= 0) errors.push({ field: "id", message: "Некорректный идентификатор занятия." });
   return errors;
 };
+export const validateManagedLesson = (lesson: ManagedLesson): string[] => getManagedLessonIssues(lesson).map((issue) => issue.message);
 const normalizedRoom = (room: string) => room.toLocaleLowerCase("ru").replace(/^ауд[.]?\s*/u, "").replace(/\s+/g, "").trim();
 export const findScheduleConflicts = (lessons: ManagedLesson[], others: ManagedLesson[] = []): ScheduleConflict[] => {
   const result: ScheduleConflict[] = [];

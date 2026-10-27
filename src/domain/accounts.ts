@@ -17,6 +17,14 @@ export type AccountCommandContext = { actorId: string; actorRevision: number; ex
 export const ACCOUNT_ROLE_LABELS: Record<UserRole, string> = { teacher: "Преподаватель", student: "Студент", configurator: "Настройщик" };
 export const isUserRole = (value: unknown): value is UserRole => value === "teacher" || value === "student" || value === "configurator";
 export const isAccountActive = (account: Pick<CurrentUser, "status">) => account.status !== "blocked";
+type AccessAccount = Pick<CurrentUser, "id" | "role" | "status">;
+export const getAccountBlockRestriction = (account: AccessAccount, actorId: string, accounts: readonly AccessAccount[]) => {
+  if (account.id === actorId) return "Нельзя заблокировать свою текущую учётную запись.";
+  if (account.role === "configurator" && accounts.filter((entry) => entry.role === "configurator" && isAccountActive(entry)).length <= 1) return "Нельзя заблокировать последнего активного настройщика.";
+  return "";
+};
+export const getAccountRoleRestriction = (account: AccessAccount, nextRole: UserRole, accounts: readonly AccessAccount[]) => account.role === "configurator" && isAccountActive(account) && nextRole !== "configurator" && accounts.filter((entry) => entry.role === "configurator" && isAccountActive(entry)).length <= 1
+  ? "Нельзя изменить тип последнего настройщика. Сначала создайте другого активного настройщика." : "";
 export const normalizeAccountLogin = (login: string) => login.normalize("NFKC").trim().toLowerCase();
 /** Legacy accounts infer enrolment from their single group; new accounts store it independently. */
 export const getStudentGroupId = (account: Pick<CurrentUser, "role" | "memberships" | "studentGroupId">) => {
@@ -73,7 +81,8 @@ export const changeAccountRole = (state: AccountsDocument, command: AccountComma
   authorizeAccountCommand(state, command);
   const current = state.accounts.find((account) => account.id === command.accountId);
   if (!current || current.revision !== command.accountRevision) throw new Error("Учётная запись изменилась. Обновите список и повторите действие.");
-  if (current.role === "configurator" && isAccountActive(current) && command.role !== "configurator" && state.accounts.filter((account) => account.role === "configurator" && isAccountActive(account)).length <= 1) throw new Error("Нельзя изменить тип последнего настройщика. Сначала создайте другого активного настройщика.");
+  const restriction = getAccountRoleRestriction(current, command.role, state.accounts);
+  if (restriction) throw new Error(restriction);
   const draft = validateAccountDraft({ ...current, role: command.role, memberships: command.memberships, studentGroupId: command.studentGroupId }, state.accounts, current.id);
   if (current.role === command.role) throw new Error("Этот тип учётной записи уже установлен.");
   const lastEducation = state.educationEvents?.filter((event) => event.accountId === current.id).at(-1);
@@ -134,8 +143,8 @@ export const changeAccountStatus = (state: AccountsDocument, command: AccountTar
   const current = getCommandAccount(state, command);
   if (command.status !== "active" && command.status !== "blocked") throw new Error("Выберите допустимый статус учётной записи.");
   if ((current.status ?? "active") === command.status) throw new Error("Этот статус уже установлен.");
-  if (command.status === "blocked" && current.id === command.actorId) throw new Error("Нельзя заблокировать свою текущую учётную запись.");
-  if (command.status === "blocked" && current.role === "configurator" && state.accounts.filter((entry) => entry.role === "configurator" && isAccountActive(entry)).length <= 1) throw new Error("Нельзя заблокировать последнего активного настройщика.");
+  const restriction = command.status === "blocked" ? getAccountBlockRestriction(current, command.actorId, state.accounts) : "";
+  if (restriction) throw new Error(restriction);
   return updateAccount(state, current, { status: command.status }, { id: changeId, actorId: command.actorId, accountId: current.id, occurredAt, action: "status-changed", previousRole: current.role, nextRole: current.role, changes: [{ field: "status", before: current.status ?? "active", after: command.status }] });
 };
 export const issueStudentRecord = (state: AccountsDocument, command: AccountTargetCommand & { campus: number; expectedStudentNumber: string }, changeId: string, occurredAt: string): AccountsDocument => {

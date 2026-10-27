@@ -1,0 +1,9 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.workspace, .form { display: grid; gap: 18px; min-width: 0; }
+.current { padding: 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; > div { min-width: 0; } } dt { color: $color-text-secondary; font-size: 13px; line-height: 1.65; } dd { color: $color-text-light; font-size: 14px; line-height: 1.65; margin: 5px 0 0; overflow-wrap: anywhere; } }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; > div { min-width: 0; display: grid; gap: 8px; align-content: start; } button { @include admin.button; display: grid; align-content: start; justify-content: start; text-align: left; width: 100%; min-height: 112px; padding: 16px; gap: 8px; strong { font-size: 14px; line-height: 1.65; } span { color: $color-text-secondary; font-size: 13px; line-height: 1.65; font-weight: 400; } } }
+.form > h3 { margin: 0; color: $color-text-light; font-size: 16px; line-height: 1.65; }
+.note, .result { color: $color-text-secondary; font-size: 13px; line-height: 1.7; margin: 0; overflow-wrap: anywhere; > strong { color: $color-text-light; font-weight: 500; } a { color: $color-link; } }
+.related { display: inline-flex; align-items: center; min-height: 44px; width: fit-content; color: $color-link; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+@media(max-width: 600px) { .current dl { grid-template-columns: minmax(0, 1fr); gap: 12px; } .choices { grid-template-columns: minmax(0, 1fr); } }

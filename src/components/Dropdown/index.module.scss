@@ -20,5 +20,6 @@
 :root[data-theme="light"] { --dropdown-control: #{$color-dark-secondary}; }
 
 .field { min-width: 0; }
+.error { display: block; margin-top: 7px; color: $color-danger-text; font-size: 12px; line-height: 1.6; }
 .field > label { display: block; margin: 0 0 7px; color: $color-text-secondary; font-size: readability.$caption; font-weight: 600; }
 .field > .visuallyHidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

@@ -1,0 +1,30 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+
+.page { @include admin.workspace; position: relative; z-index: 1; min-width: 0; display: grid; align-content: start; gap: 18px; --dropdown-control-height: 44px; }
+.topline, .resultLine { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; > p { margin: 0; } }
+.topline > p { font-size: 13px; color: $color-text-secondary; line-height: 1.65; }
+.topline > button, .pagination > button, .actions > .openRecord, .activeFilters > button { @include admin.button; }
+.note, .resultLine > p { margin: 0; font-size: 13px; line-height: 1.7; color: $color-text-secondary; }
+.overview { display: grid; gap: 12px; min-width: 0; padding: 16px; background: $color-panel; border: 1px solid $color-border; border-radius: 12px; }
+.overview .priorityTabs { margin-bottom: 0; }
+.filters { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; align-items: end; }
+.activeFilters { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 13px; color: $color-text-secondary; }
+.rows { display: grid; gap: 12px; min-width: 0; }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 230px); align-items: center; gap: 20px; padding: 18px; background: $color-panel; border: 1px solid $color-border; border-radius: 12px; }
+.content { min-width: 0; h2 { margin: 10px 0 8px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; } p, > time { margin: 0; font-size: 13px; line-height: 1.7; color: $color-text-secondary; overflow-wrap: anywhere; } }
+.meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 12px; line-height: 1.6; color: $color-text-secondary; }
+.action, .review { display: inline-flex; padding: 3px 8px; border: 1px solid $color-border; border-radius: 6px; }
+.action { @include admin.notice($color-error); }.review { background: $color-panel-muted; color: $color-text-light; }
+.actions { min-width: 0; display: grid; gap: 8px; }
+.actions > .openRecord { font-weight: 600; }
+.relatedRecord { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 4px 8px; box-sizing: border-box; color: $color-link; font-size: 13px; line-height: 1.65; text-align: center; text-underline-offset: 3px; overflow-wrap: anywhere; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; border-radius: 6px; } }
+.loading { padding: 28px 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; color: $color-text-secondary; font-size: 14px; line-height: 1.65; }
+.help { min-width: 0; border-top: 1px solid $color-border; > summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; color: $color-text-light; font-size: 13px; line-height: 1.65; } > div { display: grid; gap: 10px; max-width: 800px; padding: 4px 0 12px; } p { color: $color-text-secondary; font-size: 13px; line-height: 1.75; margin: 0; } }
+.pagination { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: $color-text-secondary; > span:first-child { margin-right: auto; } }
+.error { @include admin.notice($color-error); margin: 0; padding: 16px; border-radius: 10px; font-size: 13px; line-height: 1.7; }
+.error p { margin: 8px 0 0; }
+.empty { border: 1px dashed $color-border; padding: 28px 18px; border-radius: 12px; text-align: center; font-size: 13px; line-height: 1.7; p { color: $color-text-secondary; margin: 8px 0 0; } }
+@media(max-width: 760px) { .filters { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 650px) { .page { padding: 18px 14px; } .card { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 14px; } .actions { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); } }
+@media(max-width: 420px) { .filters { grid-template-columns: minmax(0, 1fr); } .topline > button { width: 100%; } .pagination { gap: 8px; > span:first-child { width: 100%; } } }

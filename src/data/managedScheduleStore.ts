@@ -6,6 +6,11 @@ import { parseCalendarDate } from "../domain/calendar";
 import { executeAdministrationWrite } from "./administrationWrite";
 import { isAccountActive } from "../domain/accounts";
 import { isGroupActive } from "../domain/groupCatalog";
+import { readGroupCatalogDocument } from "./groupCatalogRead";
+import { copyScheduleWeek, sameScheduleCopyVersions, type ScheduleCopyRequest, type ScheduleCopyVersions } from "../domain/scheduleCopy";
+import type { ScheduleConflict } from "../domain/scheduleManagement";
+import { sameManagedScheduleVersions, type ManagedScheduleVersions } from "../domain/scheduleVersions";
+import { compareSchedulePublication, type PublicationComparison } from "../domain/schedulePublication";
 
 const CHANGE_EVENT = "bi-university-managed-schedule-change";
 export interface ManagedScheduleRead { snapshot: ManagedScheduleSnapshot; error: string }
@@ -54,11 +59,54 @@ const getOtherPublishedLessons = (snapshot: ManagedScheduleSnapshot, weekStart: 
 };
 export const getManagedWeekConflicts = (snapshot: ManagedScheduleSnapshot, week: ManagedScheduleWeek) => findScheduleConflicts(week.lessons, getOtherPublishedLessons(snapshot, week.weekStart, week.groupId));
 
-interface ScheduleCommand { actorId: string; expectedRevision: number; weekStart: string; groupId: string }
+export interface ScheduleCopyPreview extends ScheduleCopyVersions {
+  request: ScheduleCopyRequest;
+  lessons: ManagedLesson[];
+  conflicts: ScheduleConflict[];
+  issues: string[];
+}
+const readManagedScheduleContext = (actorId: string) => {
+  const catalog = refreshAcademicCatalog();
+  if (catalog.error) throw new Error("Учебный каталог недоступен. Работа с расписанием приостановлена.");
+  const accounts = readAccountsState();
+  if (accounts.error) throw new Error(accounts.error);
+  const actor = accounts.accounts.find((account) => account.id === actorId);
+  if (!actor || actor.role !== "configurator" || !isAccountActive(actor)) throw new Error("Работа с расписанием доступна только активному настройщику.");
+  const state = readManagedScheduleState();
+  if (state.error) throw new Error(state.error);
+  const versions: ScheduleCopyVersions = { scheduleRevision: state.snapshot.revision, accountsRevision: accounts.revision, subjectRevision: catalog.revision, groupRevision: readGroupCatalogDocument().revision };
+  return { snapshot: state.snapshot, versions };
+};
+export const previewManagedScheduleCopy = async (command: { actorId: string; request: ScheduleCopyRequest }): Promise<ScheduleCopyPreview> => {
+  try {
+    const { snapshot, versions } = readManagedScheduleContext(command.actorId);
+    const request = structuredClone(command.request);
+    if (!ACADEMIC_GROUPS.some((group) => group.id === request.groupId && isGroupActive(group))) throw new Error("Выберите действующую учебную группу.");
+    let nextId = Date.now() * 1000;
+    for (const lesson of [...snapshot.drafts, ...snapshot.published].flatMap((week) => week.lessons).concat(snapshot.journal)) nextId = Math.max(nextId, lesson.scheduleId);
+    const lessons = copyScheduleWeek(snapshot, request, () => ({ id: `managed:${crypto.randomUUID()}`, scheduleId: ++nextId }));
+    const teachers = new Map(getManagedScheduleTeachers().map((teacher) => [teacher.id, teacher]));
+    for (const lesson of lessons) lesson.teacherName = teachers.get(lesson.teacherId)?.name ?? lesson.teacherName;
+    const week = { groupId: request.groupId, weekStart: request.targetWeekStart, lessons };
+    let issues: string[] = [];
+    try { validateWeek(week, snapshot, false); }
+    catch (error) { if (!(error instanceof Error)) throw error; issues = error.message.split("\n"); }
+    return { ...versions, request, lessons, issues, conflicts: getManagedWeekConflicts(snapshot, week) };
+  } catch (error) { console.error("Не удалось подготовить копирование недели:", error); throw error; }
+};
+export const verifyManagedScheduleCopy = async (command: { actorId: string; versions: ScheduleCopyVersions }) => {
+  try {
+    const { versions } = readManagedScheduleContext(command.actorId);
+    if (!sameScheduleCopyVersions(command.versions, versions)) throw new Error("Расписание, учётки или справочники изменились. Повторите проверку копирования.");
+  } catch (error) { console.error("Не удалось проверить актуальность копии недели:", error); throw error; }
+};
+
+interface ScheduleCommand { actorId: string; expectedRevision: number; weekStart: string; groupId: string; reviewedVersions?: ManagedScheduleVersions }
 const updateSnapshot = async (command: ScheduleCommand, mutate: (snapshot: ManagedScheduleSnapshot) => ManagedScheduleSnapshot): Promise<ManagedScheduleSnapshot> => {
   try {
     return await executeAdministrationWrite(() => {
-      if (refreshAcademicCatalog().error) throw new Error("Каталог дисциплин недоступен. Изменение расписания остановлено.");
+      const catalog = refreshAcademicCatalog();
+      if (catalog.error) throw new Error("Каталог дисциплин недоступен. Изменение расписания остановлено.");
       const accounts = readAccountsState();
       if (accounts.error) throw new Error("Справочник учётных записей недоступен. Изменение расписания остановлено.");
       const actor = accounts.accounts.find((account) => account.id === command.actorId);
@@ -66,6 +114,7 @@ const updateSnapshot = async (command: ScheduleCommand, mutate: (snapshot: Manag
       const { snapshot, error } = readManagedScheduleState();
       if (error) throw new Error(error);
       if (snapshot.revision !== command.expectedRevision) throw new Error("Расписание изменено в другой вкладке. Обновите данные и повторите действие.");
+      if (command.reviewedVersions && !sameManagedScheduleVersions(command.reviewedVersions, { scheduleRevision: snapshot.revision, accountsRevision: accounts.revision, subjectRevision: catalog.revision, groupRevision: readGroupCatalogDocument().revision })) throw new Error("Данные изменились после проверки публикации. Обновите предпросмотр и подтвердите актуальные изменения.");
       if (getManagedWeekKey(command.weekStart) !== command.weekStart || !ACADEMIC_GROUPS.some((group) => group.id === command.groupId)) throw new Error("Выберите корректную неделю и группу.");
       if (!isGroupActive(ACADEMIC_GROUPS.find((group) => group.id === command.groupId)!)) throw new Error("Группа находится в архиве. Новые черновики и публикации недоступны.");
       const next = mutate(snapshot);
@@ -101,6 +150,25 @@ export const saveManagedScheduleDraft = async (command: ScheduleCommand & { less
   validateWeek(week, snapshot, false);
   return { ...snapshot, drafts: [...snapshot.drafts.filter((entry) => entry.weekStart !== week.weekStart || entry.groupId !== week.groupId), week] };
 });
+export interface SchedulePublicationPreview extends PublicationComparison {
+  versions: ManagedScheduleVersions;
+  wasPublished: boolean;
+  beforeCount: number;
+  afterCount: number;
+}
+export const previewManagedSchedulePublication = async (command: ScheduleCommand): Promise<SchedulePublicationPreview> => {
+  try {
+    const { snapshot, versions } = readManagedScheduleContext(command.actorId);
+    if (snapshot.revision !== command.expectedRevision) throw new Error("Расписание изменилось. Обновите предпросмотр публикации.");
+    if (getManagedWeekKey(command.weekStart) !== command.weekStart || !ACADEMIC_GROUPS.some((group) => group.id === command.groupId && isGroupActive(group))) throw new Error("Выберите корректную неделю и действующую группу.");
+    const draft = snapshot.drafts.find((week) => week.weekStart === command.weekStart && week.groupId === command.groupId);
+    if (!draft) throw new Error("Сначала сохраните черновик выбранной недели.");
+    validateWeek(draft, snapshot, true);
+    const published = snapshot.published.find((week) => week.weekStart === command.weekStart && week.groupId === command.groupId);
+    const before = published?.lessons ?? [];
+    return { ...compareSchedulePublication(before, draft.lessons), versions, wasPublished: Boolean(published), beforeCount: before.length, afterCount: draft.lessons.length };
+  } catch (error) { console.error("Не удалось подготовить сравнение перед публикацией расписания:", error); throw error; }
+};
 export const publishManagedScheduleDraft = async (command: ScheduleCommand) => updateSnapshot(command, (snapshot) => {
   const week = snapshot.drafts.find((entry) => entry.weekStart === command.weekStart && entry.groupId === command.groupId);
   if (!week) throw new Error("Сначала сохраните черновик выбранной недели.");

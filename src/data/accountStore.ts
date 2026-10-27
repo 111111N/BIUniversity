@@ -1,7 +1,7 @@
 import { queryGroupComposition, type GroupCompositionQuery, type GroupCompositionSnapshot } from "../domain/groupComposition";
 import { appendEducationChange, confirmStudentAdmission, educationStateFor, type ConfirmAdmissionCommand } from "../domain/studentEducation";
 import type { EducationEventDetails, StudentEducationEvent } from "../domain/studentEducationEvent";
-import { ACADEMIC_GROUPS, SUBJECT_GROUP_OFFERINGS, refreshAcademicCatalog, getAcademicGroupNameAt } from "./academicCatalog";
+import { ACADEMIC_GROUPS, SUBJECTS, SUBJECT_GROUP_OFFERINGS, refreshAcademicCatalog, getAcademicGroupNameAt } from "./academicCatalog";
 import { executeAdministrationWrite } from "./administrationWrite";
 import { authorizeAccountCommand, changeAccountRole, changeAccountStatus, createAccount, decodeAccountsDocument, getStudentGroupId, issueStudentRecord, updateAccountDetails, updateTeacherAssignments, type AccountTargetCommand, type UpdateAccountDetailsCommand, type UpdateAssignmentsCommand, type AccountCommandContext, type AccountDraft, type AccountsDocument, type AcademicMembership, type PortalAccount, type UserRole } from "../domain/accounts";
 import { previewStudentNumber, type StudentNumberPreview } from "../domain/studentRecord";
@@ -12,6 +12,7 @@ import { MAX_IMPORT_ROWS } from "../domain/importTable";
 import { isGroupActive } from "../domain/groupCatalog";
 import { isStudyingStudent } from "../domain/studentEnrollment";
 import { queryStudentRegistry, type StudentRegistryQuery, type StudentRegistryResult } from "../domain/studentRegistry";
+import { queryTeacherRegistry, type TeacherRegistryQuery, type TeacherRegistryResult } from "../domain/teacherRegistry";
 import { applyStudentBulk, studentBulkSourceKey, type ApplyStudentBulkCommand, type StudentBulkPreview, type StudentBulkRequest } from "../domain/studentBulk";
 import type { StudentBulkAction, StudentBulkReceipt } from "../domain/studentBulkReceipt";
 import { previewStudentBulk } from "../domain/studentBulk";
@@ -57,6 +58,7 @@ const validateStudentGroup = (account: PortalAccount, previous?: PortalAccount) 
   if (!isGroupActive(ACADEMIC_GROUPS.find((group) => group.id === getStudentGroupId(account))!) && (!previous || getStudentGroupId(previous) !== getStudentGroupId(account) || isStudyingStudent(account))) throw new Error("Группа в архиве. Для зачисления или возобновления обучения выберите действующую группу.");
 };
 export interface AccountService {
+  listTeachers(command: { actorId: string; actorRevision: number; query: TeacherRegistryQuery }): Promise<TeacherRegistryResult>;
   getGroupComposition(command: { actorId: string; actorRevision: number; query: GroupCompositionQuery }): Promise<GroupCompositionSnapshot>;
   confirmAdmission(command: ConfirmAdmissionCommand): Promise<PortalAccount>;
   listStudents(query: StudentRegistryQuery): Promise<StudentRegistryResult>;
@@ -79,6 +81,14 @@ const fingerprintSource = async (source: string) => {
 };
 const importFingerprint = (request: StudentImportRequest) => fingerprintSource(studentImportSourceKey(request));
 export const accountService: AccountService = {
+  async listTeachers(command) {
+    try {
+      const state = readDocument();
+      authorizeAccountCommand(state, { ...command, expectedRevision: state.revision });
+      if (refreshAcademicCatalog().error) throw new Error("Учебный каталог недоступен. Реестр преподавателей временно недоступен.");
+      return queryTeacherRegistry(state.accounts, SUBJECTS, ACADEMIC_GROUPS, command.query);
+    } catch (error) { console.error("Не удалось прочитать реестр преподавателей:", error); throw error; }
+  },
   async getGroupComposition(command) {
     try {
       const input = structuredClone(command);

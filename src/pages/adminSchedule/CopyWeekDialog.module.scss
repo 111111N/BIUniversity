@@ -1,0 +1,19 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+
+.dialog { @include admin.workspace; box-sizing: border-box; width: min(840px, 100%); max-width: 840px; padding: 24px; background: $color-panel; color: $color-text-light; border: 1px solid $color-border; border-radius: 14px; display: grid; gap: 18px; --dropdown-control-height: 44px; }
+.dialog :where(.header, .source, .pagination, .footer) > button { @include admin.button; }
+.dialog button.primary { @include admin.primary; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; > div { min-width: 0; } h2 { margin: 0; font-size: 22px; } p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: $color-text-secondary; overflow-wrap: anywhere; } > button { flex-shrink: 0; } }
+.note { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.7; }
+.source { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.preview { display: grid; min-width: 0; gap: 16px; }
+.summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 14px; line-height: 1.6; }
+.error, .warning, .empty { margin: 0; padding: 14px; border: 1px solid $color-border; border-radius: 10px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; ul { margin: 8px 0; padding-left: 20px; } p { margin: 8px 0 0; } }
+.error { @include admin.notice($color-error); }
+.warning { background: $color-panel-muted; color: $color-text-light; summary { min-height: 32px; font-weight: 600; cursor: pointer; } }
+.empty { color: $color-text-secondary; border-style: dashed; }
+.lessons { min-width: 0; padding: 0; margin: 0; list-style: none; display: grid; gap: 8px; > li { display: grid; grid-template-columns: minmax(140px, .65fr) minmax(0, 1fr); gap: 14px; border: 1px solid $color-border; border-radius: 10px; padding: 14px; background: $color-panel; > div { display: grid; gap: 5px; min-width: 0; } strong { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; } span { font-size: 12px; line-height: 1.6; color: $color-text-secondary; overflow-wrap: anywhere; } } }
+.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 12px; font-size: 13px; }
+.footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid $color-border; padding-top: 16px; p { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; flex: 1 1 200px; } }
+@media(max-width: 600px) { .dialog { padding: 16px; } .header h2 { font-size: 19px; } .source { grid-template-columns: minmax(0, 1fr); } .lessons > li { grid-template-columns: minmax(0, 1fr); gap: 8px; } .footer > button { width: 100%; } }

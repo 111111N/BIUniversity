@@ -11,4 +11,4 @@
 .actions button { @include admin.button; }
 .actions .danger { @include admin.primary; }
 
-.error { color: $color-danger-text; font-size: .72rem; }
+.error { @include admin.notice($color-error); padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }

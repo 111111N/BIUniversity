@@ -20,14 +20,23 @@ export const isGroupActive = (group: { status?: GroupStatus }) => group.status !
 export const emptyGroupCatalog = (): GroupCatalogDocument => ({ version: 1, revision: 0, groups: [], history: [] });
 export const normalizeGroupName = (name: string) => name.normalize("NFKC").trim().replace(/\s+/g, " ");
 export const groupNameKey = (name: string) => normalizeGroupName(name).toLocaleLowerCase("ru-RU").replaceAll("ё", "е");
+export interface GroupDraftError { field: keyof GroupDraft; message: string }
+export const getGroupDraftErrors = (draft: GroupDraft): GroupDraftError[] => {
+  const errors: GroupDraftError[] = [];
+  if (typeof draft.name !== "string") errors.push({ field: "name", message: "Укажите название группы." });
+  else {
+    const name = normalizeGroupName(draft.name);
+    if (name.length < 2 || name.length > 80) errors.push({ field: "name", message: "Название группы: от 2 до 80 символов." });
+  }
+  if (!Number.isInteger(draft.course) || draft.course < 1 || draft.course > 12) errors.push({ field: "course", message: "Курс должен быть целым числом от 1 до 12." });
+  if (!Number.isInteger(draft.campus) || draft.campus < 1 || draft.campus > 9) errors.push({ field: "campus", message: "Выберите один из девяти учебных корпусов." });
+  if (!Number.isInteger(draft.admissionYear) || draft.admissionYear < 1900 || draft.admissionYear > 2199) errors.push({ field: "admissionYear", message: "Укажите четырёхзначный год набора от 1900 до 2199." });
+  return errors;
+};
 export const validateGroupDraft = (draft: GroupDraft): GroupDraft => {
-  if (typeof draft.name !== "string") throw new Error("Укажите название группы.");
-  const name = normalizeGroupName(draft.name);
-  if (name.length < 2 || name.length > 80) throw new Error("Название группы: от 2 до 80 символов.");
-  if (!Number.isInteger(draft.course) || draft.course < 1 || draft.course > 12) throw new Error("Курс должен быть целым числом от 1 до 12.");
-  if (!Number.isInteger(draft.campus) || draft.campus < 1 || draft.campus > 9) throw new Error("Выберите один из девяти учебных корпусов.");
-  if (!Number.isInteger(draft.admissionYear) || draft.admissionYear < 1900 || draft.admissionYear > 2199) throw new Error("Укажите четырёхзначный год набора от 1900 до 2199.");
-  return { name, course: draft.course, campus: draft.campus, admissionYear: draft.admissionYear };
+  const [error] = getGroupDraftErrors(draft);
+  if (error) throw new Error(error.message);
+  return { name: normalizeGroupName(draft.name), course: draft.course, campus: draft.campus, admissionYear: draft.admissionYear };
 };
 
 export const createAcademicGroup = (state: GroupCatalogDocument, command: CreateGroupCommand, actor: PortalAccount | undefined, existing: ReadonlyArray<{ id: string; name: string }>, id: string, historyId: string, occurredAt: string): GroupCatalogDocument => {

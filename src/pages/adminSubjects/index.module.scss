@@ -10,6 +10,7 @@
 .header { display: flex; gap: 16px; align-items: center; justify-content: space-between; h2 { margin: 0; font-size: 18px; line-height: 1.5; } p { margin: 5px 0 0; font-size: 12px; color: $color-text-secondary; } > button { flex-shrink: 0; } }
 .editor, .teacher { border: 1px solid $color-border; border-radius: 12px; background: $color-panel; padding: 18px; }
 .editor { display: grid; gap: 16px; }
+.teacherScope { min-width: 0; > a { color: $color-link; display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; overflow-wrap: anywhere; } .editorHeader { flex-wrap: wrap; > div { min-width: 0; flex: 1 1 180px; overflow-wrap: anywhere; strong { font-size: 14px; } } } }
 .editorHeader, .teacherHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; h2, h3 { margin: 0; font-size: 15px; } }
 .subjectFields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; min-width: 0; padding: 0; border: 0; margin: 0; > label { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 12px; } input { box-sizing: border-box; min-width: 0; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-field; color: $color-text-light; font: inherit; font-size: 14px; } }
 .note { color: $color-text-secondary; font-size: 12px; line-height: 1.6; margin: 0; }
@@ -34,3 +35,14 @@
 @media(max-width: 480px) { .header { align-items: stretch; flex-direction: column; } .teacherHeader { align-items: flex-start; flex-direction: column; } .teacherHeader > button { align-self: stretch; } .formActions > button { width: 100%; } }
 
 .page .error { @include admin.notice($color-error); }.page .message { @include admin.notice($color-success); }
+.catalog[hidden], .teacherScope[hidden], .header[hidden], .registry[hidden] { display: none; }
+.registry { display: grid; gap: 16px; min-width: 0; }
+.scheduleContext { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; min-width: 0; padding: 18px; background: $color-panel; border: 1px solid $color-control-border; border-radius: 12px; > div { min-width: 0; } strong { font-size: 15px; line-height: 1.6; } p { margin: 6px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; } > button { @include admin.button; flex-shrink: 0; } }
+.targetGroup { display: grid; gap: 10px; padding: 14px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-panel-muted; color: $color-text-light; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; > button { @include admin.button; justify-self: start; white-space: normal; max-width: 100%; text-align: left; } }
+@media(max-width: 600px) { .scheduleContext { flex-direction: column; padding: 14px; > button { width: 100%; white-space: normal; } } }
+.groupEditor { display: grid; gap: 18px; min-width: 0; }.groupEditor[hidden] { display: none; }
+.sourceNotice { @include admin.notice($color-warning); display: grid; gap: 12px; min-width: 0; padding: 14px; border-radius: 10px; p { margin: 0; color: $color-text-light; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } > button { @include admin.button; justify-self: start; max-width: 100%; } }
+.error > p { margin: 0 0 10px; }
+@media(max-width: 600px) { .sourceNotice > button { justify-self: stretch; } }
+.note, .subjectFields > label { font-size: 13px; line-height: 1.65; }
+@media(max-width: 600px) { .subjectFields input { font-size: 16px; } }

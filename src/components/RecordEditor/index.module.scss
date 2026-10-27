@@ -1,0 +1,10 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+
+.editor { min-width: 0; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; color: $color-text-light; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px 24px; padding: 20px; border-bottom: 1px solid $color-border; > div { flex: 1 1 200px; min-width: 0; } h2 { margin: 0; font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; } p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: $color-text-secondary; overflow-wrap: anywhere; } > button { @include admin.button; flex-shrink: 0; } }
+.status, .dirty { display: inline-flex; margin-top: 10px; font-size: 12px; line-height: 1.6; }
+.status { color: $color-text-secondary; }.dirty { color: $color-link; font-weight: 600; }
+.body { min-width: 0; padding: 20px; display: grid; gap: 20px; > form { min-width: 0; display: grid; gap: 20px; } }
+.actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px 24px; border-top: 1px solid $color-border; padding-top: 18px; > p { flex: 1 1 240px; min-width: 0; max-width: 650px; margin: 0; font-size: 13px; color: $color-text-secondary; line-height: 1.7; } > div { display: flex; justify-content: flex-end; gap: 8px; margin-left: auto; } button { @include admin.button; } button.primary { @include admin.primary; } }
+@media(max-width: 600px) { .header, .body { padding: 16px; } .header h2 { font-size: 18px; } .actions { align-items: stretch; > div { width: 100%; margin: 0; flex-wrap: wrap; } button { flex: 1 1 120px; } } }

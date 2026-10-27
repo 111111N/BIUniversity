@@ -24,6 +24,8 @@ describe("unsaved form navigation", () => {
     expect(changesAdminSubject(transition(current, "/admin/subjects?subject=physics"))).toBe(true);
     expect(changesAdminSubject(transition(current, "/admin/subjects"))).toBe(true);
     expect(changesAdminSubject(transition(current, "/admin/accounts"))).toBe(true);
+    expect(changesAdminSubject(transition(current, current + "&teacher=one"))).toBe(true);
+    expect(changesAdminSubject(transition(current + "&teacher=one", current + "&teacher=two"))).toBe(true);
   });
   it("protects uploads when changing the effective material scope, without blocking equivalent group URLs or filters", () => {
     const current = "/journal/math/group?tab=materials";

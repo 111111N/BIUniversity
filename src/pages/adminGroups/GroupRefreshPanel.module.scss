@@ -1,0 +1,6 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.panel { display: grid; gap: 16px; min-width: 0; border: 1px solid $color-control-border; border-radius: 10px; padding: 16px; background: $color-panel; h3 { margin: 0; color: $color-text-light; font-size: 16px; line-height: 1.65; } > p { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } > p[role="alert"] { @include admin.notice($color-error); padding: 12px; border-radius: 8px; } }
+.comparison { margin: 0; min-width: 0; > div { display: grid; grid-template-columns: minmax(90px, .7fr) repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 0; border-top: 1px solid $color-border; } dt { color: $color-text-light; font-size: 13px; line-height: 1.7; } dd { display: grid; align-content: start; gap: 5px; min-width: 0; margin: 0; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.7; } strong { font-size: 14px; line-height: 1.7; font-weight: 500; color: $color-text-light; } }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; > button { @include admin.button; max-width: 100%; } }
+@media(max-width: 600px) { .comparison > div { grid-template-columns: repeat(2, minmax(0, 1fr)); dt { grid-column: 1 / -1; } } .actions { flex-direction: column; } }

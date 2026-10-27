@@ -27,3 +27,10 @@
 .student > .accountLink { padding: 0; border: 0; background: transparent; gap: 4px; align-content: center; > a { min-height: 44px; } }
 
 .page .error { @include admin.notice($color-error); }.page .message { @include admin.notice($color-success); }
+.filtersBox { min-width: 0; border: 0; padding: 0; margin: 0; display: grid; gap: 16px; input:disabled { color: $color-text-secondary; background: $color-panel-muted; } }
+.selectionTools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: end; > button { @include admin.button; } }
+.unlockFilters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border-top: 1px solid $color-border; padding-top: 14px; > p { flex: 1 1 260px; } > button { @include admin.button; } }
+.notice { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; background: $color-panel; color: $color-text-secondary; font-size: 13px; line-height: 1.7; }
+.selection p, .note, .resultLine p { font-size: 13px; line-height: 1.7; }
+.header h2:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+@media(max-width: 600px) { .selectionTools { grid-template-columns: minmax(0, 1fr); } .unlockFilters > button { width: 100%; } .summary span { font-size: 12px; } }

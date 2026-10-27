@@ -83,11 +83,13 @@ export default function Nav() {
     { to: "/admin/schedule", label: "Расписание", Icon: ScheduleIcon },
     { to: "/admin/groups", label: "Группы", Icon: GroupsIcon },
     { to: "/admin/students", activePath: "/admin/students", label: "Студенты", Icon: CabinetIcon },
+    { to: "/admin/teachers", label: "Преподаватели", Icon: CabinetIcon },
     { to: "/admin/subjects", label: "Дисциплины", Icon: JournalIcon },
     { to: "/admin/accounts", activePath: "/admin/accounts", label: "Учётные записи", Icon: CabinetIcon },
+    { to: "/admin/checks", label: "Проверка данных", Icon: StatsIcon },
   ];
   const navItems = isConfigurator ? configuratorItems : role === "student" ? studentItems : teacherItems;
-  const mobileItems = isConfigurator ? configuratorItems.filter((item) => item.to !== "/admin/accounts") : studentItems;
+  const mobileItems = isConfigurator ? configuratorItems.filter((item) => !["/admin/accounts", "/admin/teachers", "/admin/checks"].includes(item.to)) : studentItems;
   const extraItems = navItems.filter((item) => !mobileItems.some((mobile) => mobile.to === item.to));
   const cabinetItem = { to: "/cabinet", label: role === "student" ? "Профиль" : "Кабинет", Icon: CabinetIcon };
   const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || extraItems.some((item) => location.pathname === item.to || ("activePath" in item && typeof item.activePath === "string" && location.pathname.startsWith(item.activePath)));

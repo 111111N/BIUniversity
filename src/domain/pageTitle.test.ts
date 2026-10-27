@@ -19,6 +19,8 @@ describe("portal page titles", () => {
     expect(getPortalPageTitle("/admin/groups", "configurator")).toBe("Учебные группы · BIUniversity");
     expect(getPortalPageTitle("/admin/accounts/import", "configurator")).toBe("Импорт студентов · BIUniversity");
     expect(getPortalPageTitle("/admin/students", "configurator")).toBe("Реестр студентов · BIUniversity");
+    expect(getPortalPageTitle("/admin/teachers", "configurator")).toBe("Реестр преподавателей · BIUniversity");
+    expect(getPortalPageTitle("/admin/checks", "configurator")).toBe("Проверка данных · BIUniversity");
     expect(getPortalPageTitle("/", "configurator")).toBe("Настройка расписания · BIUniversity");
   });
 });

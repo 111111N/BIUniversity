@@ -1,0 +1,16 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+
+.workspace { display: grid; gap: 10px; min-width: 0; }
+.identity {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-width: 0; padding: 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel-muted;
+  > div { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+  strong { color: $color-text-light; font-size: 15px; line-height: 1.65; }
+  span { color: $color-text-secondary; font-size: 13px; line-height: 1.65; }
+  span.blocked { color: $color-danger-text; }
+  > button { @include admin.button; flex-shrink: 0; }
+}
+.back { @include admin.button; justify-self: start; max-width: 100%; }
+.note { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; }
+@media(max-width: 600px) { .identity { align-items: stretch; flex-direction: column; padding: 14px; } .back { width: 100%; } }

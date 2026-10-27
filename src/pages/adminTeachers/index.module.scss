@@ -1,0 +1,21 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+
+.page { @include admin.workspace; position: relative; z-index: 1; display: grid; align-content: start; min-width: 0; gap: 18px; --dropdown-control-height: 44px; }
+.topline, .resultLine { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; > p { margin: 0; } }
+.topline > p { font-weight: 600; font-size: 16px; }
+.topline > a, .actions > a, .pagination > button, .resultLine > button, .error > button { @include admin.button; }
+.topline > .primary { @include admin.primary; }
+.filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1.5fr)) repeat(2, minmax(0, 1fr)); align-items: end; gap: 14px; }
+.rows { display: grid; gap: 12px; min-width: 0; }
+.teacher { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 20px; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; min-width: 0; > div { min-width: 0; } }
+.identity { display: grid; align-content: start; gap: 7px; h2 { margin: 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; } > .blocked { color: $color-danger-text; } }
+.assignments { p { margin: 0; font-size: 13px; line-height: 1.6; } ul { padding: 0; margin: 6px 0; list-style: none; } a { display: inline-flex; align-items: center; min-height: 36px; color: $color-link; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; &:hover { text-decoration: underline; } &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; } } }
+.actions { display: grid; align-content: center; gap: 8px; }
+.note, .resultLine > p { color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
+.pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; font-size: 13px; color: $color-text-secondary; > span:first-child { margin-right: auto; } }
+.error { @include admin.notice($color-error); padding: 16px; border-radius: 10px; font-size: 13px; line-height: 1.6; p { margin: 0 0 12px; } }
+.empty { border: 1px dashed $color-border; border-radius: 12px; padding: 28px 18px; text-align: center; font-size: 13px; line-height: 1.7; p { margin: 8px 0 0; color: $color-text-secondary; } }
+@media(max-width: 1100px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .teacher { grid-template-columns: repeat(2, minmax(0, 1fr)); } .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; > a { flex: 1; } } }
+@media(max-width: 600px) { .page { padding: 18px 14px; } .teacher { padding: 14px; grid-template-columns: minmax(0, 1fr); gap: 14px; } .assignments a { min-height: 44px; } }
+@media(max-width: 420px) { .filters { grid-template-columns: minmax(0, 1fr); } .topline > a { width: 100%; } .pagination { gap: 8px; > span:first-child { width: 100%; } } }

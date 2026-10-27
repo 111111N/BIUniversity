@@ -1,0 +1,8 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.changes { min-width: 0; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; > summary { box-sizing: border-box; min-height: 44px; padding: 12px 14px; cursor: pointer; font-size: 13px; line-height: 1.6; font-weight: 600; } }
+.body { min-width: 0; display: grid; gap: 12px; padding: 0 14px 14px; fieldset { border: 0; padding: 0; margin: 0; min-width: 0; } ul { list-style: none; padding: 0; margin: 0; display: grid; } li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid $color-border; font-size: 13px; line-height: 1.7; > span { min-width: 0; overflow-wrap: anywhere; } strong { font-size: 12px; font-weight: 500; } } }
+.removed { color: $color-danger-text; }.added { color: $color-link; }
+.note { margin: 0; font-size: 13px; line-height: 1.7; color: $color-text-secondary; }
+.pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: 13px; > span { margin-right: auto; } > button { @include admin.button; } }
+@media(max-width: 360px) { .body li { flex-wrap: wrap; } }

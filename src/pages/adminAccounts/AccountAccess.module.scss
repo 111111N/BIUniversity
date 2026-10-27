@@ -1,0 +1,9 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.workspace { display: grid; gap: 18px; min-width: 0; }
+.status, .card { min-width: 0; padding: 18px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; h3 { color: $color-text-light; font-size: 15px; line-height: 1.65; margin: 0 0 8px; } strong { display: block; color: $color-text-light; font-size: 14px; line-height: 1.65; } p { color: $color-text-secondary; font-size: 13px; line-height: 1.7; margin: 8px 0 0; overflow-wrap: anywhere; } > button { @include admin.button; } }
+.status { display: flex; align-items: start; justify-content: space-between; gap: 18px; > div { min-width: 0; } > button { flex-shrink: 0; } .active { color: $color-success; } .blocked, .restriction { color: $color-danger-text; } .blockButton { border-color: $color-danger-text; color: $color-danger-text; } .primary { @include admin.primary; } }
+.secondary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; > button { align-self: start; } }
+@media(max-width: 720px) { .status { flex-direction: column; align-items: stretch; > button { align-self: start; } } .secondary { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 480px) { .status, .card { padding: 14px; > button { width: 100%; align-self: stretch; } } }

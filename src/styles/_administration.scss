@@ -1,6 +1,7 @@
 @use "variables" as *;
 
 @mixin workspace {
+  --ui-control-border: var(--ui-admin-control-border);
   --dropdown-control: var(--ui-panel);
   --dropdown-control-border: var(--ui-control-border);
   --dropdown-control-active: color-mix(in srgb, var(--ui-accent-primary) 9%, var(--ui-panel));

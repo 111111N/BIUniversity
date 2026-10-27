@@ -12,6 +12,7 @@ import './styles/global.scss';
 import { connectAdministrationPolicies } from "./data/administrationIntegration";
 import { isAccountActive } from "./domain/accounts";
 import RoleSwitcher from "./components/RoleSwitcher";
+import ScheduleAssignmentProvider from "./components/ScheduleAssignmentProvider";
 
 const Home = lazy(() => import("./pages/home"));
 const Schedule = lazy(() => import("./pages/schedule"));
@@ -35,6 +36,8 @@ const AdminGroups = lazy(() => import("./pages/adminGroups"));
 const StudentImport = lazy(() => import("./pages/studentImport"));
 const StudentEducation = lazy(() => import("./pages/studentEducation"));
 const AdminStudents = lazy(() => import("./pages/adminStudents"));
+const AdminTeachers = lazy(() => import("./pages/adminTeachers"));
+const AdminChecks = lazy(() => import("./pages/adminChecks"));
 const academicRoles = ["teacher", "student"] as const;
 
 const LayoutWithNav = () => {
@@ -62,7 +65,7 @@ const LayoutWithNav = () => {
                     ></div>
                 ))}
 
-                <ErrorBoundary key={`${currentUser.id}:${role}:${location.pathname}`}><Suspense fallback={<div className="page-loader" role="status"><span /><p>Загружаем раздел…</p></div>}><Routes>
+                <ScheduleAssignmentProvider key={`${currentUser.id}:${role}`}><ErrorBoundary key={`${currentUser.id}:${role}:${location.pathname}`}><Suspense fallback={<div className="page-loader" role="status"><span /><p>Загружаем раздел…</p></div>}><Routes>
                     <Route path="/" element={role === "configurator" ? <Navigate to="/admin/schedule" replace /> : role === "student" ? <StudentHome /> : <Home />} />
                     <Route path="/schedule" element={<Schedule />} />
                     <Route path="/admin/schedule" element={<RoleRoute allow="configurator"><AdminSchedule /></RoleRoute>} />
@@ -72,6 +75,8 @@ const LayoutWithNav = () => {
                     <Route path="/admin/groups" element={<RoleRoute allow="configurator"><AdminGroups /></RoleRoute>} />
                     <Route path="/admin/students/:accountId/education" element={<RoleRoute allow="configurator"><StudentEducation /></RoleRoute>} />
                     <Route path="/admin/students" element={<RoleRoute allow="configurator"><AdminStudents /></RoleRoute>} />
+                    <Route path="/admin/teachers" element={<RoleRoute allow="configurator"><AdminTeachers /></RoleRoute>} />
+                    <Route path="/admin/checks" element={<RoleRoute allow="configurator"><AdminChecks /></RoleRoute>} />
                     <Route path="/cabinet" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentCabinet /> : <Cabinet />}</RoleRoute>} />
                     <Route path="/journal/:subjectId/:groupId" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <Journal />}</RoleRoute>} />
                     <Route path="/journal/:subjectId" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <JournalCatalog />}</RoleRoute>} />
@@ -83,7 +88,7 @@ const LayoutWithNav = () => {
                     <Route path="/messages" element={<RoleRoute allow={academicRoles}><MessagesPage /></RoleRoute>} />
                     <Route path="/notifications" element={<RoleRoute allow={academicRoles}><NotificationsPage /></RoleRoute>} />
                     <Route path="*" element={<NotFound />} />
-                </Routes></Suspense></ErrorBoundary>
+                </Routes></Suspense></ErrorBoundary></ScheduleAssignmentProvider>
             </main>
         </div>
     );

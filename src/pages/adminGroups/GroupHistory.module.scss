@@ -1,0 +1,13 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+
+.history { min-width: 0; display: grid; gap: 14px; }
+.results { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; }
+.history ol { list-style: none; display: grid; gap: 12px; margin: 0; padding: 0; }
+.history li { min-width: 0; padding: 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; > strong { color: $color-text-light; font-size: 14px; line-height: 1.65; } }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; color: $color-text-secondary; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.history details { margin-top: 10px; border-top: 1px solid $color-border; > summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; color: $color-text-light; font-size: 13px; line-height: 1.65; } }
+.comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; > section { min-width: 0; padding: 14px; background: $color-panel-muted; border: 1px solid $color-border; border-radius: 8px; } h3 { font-size: 13px; margin: 0 0 12px; } dl { margin: 0; display: grid; gap: 10px; > div { display: grid; gap: 3px; } } dt { color: $color-text-secondary; font-size: 12px; line-height: 1.65; } dd { color: $color-text-light; margin: 0; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; } }
+.pagination { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; color: $color-text-secondary; font-size: 13px; > button { @include admin.button; } }
+.empty { padding: 28px 18px; border: 1px dashed $color-control-border; border-radius: 12px; background: $color-panel; text-align: center; font-size: 14px; line-height: 1.65; > p { color: $color-text-secondary; font-size: 13px; margin: 8px 0 0; } }
+@media(max-width: 600px) { .comparison { grid-template-columns: minmax(0, 1fr); } .history li { padding: 14px; } }

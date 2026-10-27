@@ -15,7 +15,7 @@ export default function EducationEventFields({ value, onChange, disabled = false
   return <fieldset className={styles.fields} disabled={disabled}>
     <legend>Событие обучения</legend>
     <div className={styles.date}><span>Дата действия</span><DateTimePicker showTime={false} allowClear={false} ariaLabel="Дата действия события" value={parseCalendarDate(value.effectiveDate) ?? undefined} onChange={(date) => onChange({ ...value, effectiveDate: date ? toLocalDateKey(date) : "" })} /></div>
-    <p className={styles.hint}>Сегодня или прошедшая дата. События вносятся по порядку; дата не может быть раньше последнего события студента.</p>
+    <p className={styles.hint}>Сегодня или прошедшая дата, не раньше последнего события студента.</p>
     <label className={styles.basis} htmlFor={`${id}-basis`}>Основание<textarea id={`${id}-basis`} required minLength={3} maxLength={500} rows={3} value={value.basis} onChange={(event) => onChange({ ...value, basis: event.target.value })} /></label>
     <details className={styles.document}><summary>Реквизиты документа · необязательно</summary><div><label htmlFor={`${id}-number`}>Номер документа<input id={`${id}-number`} maxLength={80} value={value.documentNumber ?? ""} onChange={(event) => onChange({ ...value, documentNumber: event.target.value })} /></label><div className={styles.date}><span>Дата документа</span><DateTimePicker showTime={false} ariaLabel="Дата документа" placeholder="" value={parseCalendarDate(value.documentDate ?? "") ?? undefined} onChange={(date) => onChange({ ...value, documentDate: date ? toLocalDateKey(date) : "" })} /></div></div></details>
   </fieldset>;
