@@ -9,6 +9,7 @@ lerna-debug.log*
 docs
 .tmp
 .pnpm-store
+collected_code.txt
 
 node_modules
 dist
