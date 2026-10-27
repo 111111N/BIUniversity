@@ -1,0 +1,1 @@
+import{j as s}from"./index-B0-u-anh.js";import{N as t}from"./index-C56GyVBe.js";import"./index-CFMGihe_.js";const a="_page_101sr_1",o={page:a},r=()=>s.jsx("div",{className:`pageContainer ${o.page}`,children:s.jsx(t,{})});export{r as default};
