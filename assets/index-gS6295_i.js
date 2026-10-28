@@ -1,0 +1,1 @@
+import{j as s}from"./vendor-react-6hgFNvu_.js";import{i as e}from"./administrationChecksNavigation-gbwqbLr_.js";import{c as i,L as a}from"./vendor-router-BfE4TICl.js";function f({to:t,...n}){const o=i(),r=typeof t=="string"?e(t,o.pathname,o.search):t;return s.jsx(a,{...n,to:r})}export{f as C};

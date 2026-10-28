@@ -1,1 +1,0 @@
-import{j as s,L as e}from"./index-B0-u-anh.js";const n="_page_1frgv_1",a={page:n},o=()=>s.jsxs("section",{className:`pageContainer ${a.page}`,children:[s.jsx("span",{children:"404"}),s.jsx("h1",{children:"Такой страницы нет"}),s.jsx("p",{children:"Возможно, ссылка устарела или раздел был перемещён."}),s.jsx(e,{to:"/",children:"Вернуться на главную"})]});export{o as default};
