@@ -1,0 +1,265 @@
+{
+  "snapshot_date": "2026-10-28",
+  "documents": [
+    {
+      "source": "plans/account-management-student-records-review.txt",
+      "sha256": "90b95f4e222006c9a36ebdde185480021b96e9fe15fe19227f2eeb8e1138dbc6",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-account-actions-review.txt",
+      "sha256": "b7aa24654f509a7f9b941b8c7979e2f34114426e86cb54130df13fb7221091ab",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-account-creation-review.txt",
+      "sha256": "baa42b9e01ada7b5a1828f30c295004745a37873ea3d25aa3cb6950ec34e9d58",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-account-fields-review.txt",
+      "sha256": "00eca6650547f504a0481d69de1f5611592f6eb09b4612daf129c4d9c30f45b6",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-account-refresh-review.txt",
+      "sha256": "b7f1f1e081d8a8da10466006733ba12fa4ceb14dc8e1024f418c94040dd9b4f7",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-assignment-editing-review.txt",
+      "sha256": "4e635443e428c4eb575e5a75c4e94f18f1dfddde5dca38302d497b5215c04c24",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-checks-return-review.txt",
+      "sha256": "e9be81413187b75553221b6d438d6e416bffbcf63ad6fdda2b16badf82235df5",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-creation-refresh-review.txt",
+      "sha256": "731cacee0a43426924f91db3f9c1db42e886c153ba13f48d74dffea20069b893",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-data-checks-review.txt",
+      "sha256": "152375de57778c72578bfa78ef89e0a111714fd00125cb3bbb26f8945ae0a6da",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-education-history-review.txt",
+      "sha256": "8201024fd4311f84ee61aa285621fb6d4ab1bc324dbe25989499220df6bd0341",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-stage-a-review.txt",
+      "sha256": "bef4ae0028585a6e356c55189cb6be305f698bd0449faab1dbd9ecde942dbb0d",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-stage-b-review.txt",
+      "sha256": "4dd9e6379ba6d5b31a6a5c860f2e73daceffce0aaeed0b28f61e62d54143a237",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-stage-c-review.txt",
+      "sha256": "85d768fc86ba1c93feefa980d19b9dfceb5448e5e62230bd9b56a9bed85b2b2e",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-stage-d-review.txt",
+      "sha256": "34d80b44fb091a459c9043a5fe948e91af9c859dadb90db98902edd748ab1375",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-stage-e-review.txt",
+      "sha256": "1c91452ee4bf7f5f9043b857fa92e707c002407b2e27151f1df4ca5571a1cffc",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-editing-ui-ux-plan.txt",
+      "sha256": "4b4279fa6919e0b4d48e3c58698c7a6625e20fa8965a4d7fa7462f1b03ae8053",
+      "active_plan": true
+    },
+    {
+      "source": "plans/administration-education-fields-review.txt",
+      "sha256": "54c4f33ba8b05c7ce13f13acadbfba06c691473c83b88419ea77e31198a5788e",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-education-operations-review.txt",
+      "sha256": "8f325ddfc59cd73c95cff3fd73ee38cc4941c437b045c2e120963cd5503efc4f",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-education-refresh-review.txt",
+      "sha256": "27030567a46c5d2bd0967167240e782a011aefbfd340f78b4921672df610332a",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-education-switch-review.txt",
+      "sha256": "65289da64e38cf9446ccd5c5cc96a32fbbfe82b8e83a5dedd1f8ac71d854747c",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-group-details-review.txt",
+      "sha256": "34d564491c02d6780ccb8e62c2c1ac1ab7cb61f5b378b1b8934141a54657ebcd",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-import-row-editing-review.txt",
+      "sha256": "c14dbd13f509439c8a974cd8a850d21d6ca23a00c09bb195567454871159e1f5",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-mvp-review.txt",
+      "sha256": "b257a5414e21dccd8c93f14a6c96d19a2f02660171a48da8a309edc389ac1e15",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-schedule-assignment-return-review.txt",
+      "sha256": "791563e216ce275bbfe0c26324f19149879a7a34ce3e812973290420462b236a",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-subject-creation-review.txt",
+      "sha256": "bbe8e2845bb9a41c4c73052f40ce66b6ad400dd55dd3716f718be3c0e3a0ce7b",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-system-implementation-plan.txt",
+      "sha256": "75cd0b5e8619683ac699dd3823e9b57ecda1bf90cd4750b21bb1d4b92856bed8",
+      "active_plan": false
+    },
+    {
+      "source": "plans/administration-ui-theme-review.txt",
+      "sha256": "27e34afe3b388880a44374a532b3c9e42d8c92932003f44b8de56bf14ba19bd2",
+      "active_plan": false
+    },
+    {
+      "source": "plans/cabinet-ui-improvements-plan.txt",
+      "sha256": "1ff08a1924c632b8e1bad7b927452efd4a9de4e716110581723c675c0205773a",
+      "active_plan": false
+    },
+    {
+      "source": "plans/cabinet-ui-improvements-review.txt",
+      "sha256": "ad0d9b43887a766c5ae886de0fdb2aeb23a29277c0af1d1446a978d5bc6eb328",
+      "active_plan": false
+    },
+    {
+      "source": "plans/group-composition-review.txt",
+      "sha256": "46e54c80177a95bcc35993f36cc409726b4876a07de736b8e11f74842cebba49",
+      "active_plan": false
+    },
+    {
+      "source": "plans/group-lifecycle-review.txt",
+      "sha256": "4a488483f8551a36c11b1b67fe2dd8d78264ce06e4bd78dccf514615c8e927e5",
+      "active_plan": false
+    },
+    {
+      "source": "plans/journal-assignments-ux-ui-plan.txt",
+      "sha256": "e27676932cefece6e7867370d5c166e7a7646ff00b19a064eae2f2f75eb742ed",
+      "active_plan": true
+    },
+    {
+      "source": "plans/journal-refactoring-review.txt",
+      "sha256": "7760487e25fc419828339b2cb4622e265b4be1ee179d1e6ec8701757571523a6",
+      "active_plan": false
+    },
+    {
+      "source": "plans/journal-ui-senior-plan.txt",
+      "sha256": "7733a1939313252fa8bfb79868069ad329613a1479b4a058c6466a33227038cf",
+      "active_plan": false
+    },
+    {
+      "source": "plans/planner-ui-plan.txt",
+      "sha256": "6d9d3c86e3115a3897a8e3844caebff939a967b585c11f4ae197a5b5888ebae9",
+      "active_plan": true
+    },
+    {
+      "source": "plans/planner-ui-review.txt",
+      "sha256": "248590daf78e1112f03752065733ed0d02626e6fa13f5bc1a55749b925db18e6",
+      "active_plan": false
+    },
+    {
+      "source": "plans/portal-improvements-next-plan.txt",
+      "sha256": "9fd273d1eb5c2c3600eabfa1029fedb78f021c3d6f76f03df0fb06252f951cc1",
+      "active_plan": true
+    },
+    {
+      "source": "plans/portal-improvements-next-review.txt",
+      "sha256": "83f8243a988ec8bcd8a04db14c3b6229c1baa5d26a9dec103f5b5eb6725a89cc",
+      "active_plan": false
+    },
+    {
+      "source": "plans/portal-improvements-oct26-review.txt",
+      "sha256": "9290e71435e830bba77396c2c97d465f05259379be66d339b75ff58e3af2de21",
+      "active_plan": false
+    },
+    {
+      "source": "plans/schedule-publication-review.txt",
+      "sha256": "0148b5672d3ac2324878f80e88a410229dd43472e50d9e40986ab76d4b91cafe",
+      "active_plan": false
+    },
+    {
+      "source": "plans/schedule-ui-refactoring-plan.txt",
+      "sha256": "5cd2351e9c12056ed4f45482605c8a968751c4b110108b2206a172b3ada4d2e6",
+      "active_plan": true
+    },
+    {
+      "source": "plans/schedule-ui-review.txt",
+      "sha256": "8af7196aab69513fcdfa068d4855fe788f824ee0abf996dbe041421277309475",
+      "active_plan": false
+    },
+    {
+      "source": "plans/schedule-week-copy-review.txt",
+      "sha256": "b2589bac2fcc371d13a495074ba6e493de333b29eb86178ced7e3c51ab3d49b7",
+      "active_plan": false
+    },
+    {
+      "source": "plans/student-education-events-review.txt",
+      "sha256": "afa762e6c3c19230cf36b0d9923aa5c05f72ef60ff308fa0caf01454b251913f",
+      "active_plan": false
+    },
+    {
+      "source": "plans/student-home-ui-refactoring-plan.txt",
+      "sha256": "630fe0d09e5471964d2644b39953347101026f9390c086a63a30261cc7384d8a",
+      "active_plan": true
+    },
+    {
+      "source": "plans/student-home-ui-review.txt",
+      "sha256": "68cfacf46b883ca6a0aa5458966f0e8ce865b44bd3170cc0b8ca6adf15ec00ec",
+      "active_plan": false
+    },
+    {
+      "source": "plans/student-import-review.txt",
+      "sha256": "dcbd57d13475e06483f2d511b0ce5ef5542a7e8c05b39d60de0b2d7000cb710a",
+      "active_plan": false
+    },
+    {
+      "source": "plans/student-registry-review.txt",
+      "sha256": "b2d7d87376de9a0337590fdff4a79e666a795f9da9393a22494961349c2c0116",
+      "active_plan": false
+    },
+    {
+      "source": "plans/teacher-registry-review.txt",
+      "sha256": "f5475d4e6cbffdece787f18d0ade76e177bc4b3a5c9fc2cf420bd54d53c3a65b",
+      "active_plan": false
+    },
+    {
+      "source": "plans/theme-ui-review.txt",
+      "sha256": "ef6d754f1297f4593d023c2b83bb962b8cefad705d0fa4ea53febc492b199fa4",
+      "active_plan": false
+    },
+    {
+      "source": "plans/university-administration-development-plan.txt",
+      "sha256": "9a37fe976833b9da27d862778f20a36f4990921e37b799e5b78a3eca67f44d54",
+      "active_plan": true
+    },
+    {
+      "source": "plans/university-groups-review.txt",
+      "sha256": "cd77efeb4b4aa368f324e7134986c48a2abdbb6e22b2277dc2beefd5c16ad2a9",
+      "active_plan": false
+    }
+  ]
+}
