@@ -24,15 +24,24 @@ export const appendEducationChange = (state: AccountsDocument, accountId: string
   return { ...state, educationEvents: [...events, event], history: state.history.map((entry) => entry.id === auditId ? { ...entry, educationEventId: event.id } : entry) };
 };
 export interface ConfirmAdmissionCommand extends AccountTargetCommand { expectedGroupRevision: number; education: EducationEventDetails }
+export const getAdmissionRestriction = (account: PortalAccount, events: StudentEducationEvent[], groups: RegistryGroup[]) => {
+  if (account.role !== "student") return "Учётная запись студента изменилась. Откройте сведения заново.";
+  if (events.some((event) => event.accountId === account.id)) return "История обучения уже начата. Ранние даты автоматически не вставляются между событиями.";
+  const groupId = getStudentGroupId(account);
+  const group = groups.find((entry) => entry.id === groupId);
+  if (!groupId || !group) return "Учебная группа недоступна. Проверьте учётную запись студента.";
+  if ((account.enrollmentStatus ?? "studying") !== "studying") return "Подтвердить зачисление можно учащемуся. Для завершённого обучения сначала уточните исходные сведения.";
+  if (group.status === "archived") return "Группа в архиве. Подтверждение зачисления требует действующей группы.";
+  return "";
+};
 export const confirmStudentAdmission = (state: AccountsDocument, command: ConfirmAdmissionCommand, groups: RegistryGroup[], groupRevision: number, auditId: string, registeredAt: string): AccountsDocument => {
   authorizeAccountCommand(state, command);
   if (groupRevision !== command.expectedGroupRevision) throw new Error("Справочник групп изменился. Обновите сведения перед подтверждением зачисления.");
   const account = state.accounts.find((entry) => entry.id === command.accountId);
   if (!account || account.role !== "student" || account.revision !== command.accountRevision) throw new Error("Учётная запись студента изменилась. Откройте сведения заново.");
-  if ((state.educationEvents ?? []).some((event) => event.accountId === account.id)) throw new Error("История обучения уже начата. Ранние даты автоматически не вставляются между событиями.");
+  const restriction = getAdmissionRestriction(account, state.educationEvents ?? [], groups);
+  if (restriction) throw new Error(restriction);
   const after = educationStateFor(account, groups);
-  if (after.enrollment !== "studying") throw new Error("Подтвердить зачисление можно учащемуся. Для завершённого обучения сначала уточните исходные сведения.");
-  if (groups.find((group) => group.id === after.groupId)?.status === "archived") throw new Error("Группа в архиве. Подтверждение зачисления требует действующей группы.");
   const education = normalizeEducationDetails(command.education, registeredAt);
   if (!auditId || state.history.some((entry) => entry.id === auditId)) throw new Error("Не удалось подготовить аудит зачисления.");
   const event: StudentEducationEvent = { ...education, id: `education-${auditId}`, accountId: account.id, actorId: command.actorId, registeredAt, accountRevisionAfter: account.revision + 1, kind: "admitted", after, auditId };

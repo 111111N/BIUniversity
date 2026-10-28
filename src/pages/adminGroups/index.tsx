@@ -1,7 +1,8 @@
 import GroupComposition from "./GroupComposition";
 import { getMoscowDateKey } from "../../domain/studentEducationEvent";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import Link from "../../components/ChecksContextLink";
 import { useRole } from "../../components/RoleContext";
 import { useUnsavedChangesGuard } from "../../components/UnsavedChangesProvider";
 import Dropdown from "../../components/Dropdown";
@@ -23,6 +24,7 @@ import { getGroupView, groupRegistrySearch, groupViewSearch, type GroupView } fr
 import GroupHistory from "./GroupHistory";
 import GroupDetailsForm from "./GroupDetailsForm";
 import GroupRefreshPanel from "./GroupRefreshPanel";
+import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
 import { applyGroupRefresh, groupDraftFrom, isGroupEditorStale, prepareGroupRefresh, type GroupEditor, type GroupEditorSource, type GroupRefreshReview } from "./groupEditorModel";
 
 const PAGE_SIZE = 20;
@@ -174,6 +176,7 @@ export default function AdminGroupsPage() {
   };
 
   return <div className={`pageContainer ${styles.page}`}>
+    <AdministrationReturnNotice />
     <div hidden={Boolean(editor)} className={styles.topline}>{selected ? <Link to={`/admin/groups?${groupRegistrySearch(params)}`}>← Все группы</Link> : <Link to="/admin/students">Список студентов →</Link>}<button type="button" className={styles.primary} disabled={blocked} onClick={openCreation}>Создать группу</button></div>
     {sourceError && <div className={styles.error} role="alert"><p>{sourceError}</p><button type="button" disabled={busy} onClick={() => { catalogue.refresh(); refreshAccounts(); }}>Повторить чтение</button></div>}
     {error && <p className={styles.error} role="alert">{error}</p>}

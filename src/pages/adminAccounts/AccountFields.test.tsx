@@ -27,4 +27,34 @@ describe("account editing areas", () => {
     const html = render("role");
     expect(html).toContain("Тип учётной записи"); expect(html).not.toContain("Учебная группа студента");
   });
+  it("connects field errors to their inputs and keeps untouched fields out of the error state", () => {
+    const html = renderToStaticMarkup(<AccountFields mode="details" draft={draft} account={student} groups={[]} disabled={false} errors={{ login: "Этот логин уже занят.", email: "Укажите корректную электронную почту." }} onChange={() => undefined} />);
+    for (const field of ["login", "email"]) {
+      const input = html.match(new RegExp(`<input[^>]*name="${field}"[^>]*>`))?.[0] ?? "";
+      expect(input).toContain('aria-invalid="true"');
+      const describedBy = /aria-describedby="([^"]+)"/.exec(input)?.[1];
+      expect(describedBy).toBeTruthy();
+      expect(html).toContain(`id="${describedBy}"`);
+    }
+    expect(html.match(/<input[^>]*name="name"[^>]*>/)?.[0]).not.toContain("aria-invalid");
+    expect(html).toContain("Этот логин уже занят.");
+    expect(html).toContain("Электронная почта (необязательно)");
+  });
+  it("labels required fields and links the login hint without errors on initial opening", () => {
+    const html = render("details");
+    expect(html).not.toContain('aria-invalid="true"');
+    expect(html).toContain("Имя и фамилия (обязательно)");
+    expect(html).toContain("Логин (обязательно)");
+    const login = html.match(/<input[^>]*name="login"[^>]*>/)?.[0] ?? "";
+    const hintId = /aria-describedby="([^"]+)"/.exec(login)?.[1];
+    expect(hintId).toBeTruthy(); expect(html).toContain(`id="${hintId}"`);
+  });
+  it("connects a missing student group problem to the searchable control", () => {
+    const html = renderToStaticMarkup(<AccountFields mode="create" draft={{ ...draft, studentGroupId: undefined }} groups={[]} disabled={false} groupError="Выберите учебную группу студента." onChange={() => undefined} />);
+    const input = html.match(/<input[^>]*aria-label="Учебная группа студента \(обязательно\)"[^>]*>/)?.[0] ?? "";
+    expect(input).toContain('aria-invalid="true"');
+    expect(input).toContain('role="combobox"');
+    const hintId = /aria-describedby="([^"]+)"/.exec(input)?.[1];
+    expect(hintId).toBeTruthy(); expect(html).toContain(`id="${hintId}"`);
+  });
 });

@@ -59,7 +59,7 @@ const TeacherStatistics = () => {
   const setDrillWeek = (date: string | null) => updateFilters({ drill: date });
   const [exportMessage, setExportMessage] = useState("");
   const segmentRefs = useRef<Array<SVGGElement | null>>([]);
-  const { journals, warnings } = useMemo(() => readAnalyticsJournals(currentUser.memberships), [currentUser.memberships, now]);
+  const { journals, warnings } = useMemo(() => readAnalyticsJournals(currentUser.memberships, now.getTime()), [currentUser.memberships, now]);
   const subjects = currentUser.memberships.flatMap((membership) => { const subject = getAcademicSubjectDefinition(membership.subjectId); return subject ? [subject] : []; });
   const groups = Array.from(new Set(currentUser.memberships.filter((membership) => subjectId === "all" || membership.subjectId === subjectId).flatMap((membership) => membership.groupIds))).flatMap((id) => { const group = getAcademicGroup(id); return group ? [group] : []; });
   const baseRange = getAnalyticsRange(period, now, selectedWeek);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import Link from "../../components/ChecksContextLink";
 import { getAcademicGroup, getSubjectGroups } from "../../data/academicCatalog";
 import { accountService, readAccountsState } from "../../data/accountStore";
 import { readSubjectCatalogState, subjectCatalogService } from "../../data/subjectCatalogStore";
@@ -24,7 +25,9 @@ import { useScheduleAssignmentHandoff } from "../../components/ScheduleAssignmen
 import { SCHEDULE_RETURN_PARAM } from "../../domain/scheduleAssignmentHandoff";
 import { parseCalendarDate } from "../../domain/calendar";
 import AssignmentTeacher from "./AssignmentTeacher";
+import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
 import { isAssignmentEditorStale, makeAssignmentEditor, type AssignmentEditor } from "./assignmentEditorModel";
+import SubjectCreationForm from "./SubjectCreationForm";
 
 type SubjectEditor = { name: string; shortName: string; revision: number; actorId: string; actorRevision: number };
 const TEACHERS_PER_PAGE = 12;
@@ -193,6 +196,7 @@ const AdminSubjectsPage = () => {
 
   if (role !== "configurator") return <div className={styles.empty}>Управление дисциплинами доступно настройщику.</div>;
   return <div className={`pageContainer ${styles.page}`}>
+    <AdministrationReturnNotice />
     {scheduleContext && <section className={styles.scheduleContext} aria-label="Возврат к паре">
       <div><strong>Назначение для пары</strong><p>{subjects.find((item) => item.id === scheduleContext.editor.subjectId)?.name ?? "Дисциплина недоступна"} · {getAcademicGroup(scheduleContext.groupId)?.name ?? scheduleContext.groupId}</p><p>{parseCalendarDate(scheduleContext.editor.date)?.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) ?? "Дата не выбрана"} · {scheduleContext.editor.startsAt || "Время не выбрано"}</p><p>Ввод пары и правки недели сохранены в этой вкладке до возврата. Перед обновлением страницы вернитесь к паре и сохраните черновик.</p>{(dirty || subjectDirty) && <p>Назначения ещё не сохранены. Сохраните их перед возвратом.</p>}</div>
       <button type="button" disabled={busy} onClick={() => { const url = handoff.returnUrl(); if (url) navigate(url); }}>Вернуться к паре</button>
@@ -212,14 +216,8 @@ const AdminSubjectsPage = () => {
     {message && <p className={styles.message} role="status">{message}</p>}
     {subjectEditor && <RecordEditor title="Новая дисциплина" context="Создание в каталоге дисциплин" dirty={subjectDirty} busy={busy} onClose={closeEditor}>
       {subjectStale && <div className={styles.sourceNotice} role="alert"><p>Каталог или права изменились. Обновите проверку перед созданием. Название и сокращение останутся в форме.</p><button type="button" disabled={busy} onClick={refreshSubjectCheck}>Обновить проверку</button></div>}
-      <form ref={editorRef} aria-label="Новая дисциплина" onSubmit={(event) => void createSubject(event)}>
-      <fieldset className={styles.subjectFields} disabled={busy || unavailable}>
-        <label>Название дисциплины<input required minLength={2} maxLength={160} value={subjectEditor.name} onChange={(event) => setSubjectEditor((previous) => previous ? { ...previous, name: event.target.value } : previous)} autoComplete="off" /></label>
-        <label>Краткое название<input required minLength={1} maxLength={24} value={subjectEditor.shortName} onChange={(event) => setSubjectEditor((previous) => previous ? { ...previous, shortName: event.target.value } : previous)} autoComplete="off" /></label>
-      </fieldset>
-      <p className={styles.note}>Краткое название используется в компактных карточках. Преподавателей и группы можно назначить после создания.</p>
-      <RecordEditorActions label="Создать дисциплину" disabled={busy || unavailable || subjectStale || !subjectEditor.name.trim() || !subjectEditor.shortName.trim()} busy={busy} onCancel={closeEditor} hint="После создания можно назначить преподавателей и группы." />
-    </form></RecordEditor>}
+      <SubjectCreationForm formRef={editorRef} draft={subjectEditor} subjects={subjects} disabled={unavailable} stale={subjectStale} busy={busy} onChange={(draft) => { setSubjectEditor((previous) => previous ? { ...previous, ...draft } : previous); setError(""); setMessage(""); }} onSubmit={(event) => void createSubject(event)} onCancel={closeEditor} />
+    </RecordEditor>}
     {subject && !subjectEditor ? <section className={styles.content} aria-label={`Преподаватели: ${subject.name}`}>
       <div hidden={formOpen} className={styles.header}><div><h2>{subject.name}</h2><p>Преподавателей: {assignedTeachers.length} · Групп: {assignedGroups.size}</p></div><button type="button" className={styles.primary} disabled={busy || unavailable || !teachers.length || Boolean(teacherId && !selectedTeacher)} onClick={() => selectedTeacher ? editTeacher(selectedTeacher.id) : openNew()}>{selectedTeacher ? "Изменить назначения" : "Назначить преподавателя"}</button></div>
       {formOpen && <RecordEditor title="Назначения преподавателя" context={subject.name} dirty={dirty} busy={busy} closeLabel="К назначениям" onClose={closeEditor}>

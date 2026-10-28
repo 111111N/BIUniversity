@@ -92,7 +92,7 @@ export default function Nav() {
   const mobileItems = isConfigurator ? configuratorItems.filter((item) => !["/admin/accounts", "/admin/teachers", "/admin/checks"].includes(item.to)) : studentItems;
   const extraItems = navItems.filter((item) => !mobileItems.some((mobile) => mobile.to === item.to));
   const cabinetItem = { to: "/cabinet", label: role === "student" ? "Профиль" : "Кабинет", Icon: CabinetIcon };
-  const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || extraItems.some((item) => location.pathname === item.to || ("activePath" in item && typeof item.activePath === "string" && location.pathname.startsWith(item.activePath)));
+  const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || (isConfigurator && location.pathname === "/admin/data") || extraItems.some((item) => location.pathname === item.to || ("activePath" in item && typeof item.activePath === "string" && location.pathname.startsWith(item.activePath)));
   const notificationLabel = notificationError ? "Уведомления недоступны — открыть восстановление чтения" : unreadNotifications ? `Уведомления: ${unreadNotifications} непрочитанных` : "Уведомления — всё прочитано";
   const notificationBadge = isConfigurator ? null : notificationError ? "!" : unreadNotifications > 99 ? "99+" : unreadNotifications || null;
 

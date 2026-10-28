@@ -77,7 +77,8 @@ const isNotificationKind = (value: unknown): value is NotificationKind => (
 const normalizeHref = (value: unknown) => {
   if (typeof value !== "string") return "/notifications";
   const href = value.trim();
-  return href.startsWith("/") && !href.startsWith("//") && !href.includes("\\") && !/[\u0000-\u001f\u007f]/.test(href) ? href : "/notifications";
+  const hasControlCharacter = Array.from(href).some((character) => character.charCodeAt(0) <= 31 || character.charCodeAt(0) === 127);
+  return href.startsWith("/") && !href.startsWith("//") && !href.includes("\\") && !hasControlCharacter ? href : "/notifications";
 };
 
 const normalizeDate = (value: unknown) => {

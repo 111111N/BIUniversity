@@ -27,9 +27,13 @@ interface DateTimePickerProps {
   ariaLabel?: string;
   showTime?: boolean;
   allowClear?: boolean;
+  id?: string;
+  describedBy?: string;
+  invalid?: boolean;
+  disabled?: boolean;
 }
 
-const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выберите дату", ariaLabel = "Дата и время", showTime = true, allowClear = true }: DateTimePickerProps) => {
+const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выберите дату", ariaLabel = "Дата и время", showTime = true, allowClear = true, id, describedBy, invalid, disabled = false }: DateTimePickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dialogId = useId();
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(value ?? initialDate ?? new Date()));
@@ -40,6 +44,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+  useEffect(() => { if (disabled) setIsOpen(false); }, [disabled]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,6 +111,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
     : new Date(visibleMonth.getFullYear() + direction * (view === "years" ? 12 : 1), visibleMonth.getMonth(), 1));
 
   const selectDay = (day: Date) => {
+    if (disabled) return;
     setFocusedDay(day);
     if (!isSameMonth(day, visibleMonth)) setVisibleMonth(startOfMonth(day));
     const next = new Date(day);
@@ -115,6 +121,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
   };
 
   const changeTime = (hours: number, minutes: number) => {
+    if (disabled) return;
     setTime({ hours, minutes });
     if (!value) return;
     const next = new Date(value);
@@ -125,6 +132,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
   return (
     <div className={styles.picker} ref={rootRef}>
       <button
+        id={id}
         ref={triggerRef}
         type="button"
         className={`${styles.trigger} ${isOpen ? styles.triggerOpen : ""}`}
@@ -143,8 +151,11 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
         }}
         aria-haspopup="dialog"
         aria-label={`${ariaLabel}: ${value ? format(value, showTime ? "d MMMM yyyy, HH:mm" : "d MMMM yyyy", { locale: ru }) : placeholder}`}
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? dialogId : undefined}
+        aria-expanded={isOpen && !disabled}
+        aria-controls={isOpen && !disabled ? dialogId : undefined}
+        aria-describedby={describedBy}
+        data-invalid={invalid || undefined}
+        disabled={disabled}
       >
         <span className={value ? styles.triggerValue : styles.placeholder}>
           {value ? format(value, showTime ? "d MMMM yyyy, HH:mm" : "d MMMM yyyy", { locale: ru }) : placeholder}
@@ -152,7 +163,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
         <span className={styles.calendarIcon} aria-hidden="true" />
       </button>
 
-      {isOpen && createPortal(
+      {isOpen && !disabled && createPortal(
         // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The dialog owns Escape and focus containment for its keyboard controls.
         <div
           id={dialogId}

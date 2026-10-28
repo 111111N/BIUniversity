@@ -17,7 +17,8 @@
 .content { padding: 12px 10px 10px; }
 .hint { margin: 0 4px 12px; color: $color-text-secondary; font-size: readability.$caption; line-height: 1.6; }
 .columns { display: flex; justify-content: space-between; gap: 10px; padding: 0 37px 8px 12px; color: $color-text-secondary; font-size: readability.$caption; }
-.list { display: grid; gap: 4px; max-height: min(360px, 45dvh); margin: 0; padding: 2px; overflow-y: auto; overscroll-behavior: contain; list-style: none; @include scroll-bar(4px); }
+.viewport { max-height: min(360px, 45dvh); overflow-y: auto; overscroll-behavior: contain; @include scroll-bar(4px); &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; border-radius: 6px; } }
+.list { display: grid; gap: 4px; margin: 0; padding: 2px; list-style: none; }
 .list li { min-width: 0; }
 .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(60px, .5fr) minmax(64px, auto) 16px; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; min-height: 42px; padding: 9px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: $color-text-light; font-size: readability.$caption; font-weight: 400; line-height: 1.5; text-align: left; }
 button.row:hover { border-color: theme-alpha($color-text-secondary, .22); background: theme-alpha($color-text-secondary, .08); color: $color-text-light; }

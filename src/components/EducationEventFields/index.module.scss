@@ -4,10 +4,13 @@
   display: grid; grid-template-columns: minmax(180px, .7fr) minmax(0, 1fr); gap: 14px;
   border: 1px solid $color-border; border-radius: 10px; background: $color-panel; color: $color-text-light;
   legend { padding: 0 6px; font-size: 14px; font-weight: 600; }
-  label, .date { display: grid; align-content: start; gap: 8px; min-width: 0; font-size: 13px; line-height: 1.65; color: $color-text-secondary; }
+  label, .date, .basis { display: grid; align-content: start; gap: 8px; min-width: 0; font-size: 13px; line-height: 1.65; color: $color-text-secondary; }
   textarea, input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-field; color: $color-text-light; font: inherit; font-size: 14px; }
   textarea { resize: vertical; line-height: 1.5; }
+  :where(textarea, input)[aria-invalid="true"] { border-color: $color-danger-text; }
+  :where(textarea, input):disabled { background: $color-panel-muted; color: $color-text-secondary; cursor: not-allowed; }
 }
+.fieldError { color: $color-danger-text; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 .basis, .document { grid-column: 1 / -1; }
 .hint { margin: 0; align-self: center; color: $color-text-secondary; font-size: 13px; line-height: 1.65; }
 .document {

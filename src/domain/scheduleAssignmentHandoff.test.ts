@@ -4,6 +4,7 @@ import { createScheduleAssignmentHandoff, type ScheduleAssignmentDraft } from ".
 import { changesAdminSubject, changesLocation, createUnsavedChangesRegistry } from "./unsavedNavigation";
 import type { ManagedLesson } from "./scheduleManagement";
 import { resolveScheduleEditingScope } from "./scheduleEditing";
+import { createChecksReturn, inheritChecksReturn, readChecksReturn, withChecksReturn } from "./administrationChecksNavigation";
 
 const lesson: ManagedLesson = { id: "managed:one", scheduleId: 101, subjectId: "math", groupId: "group", teacherId: "", teacherName: "", date: "2026-10-27", startsAt: "09:00", endsAt: "", room: " Введённая аудитория ", type: "lecture" };
 const draft = (): ScheduleAssignmentDraft => ({
@@ -15,6 +16,20 @@ const draft = (): ScheduleAssignmentDraft => ({
 const transition = (current: string, next: string) => ({ currentLocation: new URL(current, "https://example.test"), nextLocation: new URL(next, "https://example.test") });
 
 describe("assignment handoff for an unfinished schedule lesson", () => {
+  it("retains the data-check return path through assignment editing without bypassing the unfinished-lesson guard", () => {
+    const back = createChecksReturn("?kind=published-lesson&level=action", 2, "lesson:one");
+    const store = createScheduleAssignmentHandoff();
+    const input = draft();
+    const source = new URL(withChecksReturn(`/admin/schedule?${input.returnSearch}`, back), "https://example.test");
+    input.returnSearch = source.search.slice(1); input.historySearch = input.returnSearch;
+    const href = inheritChecksReturn(store.begin(input, "checks-token"), source.pathname, source.search);
+    const target = new URL(href, "https://example.test");
+    expect(store.matchesSubjects(target)).toBe(true); expect(readChecksReturn(target.pathname, target.search)).toBe(back);
+    const returned = new URL(store.returnUrl()!, "https://example.test");
+    expect(readChecksReturn(returned.pathname, returned.search)).toBe(back);
+    expect(store.readSchedule(returned.search, input.weekStart, input.groupId)?.editor.room).toBe(input.editor.room);
+    expect(store.shouldBlock(transition(target.pathname + target.search, back))).toBe(true);
+  });
   it("retains incomplete fields, week edits, baseline, revision and undo without modifying source objects", () => {
     const store = createScheduleAssignmentHandoff();
     const input = draft();

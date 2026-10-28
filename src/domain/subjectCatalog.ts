@@ -20,14 +20,30 @@ export const normalizeSubjectText = (value: string) => value.normalize("NFKC").t
 const lookupKey = (value: string) => normalizeSubjectText(value).toLocaleLowerCase("ru");
 const colors = new Set(["red", "purple", "orange", "green"]);
 
-export const validateSubjectDraft = (draft: SubjectDraft, subjects: SubjectDefinition[]) => {
-  if (typeof draft.name !== "string" || typeof draft.shortName !== "string") throw new Error("Заполните название и сокращение дисциплины.");
+export type SubjectIdentityField = "name" | "shortName";
+export type SubjectDraftError = { field: SubjectIdentityField; message: string };
+export const getSubjectDraftErrors = (draft: Pick<SubjectDraft, SubjectIdentityField>, subjects: SubjectDefinition[]): SubjectDraftError[] => {
+  if (typeof draft.name !== "string" || typeof draft.shortName !== "string") {
+    return (["name", "shortName"] as const).filter((field) => typeof draft[field] !== "string")
+      .map((field) => ({ field, message: "Заполните название и сокращение дисциплины." }));
+  }
   const name = normalizeSubjectText(draft.name);
   const shortName = normalizeSubjectText(draft.shortName);
-  if (name.length < 2 || name.length > 160) throw new Error("Название дисциплины должно содержать от 2 до 160 символов.");
-  if (!shortName || shortName.length > 24) throw new Error("Сокращение должно содержать от 1 до 24 символов.");
-  if (subjects.some((subject) => lookupKey(subject.name) === lookupKey(name))) throw new Error("Дисциплина с таким названием уже существует.");
-  if (subjects.some((subject) => lookupKey(subject.shortName) === lookupKey(shortName))) throw new Error("Это сокращение уже используется другой дисциплиной.");
+  const nameKey = lookupKey(name);
+  const shortNameKey = lookupKey(shortName);
+  const errors: SubjectDraftError[] = [];
+  if (name.length < 2 || name.length > 160) errors.push({ field: "name", message: "Название дисциплины должно содержать от 2 до 160 символов." });
+  if (!shortName || shortName.length > 24) errors.push({ field: "shortName", message: "Сокращение должно содержать от 1 до 24 символов." });
+  if (subjects.some((subject) => lookupKey(subject.name) === nameKey)) errors.push({ field: "name", message: "Дисциплина с таким названием уже существует." });
+  if (subjects.some((subject) => lookupKey(subject.shortName) === shortNameKey)) errors.push({ field: "shortName", message: "Это сокращение уже используется другой дисциплиной." });
+  return errors;
+};
+
+export const validateSubjectDraft = (draft: SubjectDraft, subjects: SubjectDefinition[]) => {
+  const errors = getSubjectDraftErrors(draft, subjects);
+  if (errors.length) throw new Error(errors[0].message);
+  const name = normalizeSubjectText(draft.name);
+  const shortName = normalizeSubjectText(draft.shortName);
   if (draft.semester !== undefined && (typeof draft.semester !== "string" || normalizeSubjectText(draft.semester).length > 160)) throw new Error("Проверьте описание дисциплины.");
   if (draft.color !== undefined && !colors.has(draft.color)) throw new Error("Выбран неизвестный цвет дисциплины.");
   return { name, shortName, semester: normalizeSubjectText(draft.semester ?? ""), color: draft.color ?? "red" };

@@ -10,6 +10,7 @@ export interface StudentBulkPreviewRow { accountId: string; name: string; studen
 export interface StudentBulkPlan { rows: StudentBulkPreviewRow[]; changed: number; unchanged: number; errors: number }
 export interface StudentBulkPreview extends StudentBulkPlan { request: StudentBulkRequest; fingerprint: string; expectedRevision: number; groupRevision: number; actorRevision: number }
 export interface ApplyStudentBulkCommand extends AccountCommandContext { batchId: string; fingerprint: string; request: StudentBulkRequest; expectedGroupRevision: number }
+export const getStudentTransferGroupProblem = (group: RegistryGroup | undefined) => !group || !isGroupActive(group) ? "Для перевода выберите действующую группу." : "";
 export const assertStudentBulkRequest = (request: StudentBulkRequest) => {
   if (!request || !Array.isArray(request.targets) || !request.targets.length || request.targets.length > MAX_STUDENT_BULK_TARGETS || !isStudentBulkAction(request.action) || request.targets.some((target) => !target || typeof target.accountId !== "string" || !target.accountId.trim() || target.accountId.length > 120 || !Number.isSafeInteger(target.revision) || target.revision < 0) || new Set(request.targets.map((target) => target.accountId)).size !== request.targets.length) throw new Error("Выберите от 1 до 1000 разных студентов и допустимое действие.");
 };
@@ -24,6 +25,7 @@ export const previewStudentBulk = (state: AccountsDocument, groups: RegistryGrou
   for (const event of state.educationEvents ?? []) { const events = eventsByAccount.get(event.accountId) ?? []; events.push(event); eventsByAccount.set(event.accountId, events); }
   const byId = new Map(state.accounts.map((account) => [account.id, account])); const groupsById = new Map(groups.map((group) => [group.id, group]));
   const targetGroup = request.action.kind === "transfer" ? groupsById.get(request.action.groupId) : undefined;
+  const transferGroupProblem = request.action.kind === "transfer" ? getStudentTransferGroupProblem(targetGroup) : "";
   const rows = request.targets.map((target): StudentBulkPreviewRow => {
     const account = byId.get(target.accountId); const errors: string[] = [];
     const row: StudentBulkPreviewRow = { accountId: target.accountId, name: account?.name ?? "Учётная запись недоступна", studentNumber: account?.studentRecord?.number, outcome: "error", errors };
@@ -34,7 +36,7 @@ export const previewStudentBulk = (state: AccountsDocument, groups: RegistryGrou
     row.before = { groupId, groupName: group.name, enrollment: account.enrollmentStatus ?? "studying" };
     row.after = { ...row.before };
     if (request.action.kind === "transfer") {
-      if (!targetGroup || !isGroupActive(targetGroup)) errors.push("Для перевода выберите действующую группу.");
+      if (transferGroupProblem) errors.push(transferGroupProblem);
       if (row.before.enrollment !== "studying") errors.push("Массовый перевод доступен учащимся. Для возобновления обучения откройте учётку отдельно.");
       if (targetGroup) row.after = { ...row.before, groupId: targetGroup.id, groupName: targetGroup.name };
     } else {

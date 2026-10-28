@@ -1,15 +1,25 @@
 @use "../../styles/administration" as admin;
 @use "../../styles/variables" as *;
 .page { @include admin.workspace; position: relative; z-index: 1; display: grid; align-content: start; min-width: 0; gap: 20px; --dropdown-control-height: 44px; }
-.page :where(.actions, .topline, .sourceActions, .pagination, .empty) > button, .row > a, .file { @include admin.button; }
+.page :where(.actions, .topline, .sourceActions, .empty) > button, .row > a, .file { @include admin.button; }
 
 .page button.primary { @include admin.primary; }
-.topline, .actions, .sourceActions, .resultLine { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.topline, .resultLine { justify-content: space-between; }
+.correctRow { @include admin.button; grid-column: 1 / -1; justify-self: start; }
+.rowForm { display: grid; gap: 20px; min-width: 0; }
+.rowFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; min-width: 0;
+  > label { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
+  input, textarea { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 10px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-field; color: $color-text-light; font: inherit; font-size: 14px; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; } &:disabled { color: $color-text-secondary; background: $color-panel-muted; cursor: not-allowed; } }
+  textarea { resize: vertical; min-height: 72px; }
+}
+.inherited { display: grid; gap: 8px; min-width: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; background: $color-panel-muted; color: $color-text-secondary; font-size: 13px; line-height: 1.6; strong { color: $color-text-light; overflow-wrap: anywhere; } }
+.rowProblems { border-left: 3px solid $color-danger-text; padding: 4px 0 4px 16px; color: $color-danger-text; h3 { margin: 0 0 8px; font-size: 14px; } ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; } }
+@media(max-width: 600px) { .rowFields { grid-template-columns: minmax(0, 1fr); input, textarea { font-size: 16px; } } .correctRow { width: 100%; } }
+.topline, .actions, .sourceActions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.topline { justify-content: space-between; }
 .topline > a { display: inline-flex; min-height: 44px; align-items: center; color: $color-link; font-size: 13px; text-decoration: none; }
 .header h2 { margin: 0; font-size: clamp(20px, 3vw, 26px); &:focus { outline: none; } }
 .header p { margin: 8px 0 0; max-width: 800px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
-.note, .resultLine p { color: $color-text-secondary; font-size: 12px; line-height: 1.6; margin: 0; }
+.note { color: $color-text-secondary; font-size: 12px; line-height: 1.6; margin: 0; }
 .file { position: relative; overflow: hidden; &:focus-within { outline: 2px solid $color-accent-primary; outline-offset: 2px; } &:has(input:disabled) { opacity: 1; background: $color-panel-muted; color: $color-text-secondary; cursor: not-allowed; } input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: inherit; } }
 .source { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 12px; textarea { box-sizing: border-box; width: 100%; min-height: 200px; max-height: 480px; min-width: 0; resize: vertical; padding: 14px; border: 1px solid $color-control-border; border-radius: 10px; color: $color-text-light; background: $color-panel; font: inherit; font-family: monospace; font-size: 14px; line-height: 1.6; tab-size: 4; white-space: pre; overflow: auto; } }
 .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; }
@@ -23,7 +33,6 @@
 .issues { grid-column: 1 / -1; padding: 12px 12px 12px 28px; margin: 0; background: $color-ghost; border-radius: 8px; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
 .error { margin: 0; border: 1px solid theme-alpha($color-error, .5); border-radius: 10px; padding: 14px; color: $color-danger-text; font-size: 13px; line-height: 1.6; }
 .empty { padding: 28px 18px; border: 1px dashed $color-border; border-radius: 12px; color: $color-text-secondary; text-align: center; line-height: 1.7; strong { color: $color-text-light; } }
-.pagination { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .history ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 360px; overflow-y: auto; } .history a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid $color-border; border-radius: 8px; color: $color-text-light; font-size: 13px; line-height: 1.6; text-decoration: none; }
 @media(max-width: 760px) { .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); > :nth-child(3) { grid-column: 1 / -1; } } }
 @media(max-width: 600px) { .page { padding: 18px 14px; } .settings { grid-template-columns: minmax(0, 1fr); } .mapping, .row { padding: 14px; } .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .page > [role="tablist"] { flex-wrap: wrap; overflow: visible; > button { flex: 1 1 calc(50% - 8px); } } }
@@ -36,7 +45,7 @@
 .sourcePanel .source textarea { min-height: 240px; }
 .defaults h3 { margin: 0; font-size: 16px; line-height: 1.6; }
 .prepareActions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; > p { flex: 1 1 260px; } > button { @include admin.button; } }
-.note, .source, .resultLine p { font-size: 13px; line-height: 1.7; }
+.note, .source { font-size: 13px; line-height: 1.7; }
 .header h2:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 @media(max-width: 600px) { .sourcePanel, .defaults { padding: 14px; } .source textarea { font-size: 16px; } .prepareActions > button { width: 100%; } .sourcePanel > [role="tablist"] > button { flex: 1 1 150px; } }
 @media(max-width: 600px) { .methodTabs > [role="tablist"] > button { flex: 1 1 150px; } }

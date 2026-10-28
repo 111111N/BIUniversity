@@ -11,6 +11,8 @@
 .filters { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; align-items: end; }
 .activeFilters { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 13px; color: $color-text-secondary; }
 .rows { display: grid; gap: 12px; min-width: 0; }
+.card, .resultLine { scroll-margin-block: 18px; &:focus { outline: 2px solid $color-accent-primary; outline-offset: 4px; border-radius: 12px; } }
+.returnedNotice { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel-muted; color: $color-text-light; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 230px); align-items: center; gap: 20px; padding: 18px; background: $color-panel; border: 1px solid $color-border; border-radius: 12px; }
 .content { min-width: 0; h2 { margin: 10px 0 8px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; } p, > time { margin: 0; font-size: 13px; line-height: 1.7; color: $color-text-secondary; overflow-wrap: anywhere; } }
 .meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 12px; line-height: 1.6; color: $color-text-secondary; }

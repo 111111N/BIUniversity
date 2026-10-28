@@ -192,7 +192,7 @@ const AcademicMessages = ({ initialContactId, initialThreadTop, role }: Messages
   const selectTab = (next: InboxTab) => {
     setTab(next); setQuery(""); setMembersOpen(false);
   };
-  const moveTab = (event: KeyboardEvent<HTMLDivElement>) => {
+  const moveTab = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const index = TABS.indexOf(tab);
@@ -321,7 +321,7 @@ const AcademicMessages = ({ initialContactId, initialThreadTop, role }: Messages
     setEditor(null);
     requestAnimationFrame(() => composerRef.current?.focus({ preventScroll: true }));
   };
-  const tabButton = (id: InboxTab, label: string) => <button id={componentId + "-tab-" + id} aria-controls={componentId + "-panel"} type="button" role="tab" aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} className={tab === id ? styles.activeTab : ""} onClick={() => selectTab(id)}>{label}</button>;
+  const tabButton = (id: InboxTab, label: string) => <button id={componentId + "-tab-" + id} aria-controls={componentId + "-panel"} type="button" role="tab" aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} className={tab === id ? styles.activeTab : ""} onClick={() => selectTab(id)} onKeyDown={moveTab}>{label}</button>;
 
   return <div className={`${styles.layout} ${selected ? styles.hasSelection : ""}`}>
     <aside className={styles.contacts} aria-label="Диалоги">
@@ -329,7 +329,7 @@ const AcademicMessages = ({ initialContactId, initialThreadTop, role }: Messages
       {!selected && notice && <div className={`${styles.notice} ${styles.mobileOnly}`} role="status"><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Скрыть уведомление"><MessageActionIcon name="close" /></button></div>}
       <header className={styles.inboxHeader}><div><h2>Чаты</h2><span>{nonEmptyDialogs.length ? `Диалогов: ${nonEmptyDialogs.length}` : "Общение внутри университета"}</span></div><button type="button" className={styles.iconButton} onClick={() => setContactPickerOpen(true)} aria-label="Новый диалог" title="Написать сообщение"><MessageActionIcon name="compose" /></button></header>
       <label className={styles.inboxSearch}><MessageActionIcon name="search" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Чаты, люди, группы" aria-label="Поиск чатов и людей" />{query && <button type="button" aria-label="Очистить поиск" onClick={() => setQuery("")}><MessageActionIcon name="close" /></button>}</label>
-      <div className={styles.tabs} role="tablist" aria-label="Категории диалогов" onKeyDown={moveTab}>{tabButton("all", "Все")}{tabButton("students", "Студенты")}{tabButton("teachers", "Преподаватели")}{tabButton("groups", "Беседы")}</div>
+      <div className={styles.tabs} role="tablist" aria-label="Категории диалогов">{tabButton("all", "Все")}{tabButton("students", "Студенты")}{tabButton("teachers", "Преподаватели")}{tabButton("groups", "Беседы")}</div>
       <div className={styles.contactList} id={componentId + "-panel"} role="tabpanel" aria-labelledby={componentId + "-tab-" + tab}>
         {visibleDialogs.map((contact) => <DialogListItem key={contact.id} contact={contact} message={state.messages[contact.id]?.at(-1)} draft={drafts[contact.id]} fileCount={draftFiles[contact.id]?.length} active={selected?.id === contact.id} onClick={() => selectContact(contact)} />)}
         {!visibleDialogs.length && <div className={styles.emptyInbox}><MessageActionIcon name="chat" /><strong>{query.trim() ? "Чаты не найдены" : "Здесь будут ваши диалоги"}</strong><p>{query.trim() ? "Попробуйте другое имя или категорию." : "Напишите студенту, преподавателю или создайте общую беседу."}</p>{!query.trim() && <button type="button" onClick={() => setContactPickerOpen(true)}>Начать общение</button>}</div>}
@@ -338,6 +338,7 @@ const AcademicMessages = ({ initialContactId, initialThreadTop, role }: Messages
       </div>
       <footer className={styles.inboxFooter}><span title="История и файлы сохраняются в этом браузере. Серверная доставка пока не подключена.">Локальный режим</span><button type="button" disabled={sending || Boolean(readError)} onClick={() => openGroupEditor()}><MessageActionIcon name="group" />Создать беседу</button></footer>
     </aside>
+    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Delegates Ctrl/Cmd+F from descendant controls; the native search button provides the same action. */}
     <section className={styles.chat} aria-label="Переписка" onKeyDown={(event) => { if (!event.currentTarget.contains(event.target as Node)) return; if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "f" || event.code === "KeyF") && selected) { event.preventDefault(); setThreadSearchOpen(true); setMembersOpen(false); } }}
       onDragEnter={(event) => { if (!event.currentTarget.contains(event.target as Node) || !event.dataTransfer.types.includes("Files") || !selected || sending || readError) return; event.preventDefault(); dragDepth.current++; setDraggingFiles(true); }}
       onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDraggingFiles(false); }}

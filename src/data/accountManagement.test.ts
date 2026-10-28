@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { accountService, readAccountsState, ACCOUNTS_STORAGE_KEY, createInitialAccountsDocument } from "./accountStore";
-import { changeAccountRole, decodeAccountsDocument, updateAccountDetails } from "../domain/accounts";
+import { changeAccountRole, decodeAccountsDocument, getAccountIdentityErrors, updateAccountDetails } from "../domain/accounts";
 
 let values: Map<string, string>;
 const context = { actorId: "configurator-demo", actorRevision: 1, expectedRevision: 0 };
@@ -15,6 +15,24 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("account lifecycle and student records", () => {
+  it("rejects identity problems with the same field messages without writing, then saves only the corrected details", async () => {
+    const state = readAccountsState();
+    const student = state.accounts.find((account) => account.id === "anna-smirnova")!;
+    const command = { ...context, accountId: student.id, accountRevision: student.revision };
+    for (const patch of [{ name: "А" }, { login: state.accounts[0].login }, { email: "broken" }]) {
+      const details = { ...student, ...patch };
+      const [problem] = getAccountIdentityErrors(details, state.accounts, student.id);
+      expect(problem).toBeDefined();
+      await expect(accountService.updateDetails({ ...command, details })).rejects.toThrow(problem.message);
+      expect(values.has(ACCOUNTS_STORAGE_KEY)).toBe(false);
+    }
+    const corrected = { ...student, name: "  Новое   Имя  ", email: " STUDENT@EXAMPLE.TEST " };
+    expect(getAccountIdentityErrors(corrected, state.accounts, student.id)).toEqual([]);
+    const saved = await accountService.updateDetails({ ...command, details: corrected });
+    expect(saved).toMatchObject({ id: student.id, login: student.login, role: student.role, name: "Новое Имя", email: "student@example.test", memberships: student.memberships });
+    expect(readAccountsState().history.at(-1)?.changes?.map((change) => change.field)).toEqual(["name", "email"]);
+    expect(readAccountsState().revision).toBe(1);
+  });
   it("issues only one of two concurrent identical previews and requires a new preview for the second creation", async () => {
     const preview = await accountService.previewStudentNumber({ ...context, campus: 3 });
     expect(values.size).toBe(0);

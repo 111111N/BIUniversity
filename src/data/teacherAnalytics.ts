@@ -5,7 +5,7 @@ import { decodeJournal, getJournalSnapshot, journalKey } from "./journalStore";
 import { createSubjectLessons } from "./lessons";
 
 /** Read-only adapter. Damaged saved journals must not masquerade as demo statistics. */
-export const readAnalyticsJournals = (memberships: DashboardMembership[]) => {
+export const readAnalyticsJournals = (memberships: DashboardMembership[], now = Date.now()) => {
   const journals: AnalyticsJournal[] = [];
   const warnings: string[] = [];
   const seen = new Set<string>();
@@ -18,7 +18,7 @@ export const readAnalyticsJournals = (memberships: DashboardMembership[]) => {
     try {
       const raw = localStorage.getItem(journalKey(subject.id, group.id));
       if (raw !== null && decodeJournal(raw) === null) { warnings.push(`${subject.shortName} · ${group.name}`); return; }
-      journals.push({ subjectId: subject.id, subjectName: subject.name, subjectShortName: subject.shortName, groupId: group.id, groupName: group.name, students: getJournalSnapshot(subject.id, group.id), lessons: createSubjectLessons(subject.id, group.id) });
+      journals.push({ subjectId: subject.id, subjectName: subject.name, subjectShortName: subject.shortName, groupId: group.id, groupName: group.name, students: getJournalSnapshot(subject.id, group.id), lessons: createSubjectLessons(subject.id, group.id, now) });
     } catch { warnings.push(`${subject.shortName} · ${group.name}`); }
   }));
   return { journals, warnings };

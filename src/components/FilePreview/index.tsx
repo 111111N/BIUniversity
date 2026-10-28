@@ -37,6 +37,7 @@ const FilePreview = ({ name, blob, onDownload, onClose }: Props) => {
           setUrl(objectUrl);
         }
       } catch (failure) {
+        console.error("Не удалось подготовить просмотр материала:", failure);
         if (active) setError(failure instanceof Error ? failure.message : "Не удалось подготовить просмотр. Оригинал можно скачать.");
       } finally { if (active) setLoading(false); }
     };
@@ -49,7 +50,7 @@ const FilePreview = ({ name, blob, onDownload, onClose }: Props) => {
     <div className={styles.content}>
       {loading ? <p className={styles.state} role="status">Подготавливаем просмотр…</p> : error ? <p className={styles.state} role="alert">{error}</p> : kind === "text" ? <>
         {blob.size > TEXT_LIMIT && <p className={styles.hint}>Показаны первые {formatFileSize(TEXT_LIMIT)}. Полный текст доступен в оригинальном файле.</p>}
-        <pre className={styles.text} tabIndex={0} aria-label="Содержимое текстового материала">{text || "Файл пуст"}</pre>
+        <pre className={styles.text} role="region" tabIndex={0} aria-label="Содержимое текстового материала">{text || "Файл пуст"}</pre>
       </> : kind === "image" && url ? <img className={styles.image} src={url} alt={name} onError={() => setError("Изображение не удалось открыть. Попробуйте скачать оригинал.")} /> : kind === "pdf" && url ? <object className={styles.pdf} data={url} type="application/pdf" tabIndex={0} title={`PDF: ${name}`} aria-label={`PDF: ${name}`}><p className={styles.state}>Браузер не поддерживает встроенный просмотр PDF. Скачайте файл кнопкой ниже.</p></object> : null}
     </div>
     <footer className={styles.footer}><span>{kind === "pdf" ? "Если PDF не отображается, скачайте оригинал. Просмотр зависит от браузера." : kind === "text" ? "Текст показан без выполнения разметки, в кодировке UTF-8." : "Оригинал не изменяется при просмотре."}</span><DownloadButton name={name} compact onDownload={onDownload} /></footer>

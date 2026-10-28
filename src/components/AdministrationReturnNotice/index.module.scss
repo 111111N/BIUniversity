@@ -1,0 +1,11 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.context {
+  @include admin.workspace;
+  box-sizing: border-box; position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 18px;
+  min-width: 0; padding: 12px 16px; background: $color-panel; border: 1px solid $color-border; border-radius: 10px;
+  > span { min-width: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+  > a { @include admin.button; color: $color-link; }
+}
+@media(max-width: 650px) { .context { padding: 12px; } }
+@media(max-width: 420px) { .context { align-items: stretch; flex-direction: column; } }

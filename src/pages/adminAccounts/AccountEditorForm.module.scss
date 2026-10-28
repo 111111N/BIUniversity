@@ -1,0 +1,4 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.form { min-width: 0; display: grid; gap: 20px; }
+.summary { @include admin.notice($color-error); margin: 0; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.65; }

@@ -10,7 +10,6 @@
 .page > .sectionTabs { margin-bottom: 0; }
 .page > .header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, .7fr); align-items: center; gap: 20px; }
 .currentState { min-width: 0; border-left: 1px solid $color-border; padding-left: 20px; display: grid; gap: 6px; > span { color: $color-text-secondary; font-size: 13px; line-height: 1.65; } > strong { font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; } }
-.admissionForm { display: grid; gap: 18px; min-width: 0; }
 .eventDetails, .help { min-width: 0; border-top: 1px solid $color-border; > summary { box-sizing: border-box; min-height: 44px; padding: 12px 0; font-size: 13px; line-height: 1.65; color: $color-text-light; cursor: pointer; } > div { display: grid; gap: 12px; padding-top: 4px; } }
 .help > div { max-width: 800px; > p { color: $color-text-secondary; font-size: 13px; line-height: 1.75; margin: 0; } }
 .linkedEvent { border-color: $color-link; box-shadow: inset 3px 0 $color-link; }

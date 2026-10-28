@@ -1,6 +1,8 @@
-import { Link } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { ADMINISTRATION_CHECK_LABELS, ADMINISTRATION_CHECK_PAGE_SIZE, type AdministrationChecksResult, type AdministrationIssue } from "../../domain/administrationChecks";
 import { parseCalendarDate } from "../../domain/calendar";
+import { createChecksReturn, getCheckResultId, readCheckResultAnchor, withChecksReturn } from "../../domain/administrationChecksNavigation";
 import styles from "./index.module.scss";
 
 const issueLink = (issue: AdministrationIssue) => {
@@ -20,13 +22,30 @@ interface Props {
 }
 
 export default function CheckResults({ snapshot, error, loading, filtered, onPage }: Props) {
+  const location = useLocation();
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const restoredLocation = useRef<string | null>(null);
+  const requestedId = readCheckResultAnchor(location.hash);
+  const targetAvailable = Boolean(snapshot?.rows.some((issue) => getCheckResultId(issue.id) === requestedId));
+  useEffect(() => {
+    if (error || loading || !snapshot || !requestedId || restoredLocation.current === location.key) return;
+    try {
+      const target = document.getElementById(requestedId) ?? summaryRef.current;
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "nearest", behavior: "instant" });
+      restoredLocation.current = location.key;
+    } catch (failure) { console.error("Не удалось вернуть фокус к результатам проверки данных:", failure); }
+  }, [snapshot, error, loading, requestedId, location.key]);
   if (error) return <div className={styles.error} role="alert"><strong>Не удалось проверить данные</strong><p>{error}</p><p>Результаты не показаны. Повторите проверку кнопкой выше.</p></div>;
   if (loading || !snapshot) return <div className={styles.loading} role="status" aria-busy="true">Проверяем данные…</div>;
   return <>
-    <div className={styles.resultLine}><p role="status">Найдено: {snapshot.total}</p><p>Проверено: <time dateTime={snapshot.checkedAt}>{new Date(snapshot.checkedAt).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })} мск</time></p></div>
+    <div ref={summaryRef} className={styles.resultLine} tabIndex={-1} aria-label="Итог проверки данных"><p role="status">Найдено: {snapshot.total}</p><p>Проверено: <time dateTime={snapshot.checkedAt}>{new Date(snapshot.checkedAt).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })} мск</time></p></div>
+    {requestedId && !targetAvailable && <p className={styles.returnedNotice} role="status">Результаты обновлены. Ранее открытое замечание сейчас не показано на этой странице.</p>}
     {snapshot.total ? <section className={styles.rows} aria-label="Результаты проверки данных">{snapshot.rows.map((issue) => {
       const link = issueLink(issue);
-      return <article key={issue.id} className={styles.card}>
+      const returnTo = location.pathname === "/admin/checks" ? createChecksReturn(location.search, snapshot.page, issue.id) : null;
+      return <article key={issue.id} id={getCheckResultId(issue.id)} tabIndex={-1} className={styles.card}>
         <div className={styles.content}>
           <div className={styles.meta}><span className={issue.level === "action" ? styles.action : styles.review}>{issue.level === "action" ? "Нужно исправить" : "Проверить"}</span><span>{ADMINISTRATION_CHECK_LABELS[issue.kind]}</span></div>
           <h2>{issue.title}</h2>
@@ -34,8 +53,8 @@ export default function CheckResults({ snapshot, error, loading, filtered, onPag
           <p>{issue.detail}</p>
         </div>
         <div className={styles.actions}>
-          <Link className={styles.openRecord} to={link.href} aria-label={`${link.label}: ${issue.title}`}>{link.label}</Link>
-          {issue.kind === "published-lesson" && issue.accountId && <Link className={styles.relatedRecord} to={`/admin/accounts?account=${encodeURIComponent(issue.accountId)}`}>Учётная запись преподавателя</Link>}
+          <Link className={styles.openRecord} to={withChecksReturn(link.href, returnTo)} aria-label={`${link.label}: ${issue.title}`}>{link.label}</Link>
+          {issue.kind === "published-lesson" && issue.accountId && <Link className={styles.relatedRecord} to={withChecksReturn(`/admin/accounts?account=${encodeURIComponent(issue.accountId)}`, returnTo)}>Учётная запись преподавателя</Link>}
         </div>
       </article>;
     })}</section> : <div className={styles.empty}><strong>{filtered ? "По этим условиям записей нет" : "По выполненным проверкам замечаний нет"}</strong><p>{filtered ? "Измените поиск или сбросьте фильтры выше." : "Расписание перед публикацией проверяется отдельно."}</p></div>}

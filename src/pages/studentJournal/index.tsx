@@ -34,7 +34,7 @@ const StudentJournal = () => {
   const group = subject?.groups.find((item) => item.id === studentGroup);
   const journal = useJournal(subjectId ?? "", studentGroup);
   const student = journal.students.find((item) => item.id === currentUser.id);
-  const lessons = useMemo(() => createSubjectLessons(subjectId ?? "", studentGroup), [subjectId, studentGroup, now]);
+  const lessons = useMemo(() => createSubjectLessons(subjectId ?? "", studentGroup, now.getTime()), [subjectId, studentGroup, now]);
 
   if (subjectId && (!subject || !group || !canAccessJournal(subjectId, groupId ?? studentGroup))) return (
     <div className={`pageContainer ${styles.page}`}>

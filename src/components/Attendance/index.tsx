@@ -303,6 +303,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
   const tableWrapperRef = useRef<HTMLDivElement>(null);
   const addedStudentRef = useRef<string | null>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
+  const editorWasOpen = useRef(false);
   const headingId = useId();
   const keyboardHintId = useId();
   const displayedStudents = isEditing ? draftStudents : students;
@@ -323,12 +324,14 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
 
   // Эффекты
   useEffect(() => {
-    if (!isEditing) return;
-    const focusFrame = requestAnimationFrame(() => editorRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus({ preventScroll: true }));
-    return () => {
-      cancelAnimationFrame(focusFrame);
-      requestAnimationFrame(() => editButtonRef.current?.focus({ preventScroll: true }));
-    };
+    const wasOpen = editorWasOpen.current;
+    editorWasOpen.current = isEditing;
+    if (!isEditing && !wasOpen) return;
+    const focusFrame = requestAnimationFrame(() => {
+      const target = isEditing ? editorRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') : editButtonRef.current;
+      target?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(focusFrame);
   }, [isEditing]);
 
   useEffect(() => {
@@ -416,6 +419,8 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
   const requestCancel = () => { if (changeCount) setDiscardOpen(true); else cancelChanges(); };
   const handleEditorKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!isEditing || discardOpen || event.defaultPrevented || !event.currentTarget.contains(event.target as Node)) return;
+    handleTableKeys(event);
+    if (event.defaultPrevented) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       if (studentQuery && event.target instanceof HTMLInputElement && event.target.type === 'search') changeStudentQuery('');
@@ -707,7 +712,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
             {isRosterEditing && <small>Чтобы менять порядок строк, очистите поиск.</small>}
           </div>}
         </div>}
-        <div ref={tableWrapperRef} data-profile-scroll="journal-table" className={styles.tableWrapper} tabIndex={isEditing ? -1 : 0} role="region" aria-label="Таблица журнала, прокручивается по горизонтали и вертикали" aria-describedby={isEditing ? keyboardHintId : undefined} onKeyDown={handleTableKeys}>
+        <div ref={tableWrapperRef} data-profile-scroll="journal-table" className={styles.tableWrapper} tabIndex={isEditing ? -1 : 0} role="region" aria-label="Таблица журнала, прокручивается по горизонтали и вертикали" aria-describedby={isEditing ? keyboardHintId : undefined}>
           <table>
             <caption className={styles.visuallyHidden}>{mode === 'attendance' ? 'Посещаемость учеников по занятиям' : 'Оценки учеников по занятиям'}</caption>
             <thead>

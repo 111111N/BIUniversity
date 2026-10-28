@@ -1,9 +1,11 @@
 @use "../../styles/variables" as *;
 @use "../../styles/switches";
+@use "../../styles/administration" as admin;
 
 .wrapper { padding: 14px 12px 8px; border-top: 1px solid $color-border; }
 .label { display: block; margin: 0 6px 8px; color: $color-text-secondary; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
 .error { color: $color-error; font-size: 12px; line-height: 1.5; }
+.utility { @include admin.button; width: 100%; margin-top: 8px; &[aria-current="page"] { border-color: $color-accent-primary; background: $color-control-hover; } }
 .switcher { @include switches.group(true); display: grid; padding: 4px; border: 1px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; }
 .switcher .active { @include switches.selected(true); }
 @media(max-width: 760px) {

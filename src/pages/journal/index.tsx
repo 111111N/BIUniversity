@@ -43,7 +43,7 @@ const Journal = () => {
   const groupName = getSubject(subjectId)?.groups.find((group) => group.id === groupId)?.name ?? formatIdentifier(groupId).toUpperCase();
   const journal = useJournal(subjectId ?? "", groupId ?? "", currentUser);
   const { students, setStudents } = journal;
-  const lessons = useMemo(() => createSubjectLessons(subjectId ?? "", groupId ?? ""), [subjectId, groupId, now]);
+  const lessons = useMemo(() => createSubjectLessons(subjectId ?? "", groupId ?? "", now.getTime()), [subjectId, groupId, now]);
   const visibleLessons = useMemo(() => lessonType === "all" ? lessons : lessons.filter((lesson) => lesson.type === lessonType), [lessonType, lessons]);
   const exportJournal = () => downloadJournalCsv(createJournalCsv(students, visibleLessons), `journal-${subjectId}-${groupId}.csv`);
 

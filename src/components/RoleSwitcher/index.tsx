@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useRole } from "../RoleContext";
 import { ACCOUNT_ROLE_LABELS, isAccountActive } from "../../domain/accounts";
 import Dropdown from "../Dropdown";
@@ -25,6 +25,7 @@ const RoleSwitcher = () => {
       <Dropdown label="Демонстрационная учётная запись" searchable hideLabel value={currentUser.id} options={accounts.filter(isAccountActive).map((account) => ({ value: account.id, label: `${account.name} · ${ACCOUNT_ROLE_LABELS[account.role]}`, searchText: account.login }))} onChange={selectDemoAccount} disabled={Boolean(accountError)} />
       {accountError && <p className={styles.error} role="alert">{accountError}</p>}
       <DemoDataManager />
+      {currentUser.role === "configurator" && isAccountActive(currentUser) && !accountError && <NavLink className={styles.utility} to="/admin/data">Резервная копия данных</NavLink>}
     </div>
   );
 };

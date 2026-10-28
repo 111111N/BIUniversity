@@ -26,6 +26,12 @@ export default function EducationOperations({ account, draft, operation, educati
   const group = groups.find((entry) => entry.id === groupId);
   const options = getEducationOperations(account);
   const transferGroups = groups.filter((entry) => isGroupActive(entry) && entry.id !== groupId);
+  const transferOptions = transferGroups.map((entry) => ({ value: entry.id, label: entry.name }));
+  const selectedGroup = getStudentGroupId(draft);
+  if (selectedGroup && selectedGroup !== groupId && !transferOptions.some((entry) => entry.value === selectedGroup)) {
+    const selected = groups.find((entry) => entry.id === selectedGroup);
+    transferOptions.push({ value: selectedGroup, label: selected ? `${selected.name} · В архиве` : "Выбранная группа недоступна" });
+  }
   useEffect(() => {
     if (operation) { previousOperation.current = operation; headingRef.current?.focus(); }
     else if (previousOperation.current) {
@@ -37,8 +43,12 @@ export default function EducationOperations({ account, draft, operation, educati
     <div className={styles.current} ref={summaryRef} tabIndex={-1} aria-label="Текущее обучение"><dl><div><dt>Текущая группа</dt><dd>{group?.name ?? "Группа недоступна"}</dd></div><div><dt>Состояние обучения</dt><dd>{STUDENT_ENROLLMENT_LABELS[account.enrollmentStatus ?? "studying"]}</dd></div></dl></div>
     {operation ? <form className={styles.form} onSubmit={onSubmit} aria-label={EDUCATION_OPERATIONS[operation].label}>
       <h3 ref={headingRef} tabIndex={-1}>{EDUCATION_OPERATIONS[operation].label}</h3>
+      <details key={operation} className={styles.switcher}><summary>Сменить действие</summary><p className={styles.note}>Дата, основание и документ останутся в форме. Новое действие нужно будет проверить перед подтверждением.</p><div className={styles.switchOptions}>{options.filter((value) => value !== operation).map((value) => {
+        const restriction = getEducationOperationRestriction(account, value, groups);
+        return <div key={value}><button type="button" disabled={disabled || stale || Boolean(restriction)} aria-describedby={restriction ? `${id}-switch-${value}` : undefined} onClick={() => onChoose(value)}>{EDUCATION_OPERATIONS[value].label}</button>{restriction && <p id={`${id}-switch-${value}`} className={styles.note}>{restriction}</p>}</div>;
+      })}</div></details>
       {operation === "transfer" ? <>
-        <Dropdown label="Новая учебная группа" searchable placeholder="" value={getStudentGroupId(draft) !== groupId ? getStudentGroupId(draft) ?? "" : ""} options={transferGroups.map((entry) => ({ value: entry.id, label: entry.name }))} disabled={disabled} onChange={onGroup} />
+        <Dropdown label="Новая учебная группа" searchable placeholder="" value={selectedGroup !== groupId ? selectedGroup ?? "" : ""} options={transferOptions} disabled={disabled} onChange={onGroup} />
         {!transferGroups.length && <p className={styles.note}>Других действующих групп нет. <Link to="/admin/groups">Открыть группы</Link></p>}
       </> : <p className={styles.result}>Группа сохраняется: <strong>{group?.name ?? "Недоступна"}</strong>. После применения: <strong>{STUDENT_ENROLLMENT_LABELS[draft.enrollmentStatus ?? "studying"]}</strong>.</p>}
       {lastEventDate && <p className={styles.note}>Последнее событие действует с {educationDateLabel(lastEventDate)}. Новое не может быть раньше него.</p>}

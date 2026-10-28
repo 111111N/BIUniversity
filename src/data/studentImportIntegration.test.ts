@@ -4,6 +4,8 @@ import { refreshAcademicCatalog } from "./academicCatalog";
 import { GROUP_CATALOG_STORAGE_KEY } from "./groupCatalogRead";
 import { decodeAccountsDocument } from "../domain/accounts";
 import type { StudentImportPreview, StudentImportRequest } from "../domain/studentImport";
+import { mapStudentImportRows, parseImportTable } from "../domain/importTable";
+import { replaceImportRow } from "../pages/studentImport/rowEditing";
 
 let values: Map<string, string>;
 let writes: number;
@@ -21,6 +23,23 @@ const preview = (request = input) => accountService.previewStudentsImport({ ...a
 const command = (plan: StudentImportPreview, batchId = "batch-one", request = input) => ({ ...actor, expectedRevision: plan.expectedRevision, expectedGroupRevision: plan.groupRevision, expectedYear: plan.year, expectedStudentNumbers: plan.rows.filter((row) => row.status === "ready").map((row) => row.studentNumber!), batchId, fingerprint: plan.fingerprint, request });
 
 describe("atomic student import adapter", () => {
+  it("reviews corrected source without writes, rejects the previous fingerprint and applies only the refreshed list", async () => {
+    const mapping = { name: 0, login: 1, group: -1, campus: -1, email: -1 };
+    const source = "ФИО;Логин\nПервый Студент;duplicate\nВторой Студент;duplicate";
+    const request = { ...input, rows: mapStudentImportRows(parseImportTable(source, ";"), mapping, true) };
+    const old = await preview(request);
+    expect(old.errors).toBe(2);
+    const corrected = replaceImportRow(source, ";", mapping, true, 2, { name: "Первый Студент", login: "first.student", group: "", campus: "", email: "" });
+    const correctedRequest = { ...request, rows: mapStudentImportRows(parseImportTable(corrected, ";"), mapping, true) };
+    const next = await preview(correctedRequest);
+    expect(next.errors).toBe(0); expect(next.ready).toBe(2); expect(writes).toBe(0);
+    expect(readAccountsState().accounts).toHaveLength(3);
+    await expect(accountService.importStudents(command(old, "old-preview", correctedRequest))).rejects.toThrow("Список изменился");
+    expect(writes).toBe(0);
+    await accountService.importStudents(command(next, "corrected-preview", correctedRequest));
+    expect(writes).toBe(1);
+    expect(readAccountsState().accounts.slice(-2).map((account) => account.login)).toEqual(["first.student", "duplicate"]);
+  });
   it("does not reserve on preview and writes students, counters, audit and receipt in one operation", async () => {
     const plan = await preview(); expect(writes).toBe(0);
     expect(plan.rows.map((row) => row.studentNumber)).toEqual(["202630001", "202630002"]);

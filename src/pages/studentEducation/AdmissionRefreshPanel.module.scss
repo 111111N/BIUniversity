@@ -1,0 +1,8 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.panel { display: grid; gap: 18px; min-width: 0; padding: 18px; border: 1px solid $color-control-border; border-radius: 10px; background: $color-panel; h3 { margin: 0; color: $color-text-light; font-size: 18px; line-height: 1.5; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } } > p { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } }
+.comparison { min-width: 0; margin: 0; > div { display: grid; grid-template-columns: minmax(100px, .8fr) repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px 0; border-top: 1px solid $color-border; } dt { color: $color-text-light; font-size: 13px; line-height: 1.65; } dd { margin: 0; min-width: 0; display: grid; align-content: start; gap: 6px; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.65; } strong { color: $color-text-light; font-size: 14px; font-weight: 500; line-height: 1.65; overflow-wrap: anywhere; } }
+.panel > p.error { @include admin.notice($color-error); padding: 12px 14px; border-radius: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; button { @include admin.button; } button.primary { @include admin.primary; } }
+@media(max-width: 700px) { .comparison > div { grid-template-columns: repeat(2, minmax(0, 1fr)); dt { grid-column: 1 / -1; } } }
+@media(max-width: 480px) { .panel { padding: 14px; } .comparison > div { grid-template-columns: minmax(0, 1fr); } .actions { flex-direction: column; } }

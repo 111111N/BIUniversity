@@ -11,12 +11,22 @@ export const getMoscowDateKey = (instant = new Date().toISOString()) => {
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
 export const isEducationDate = (value: unknown): value is string => typeof value === "string" && /^[12]\d{3}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value;
-export const normalizeEducationDetails = (details: EducationEventDetails, registeredAt: string): EducationEventDetails => {
+export type EducationEventField = keyof EducationEventDetails;
+export type EducationDetailsError = { field: EducationEventField; message: string };
+export const getEducationDetailsErrors = (details: EducationEventDetails, registeredAt: string): EducationDetailsError[] => {
   const today = getMoscowDateKey(registeredAt);
-  if (!details || !isEducationDate(details.effectiveDate) || details.effectiveDate > today) throw new Error("Дата действия должна быть корректной, за сегодня или прошедший день.");
-  if (typeof details.basis !== "string" || details.basis.trim().length < 3 || details.basis.trim().length > 500) throw new Error("Укажите основание события: от 3 до 500 символов.");
-  if (details.documentNumber !== undefined && (typeof details.documentNumber !== "string" || details.documentNumber.trim().length > 80)) throw new Error("Номер документа: не более 80 символов.");
-  if (details.documentDate !== undefined && details.documentDate !== "" && (!isEducationDate(details.documentDate) || details.documentDate > today)) throw new Error("Укажите корректную дату документа, не позднее сегодняшнего дня.");
+  const dateError: EducationDetailsError = { field: "effectiveDate", message: "Дата действия должна быть корректной, за сегодня или прошедший день." };
+  if (!details) return [dateError];
+  const errors: EducationDetailsError[] = [];
+  if (!isEducationDate(details.effectiveDate) || details.effectiveDate > today) errors.push(dateError);
+  if (typeof details.basis !== "string" || details.basis.trim().length < 3 || details.basis.trim().length > 500) errors.push({ field: "basis", message: "Укажите основание события: от 3 до 500 символов." });
+  if (details.documentNumber !== undefined && (typeof details.documentNumber !== "string" || details.documentNumber.trim().length > 80)) errors.push({ field: "documentNumber", message: "Номер документа: не более 80 символов." });
+  if (details.documentDate !== undefined && details.documentDate !== "" && (!isEducationDate(details.documentDate) || details.documentDate > today)) errors.push({ field: "documentDate", message: "Укажите корректную дату документа, не позднее сегодняшнего дня." });
+  return errors;
+};
+export const normalizeEducationDetails = (details: EducationEventDetails, registeredAt: string): EducationEventDetails => {
+  const errors = getEducationDetailsErrors(details, registeredAt);
+  if (errors.length) throw new Error(errors[0].message);
   return { effectiveDate: details.effectiveDate, basis: details.basis.trim(), ...(details.documentNumber?.trim() ? { documentNumber: details.documentNumber.trim() } : {}), ...(details.documentDate ? { documentDate: details.documentDate } : {}) };
 };
 export const sameEducationState = (a: EducationState, b: EducationState) => a.groupId === b.groupId && a.enrollment === b.enrollment;

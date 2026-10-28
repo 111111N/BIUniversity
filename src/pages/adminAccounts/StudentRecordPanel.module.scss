@@ -1,0 +1,10 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px 20px; min-width: 0; padding: 18px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; > button, .error button { @include admin.button; justify-self: start; } > button.primary { @include admin.primary; } }
+.number, .pending { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; }
+.number input, .pending strong { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 10px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-panel-muted; color: $color-text-light; font: inherit; }
+.number input { font-size: 16px; font-weight: 650; letter-spacing: .04em; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; } }
+.pending strong { font-weight: 500; color: $color-text-secondary; }
+.note { grid-column: 1 / -1; margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.7; }
+.error { @include admin.notice($color-error); grid-column: 1 / -1; display: grid; gap: 12px; padding: 14px; border-radius: 8px; min-width: 0; p { margin: 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } }
+@media(max-width: 600px) { .panel { grid-template-columns: minmax(0, 1fr); padding: 14px; > button, .error button { width: 100%; } } }

@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import type { AdministrationChecksResult, AdministrationIssue } from "../../domain/administrationChecks";
 import CheckResults from "./CheckResults";
+import { CHECKS_RETURN_PARAM, readCheckResultAnchor } from "../../domain/administrationChecksNavigation";
 
 const snapshot = (rows: AdministrationIssue[] = []): AdministrationChecksResult => ({ rows, total: rows.length, page: 1, pages: 1, checkedAt: "2026-10-27T09:00:00Z", counts: { action: rows.length, review: 0 }, kinds: { "empty-group": 0, "unassigned-subject": 0, "student-number": 0, "published-lesson": 0 } });
 const render = (result: AdministrationChecksResult | null, error = "", loading = false, filtered = false) => renderToStaticMarkup(<MemoryRouter><CheckResults snapshot={result} error={error} loading={loading} filtered={filtered} onPage={() => {}} /></MemoryRouter>);
@@ -37,5 +38,23 @@ describe("data check result safety and corrective navigation", () => {
       { id: "missing", kind: "published-lesson", level: "action", title: "Нет группы", detail: "Группа недоступна" },
     ]));
     expect(html).toContain('/admin/groups?group=archived'); expect(html).toContain('href="/admin/groups"'); expect(html).not.toContain('/admin/schedule');
+  });
+  it("preserves report context for primary and secondary corrective actions without changing the exact records", () => {
+    const result = snapshot([{ id: "lesson:one", kind: "published-lesson", level: "action", title: "Пара", detail: "Нет назначения", groupId: "group & one", weekStart: "2026-10-26", accountId: "teacher & one" }]);
+    result.page = 2; result.pages = 2; result.total = 21;
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={["/admin/checks?q=Иванов&kind=published-lesson&level=action&page=2"]}><CheckResults snapshot={result} error="" loading={false} filtered onPage={() => undefined} /></MemoryRouter>);
+    const targets = [...html.matchAll(/href="([^"]+)"/g)].map((entry) => new URL(entry[1].replaceAll("&amp;", "&"), "https://portal.invalid"));
+    expect(targets).toHaveLength(2);
+    expect(targets[0].searchParams.get("group")).toBe("group & one"); expect(targets[0].searchParams.get("date")).toBe("2026-10-26");
+    expect(targets[1].searchParams.get("account")).toBe("teacher & one");
+    for (const target of targets) {
+      const back = new URL(target.searchParams.get(CHECKS_RETURN_PARAM)!, "https://portal.invalid");
+      expect(back.pathname).toBe("/admin/checks"); expect(back.searchParams.get("q")).toBe("Иванов"); expect(back.searchParams.get("page")).toBe("2");
+      expect(readCheckResultAnchor(back.hash)).toBe("admin-check-lesson:one");
+    }
+  });
+  it("does not claim that an issue is fixed merely because it is absent from the returned page", () => {
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={["/admin/checks#admin-check-missing"]}><CheckResults snapshot={snapshot()} error="" loading={false} filtered onPage={() => undefined} /></MemoryRouter>);
+    expect(html).toContain("Ранее открытое замечание сейчас не показано на этой странице"); expect(html).not.toContain("Замечание исправлено");
   });
 });

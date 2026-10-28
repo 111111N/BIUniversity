@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { accountService, ACCOUNTS_STORAGE_KEY, createInitialAccountsDocument, readAccountsState } from "./accountStore";
 import { refreshAcademicCatalog } from "./academicCatalog";
 import { decodeAccountsDocument } from "../domain/accounts";
+import { getEducationDetailsErrors } from "../domain/studentEducationEvent";
 
 let values: Map<string, string>; let writes: number;
 beforeEach(() => { values = new Map(); writes = 0; vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { writes++; values.set(key, value); } }); vi.stubGlobal("window", new EventTarget()); vi.stubGlobal("navigator", {}); vi.spyOn(console, "error").mockImplementation(() => undefined); vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-26T10:00:00Z")); refreshAcademicCatalog(); });
@@ -11,6 +12,25 @@ const education = { effectiveDate: "2026-09-01", basis: "Приказ о зач�
 const admission = () => accountService.confirmAdmission({ ...actor, expectedRevision: 0, accountId: "anna-smirnova", accountRevision: 1, expectedGroupRevision: 0, education });
 
 describe("education aggregate adapter", () => {
+  it("uses the field errors for admission without writing until an explicit corrected command", async () => {
+    const state = createInitialAccountsDocument(); state.accounts[1].status = "blocked";
+    state.accounts[1].studentRecord = { number: "202630001", year: 2026, campus: 3, sequence: 1, issuedAt: "2026-09-01T10:00:00Z" };
+    state.studentNumberCounters = { "2026:3": 1 }; values.set(ACCOUNTS_STORAGE_KEY, JSON.stringify(state));
+    const original = values.get(ACCOUNTS_STORAGE_KEY);
+    const input = { ...education, effectiveDate: "2026-10-27", documentNumber: " 15-У ", documentDate: "2026-10-27" }; const entered = { ...input };
+    const errors = getEducationDetailsErrors(input, new Date().toISOString());
+    expect(errors.map((error) => error.field)).toEqual(["effectiveDate", "documentDate"]); expect(writes).toBe(0);
+    const command = { ...actor, expectedRevision: 0, accountId: "anna-smirnova", accountRevision: 1, expectedGroupRevision: 0, education: input };
+    await expect(accountService.confirmAdmission(command)).rejects.toThrow(errors[0].message);
+    const correctedDate = { ...input, effectiveDate: "2026-09-01" };
+    await expect(accountService.confirmAdmission({ ...command, education: correctedDate })).rejects.toThrow(getEducationDetailsErrors(correctedDate, new Date().toISOString())[0].message);
+    expect(writes).toBe(0); expect(values.get(ACCOUNTS_STORAGE_KEY)).toBe(original); expect(input).toEqual(entered);
+    await accountService.confirmAdmission({ ...command, education: { ...correctedDate, documentDate: "2026-08-30" } });
+    const saved = readAccountsState(); const student = saved.accounts.find((account) => account.id === command.accountId)!;
+    expect(writes).toBe(1); expect(student.status).toBe("blocked"); expect(student.studentRecord).toEqual(state.accounts[1].studentRecord);
+    expect(saved.educationEvents).toHaveLength(1); expect(saved.educationEvents[0]).toMatchObject({ kind: "admitted", basis: input.basis, documentNumber: "15-У", documentDate: "2026-08-30" });
+    expect(JSON.parse(values.get(ACCOUNTS_STORAGE_KEY)!).studentNumberCounters).toEqual({ "2026:3": 1 });
+  });
   it("commits a thousand dated events with their audit and receipt in one aggregate write", async () => {
     const state = createInitialAccountsDocument(); const base = state.accounts[1];
     state.accounts = [...state.accounts.filter((account) => account.role !== "student"), ...Array.from({ length: 1000 }, (_, index) => ({ ...base, id: `dated-${index}`, login: `dated.${index}` }))];

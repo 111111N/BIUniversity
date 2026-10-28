@@ -25,6 +25,8 @@
     background: $color-accent-background-hover;
     color: $color-text-light;
   }
+  &[data-invalid="true"] { border-color: $color-danger-text; }
+  &:disabled { background: $color-panel-muted; border-color: $color-border; color: $color-text-secondary; cursor: not-allowed; .triggerValue { color: $color-text-secondary; } }
 }
 
 .triggerValue {

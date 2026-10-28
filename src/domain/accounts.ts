@@ -42,23 +42,45 @@ export const countRegisteredStudentsByGroup = (accounts: CurrentUser[]) => {
   return counts;
 };
 
+export type AccountIdentityField = "name" | "login" | "email";
+export interface AccountIdentityProblem { field: AccountIdentityField; message: string }
+const accountNameProblem = (name: string) => name.length < 2 || name.length > 120 ? "Укажите имя длиной от 2 до 120 символов." : "";
+const accountLoginProblem = (login: string, accounts: readonly PortalAccount[], excludedId?: string) => {
+  if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(login)) return "Логин: 3–64 латинских символа, цифры, точка, дефис или подчёркивание.";
+  return accounts.some((account) => account.id !== excludedId && normalizeAccountLogin(account.login) === login) ? "Этот логин уже занят." : "";
+};
+const accountEmailProblem = (email: string | undefined) => email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? "Укажите корректную электронную почту." : "";
+
+export const getAccountIdentityErrors = (draft: Pick<AccountDraft, AccountIdentityField>, accounts: readonly PortalAccount[], excludedId?: string): AccountIdentityProblem[] => {
+  const problems = [
+    { field: "name" as const, message: accountNameProblem(draft.name.trim().replace(/\s+/g, " ")) },
+    { field: "login" as const, message: accountLoginProblem(normalizeAccountLogin(draft.login), accounts, excludedId) },
+    { field: "email" as const, message: accountEmailProblem(draft.email?.trim().toLowerCase() || undefined) },
+  ];
+  return problems.filter((problem) => problem.message);
+};
+export const getMissingStudentGroupProblem = (draft: Pick<AccountDraft, "role" | "memberships" | "studentGroupId">) => draft.role === "student" && !draft.memberships.length && !draft.studentGroupId ? "Выберите учебную группу студента." : "";
+
 export const validateAccountDraft = (draft: AccountDraft, accounts: PortalAccount[], excludedId?: string) => {
   const name = draft.name.trim().replace(/\s+/g, " ");
   const login = normalizeAccountLogin(draft.login);
-  if (name.length < 2 || name.length > 120) throw new Error("Укажите имя длиной от 2 до 120 символов.");
-  if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(login)) throw new Error("Логин: 3–64 латинских символа, цифры, точка, дефис или подчёркивание.");
-  if (accounts.some((account) => account.id !== excludedId && normalizeAccountLogin(account.login) === login)) throw new Error("Этот логин уже занят.");
+  const nameProblem = accountNameProblem(name);
+  if (nameProblem) throw new Error(nameProblem);
+  const loginProblem = accountLoginProblem(login, accounts, excludedId);
+  if (loginProblem) throw new Error(loginProblem);
   if (!isUserRole(draft.role)) throw new Error("Выберите корректный тип учётной записи.");
   if (draft.enrollmentStatus !== undefined && !isStudentEnrollmentStatus(draft.enrollmentStatus)) throw new Error("Выберите корректное состояние обучения.");
   if (!Array.isArray(draft.memberships) || draft.memberships.some((entry) => !entry.subjectId || !Array.isArray(entry.groupIds) || !entry.groupIds.length || entry.groupIds.some((id) => !id))) throw new Error("Проверьте учебные назначения.");
   if (draft.studentGroupId !== undefined && (typeof draft.studentGroupId !== "string" || !draft.studentGroupId.trim() || draft.studentGroupId !== draft.studentGroupId.trim())) throw new Error("Проверьте учебную группу студента.");
-  if (draft.role === "student" && !draft.memberships.length && !draft.studentGroupId) throw new Error("Выберите учебную группу студента.");
+  const missingGroupProblem = getMissingStudentGroupProblem(draft);
+  if (missingGroupProblem) throw new Error(missingGroupProblem);
   const studentGroups = new Set([...draft.memberships.flatMap((entry) => entry.groupIds), ...(draft.studentGroupId ? [draft.studentGroupId] : [])]);
   if (draft.role === "student" && studentGroups.size !== 1) throw new Error("Студент должен состоять в одной учебной группе.");
   if (draft.role === "configurator" && draft.memberships.length) throw new Error("Настройщику не требуются учебные назначения.");
   if (new Set(draft.memberships.map((entry) => entry.subjectId)).size !== draft.memberships.length || draft.memberships.some((entry) => new Set(entry.groupIds).size !== entry.groupIds.length)) throw new Error("Учебные назначения не должны повторяться.");
   const email = draft.email?.trim().toLowerCase() || undefined;
-  if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new Error("Укажите корректную электронную почту.");
+  const emailProblem = accountEmailProblem(email);
+  if (emailProblem) throw new Error(emailProblem);
   return { name, login, role: draft.role, email, studentGroupId: draft.role === "student" ? draft.studentGroupId : undefined, ...(draft.enrollmentStatus !== undefined ? { enrollmentStatus: draft.enrollmentStatus } : {}), memberships: draft.memberships.map((entry) => ({ subjectId: entry.subjectId, groupIds: [...entry.groupIds] })), scheduleName: draft.scheduleName?.trim() || undefined };
 };
 

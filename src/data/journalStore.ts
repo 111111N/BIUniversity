@@ -5,12 +5,14 @@ import { createSubjectLessons } from "./lessons";
 import { DEMO_GROUPS, DEMO_SUBJECTS, SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
 import { JournalDraftConflictError } from "../domain/journalDraft";
 import { createJournalDemoAdditions } from "./demo/journals";
-import { readAccountsState, subscribeAccounts } from "./accountStore";
+import { readAccountsState } from "./accountStore";
 import { includeRegisteredJournalStudents } from "../domain/journalAccounts";
 import { withCreatedSubjectMemberships } from "../domain/studentMemberships";
-import type { UserRole } from "../domain/accounts";
+import type { PortalAccount, UserRole } from "../domain/accounts";
+import type { AcademicLesson } from "../domain/academic";
 import { readManagedScheduleState } from "./managedScheduleStore";
-import useManagedScheduleUpdate from "../hooks/useManagedScheduleUpdate";
+import useManagedScheduleSnapshot from "../hooks/useManagedScheduleSnapshot";
+import useAccountsSnapshot from "../hooks/useAccountsSnapshot";
 
 export const CURRENT_STUDENT_ID = "anna-smirnova";
 export const JOURNAL_PERIOD = "Сентябрь — ноябрь 2026 · демонстрационные занятия";
@@ -38,10 +40,10 @@ export type JournalChange = {
   nextValue: string | number | null;
 };
 
-export const createDemoJournal = (subject: string, group: string): Student[] => {
+export const createDemoJournal = (subject: string, group: string, sourceLessons?: AcademicLesson[]): Student[] => {
   if (!DEMO_GROUPS.some((entry) => entry.id === group)) return [];
   const legacyPrefix = `${subject}:${group}:2026-fall:`;
-  const lessons = createSubjectLessons(subject, group).filter((lesson) => lesson.id.startsWith(legacyPrefix) && /^[0-9]+$/.test(lesson.id.slice(legacyPrefix.length)));
+  const lessons = (sourceLessons ?? createSubjectLessons(subject, group)).filter((lesson) => lesson.id.startsWith(legacyPrefix) && /^[0-9]+$/.test(lesson.id.slice(legacyPrefix.length)));
   const seed = [...`${subject}:${group}`].reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
   const names = [
     "Анна Смирнова", "Иван Иванов", "Мария Петрова", "Алексей Сидоров", "Елена Козлова",
@@ -124,12 +126,10 @@ const collectChanges = (previous: Student[], next: Student[], actor: JournalActo
   return changes;
 };
 
-const migrateLessonKeys = (students: Student[], subject: string, group: string) => {
-  const lessons = createSubjectLessons(subject, group);
+const migrateLessonKeys = (students: Student[], subject: string, group: string, lessons = createSubjectLessons(subject, group), accounts: PortalAccount[] = typeof localStorage === "undefined" ? [] : readAccountsState().accounts) => {
   const lessonByDate = new Map(lessons.filter((lesson) => !lesson.id.startsWith("managed:")).map((lesson) => [lesson.date, lesson.id]));
   const migrateRecord = <T,>(record: Record<string, T>) => Object.fromEntries(Object.entries(record).map(([key, value]) => [lessonByDate.get(key) ?? key, value]));
   // The original demo student's membership remains owned by the existing saved roster.
-  const accounts = typeof localStorage === "undefined" ? [] : readAccountsState().accounts;
   const createdSubjectIds = new Set(SUBJECTS.filter((item) => !DEMO_SUBJECTS.some((seed) => seed.id === item.id)).map((item) => item.id));
   const allSubjectIds = new Set(SUBJECTS.map((item) => item.id));
   const preservedIds = new Set(accounts.filter((account) => account.id === CURRENT_STUDENT_ID && !account.studentGroupId).map((account) => account.id));
@@ -139,6 +139,11 @@ const migrateLessonKeys = (students: Student[], subject: string, group: string) 
     lessons.forEach((lesson) => { if (lesson.type === "lecture") grades[lesson.id] = null; });
     return { ...student, attendance: migrateRecord(student.attendance), grades };
   });
+};
+
+export const getJournalViewSnapshot = (raw: string | null, subject: string, group: string, source: { lessons: AcademicLesson[]; accounts: PortalAccount[] }): Student[] | null => {
+  const students = raw === null ? createDemoJournal(subject, group, source.lessons) : decodeJournal(raw);
+  return students ? migrateLessonKeys(students, subject, group, source.lessons, source.accounts) : null;
 };
 
 export const getJournalSnapshot = (subject: string, group: string) => {
@@ -198,8 +203,10 @@ export const appendJournalDemoRecords = (subject: string, group: string, actor: 
 };
 
 export const useJournal = (subject: string, group: string, actor: JournalActor = { id: "demo-user", name: "Демо-пользователь" }) => {
-  const scheduleRevision = useManagedScheduleUpdate();
-  const scheduleError = readManagedScheduleState().error;
+  const scheduleSource = useManagedScheduleSnapshot();
+  const scheduleError = scheduleSource.error;
+  const accountSource = useAccountsSnapshot();
+  const lessons = useMemo(() => createSubjectLessons(subject, group, Date.now(), scheduleSource.snapshot.journal), [subject, group, scheduleSource.snapshot.journal]);
   const key = journalKey(subject, group);
   const auditKey = historyKey(subject, group);
   const [error, setError] = useState("");
@@ -207,11 +214,7 @@ export const useJournal = (subject: string, group: string, actor: JournalActor =
     try { return localStorage.getItem(key); } catch { return "unavailable"; }
   }, [key]);
   const raw = useSyncExternalStore(subscribeJournalStore, getSnapshot);
-  const accountRevision = useSyncExternalStore(subscribeAccounts, () => readAccountsState().revision);
-  const decoded = useMemo(() => {
-    const students = raw === null ? createDemoJournal(subject, group) : decodeJournal(raw);
-    return students ? migrateLessonKeys(students, subject, group) : null;
-  }, [raw, subject, group, accountRevision, scheduleRevision]);
+  const decoded = useMemo(() => getJournalViewSnapshot(raw, subject, group, { lessons, accounts: accountSource.accounts }), [raw, subject, group, lessons, accountSource.accounts]);
   const students = decoded ?? [];
   const historyState = readHistoryState(auditKey);
   const history = historyState.changes;

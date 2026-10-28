@@ -1,0 +1,5 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+.form { display: grid; gap: 18px; min-width: 0; }
+.summaryError { @include admin.notice($color-error); margin: 0; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.65; }
+.sourceNotice { @include admin.notice($color-warning); display: grid; gap: 12px; padding: 14px; border-radius: 10px; p { margin: 0; color: $color-text-light; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } > button { @include admin.button; justify-self: start; } }

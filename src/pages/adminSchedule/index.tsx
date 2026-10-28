@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useRole } from "../../components/RoleContext";
+import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
+import { inheritChecksReturn } from "../../domain/administrationChecksNavigation";
 import WeekPicker from "../../components/WeekPicker";
 import Dropdown from "../../components/Dropdown";
 import { ACADEMIC_GROUPS, getAcademicSubjectDefinition, getSubjectGroups, SUBJECTS } from "../../data/academicCatalog";
@@ -157,7 +159,7 @@ const AdminSchedulePage = () => {
       returnParams.delete(SCHEDULE_RETURN_PARAM);
       returnParams.set("group", groupId); returnParams.set("date", weekStart);
       const destination = handoff.begin({ weekStart, groupId, returnSearch: returnParams.toString(), historySearch: params.toString(), lessons, saved, revision, editor, editorBase, removedLesson }, crypto.randomUUID());
-      navigate(destination);
+      navigate(inheritChecksReturn(destination, "/admin/schedule", params.toString()));
     } catch (failure) {
       console.error("Не удалось сохранить ввод пары перед переходом к назначениям:", failure);
       handoff.clear();
@@ -165,9 +167,10 @@ const AdminSchedulePage = () => {
     }
   };
 
-  if (!validScope) return <div className={`pageContainer ${styles.page}`}><section className={styles.empty} aria-label="Выбор области расписания"><h2>Проверьте группу и неделю</h2>{catalogError ? <p role="alert">{catalogError} Введённые правки остаются в памяти открытого редактора.</p> : <div role="alert">{selection.errors.group && <p>{selection.errors.group}</p>}{selection.errors.date && <p>{selection.errors.date}</p>}</div>}<p>Редактор откроется после выбора корректной области. Другая группа или дата не подставляются вместо ошибочной ссылки.</p>{catalogError ? <button type="button" onClick={refreshCatalog}>Повторить чтение каталога</button> : <><Dropdown searchable label="Учебная группа" value={groupId} placeholder="" options={ACADEMIC_GROUPS.map((group) => ({ value: group.id, label: `${group.name}${isGroupActive(group) ? "" : " · В архиве"}` }))} onChange={(value) => updateScope("group", value)} />{selection.errors.date && <button type="button" onClick={() => updateScope("date", getManagedWeekKey(toLocalDateKey(new Date())))}>Выбрать текущую неделю</button>}</>}</section></div>;
+  if (!validScope) return <div className={`pageContainer ${styles.page}`}><AdministrationReturnNotice /><section className={styles.empty} aria-label="Выбор области расписания"><h2>Проверьте группу и неделю</h2>{catalogError ? <p role="alert">{catalogError} Введённые правки остаются в памяти открытого редактора.</p> : <div role="alert">{selection.errors.group && <p>{selection.errors.group}</p>}{selection.errors.date && <p>{selection.errors.date}</p>}</div>}<p>Редактор откроется после выбора корректной области. Другая группа или дата не подставляются вместо ошибочной ссылки.</p>{catalogError ? <button type="button" onClick={refreshCatalog}>Повторить чтение каталога</button> : <><Dropdown searchable label="Учебная группа" value={groupId} placeholder="" options={ACADEMIC_GROUPS.map((group) => ({ value: group.id, label: `${group.name}${isGroupActive(group) ? "" : " · В архиве"}` }))} onChange={(value) => updateScope("group", value)} />{selection.errors.date && <button type="button" onClick={() => updateScope("date", getManagedWeekKey(toLocalDateKey(new Date())))}>Выбрать текущую неделю</button>}</>}</section></div>;
 
   return <div className={`pageContainer ${styles.page} ${editor ? styles.editing : ""}`}>
+    <AdministrationReturnNotice />
     <div className={styles.navigation}><WeekPicker value={parseCalendarDate(weekStart)} onWeekChange={(date) => updateScope("date", toLocalDateKey(date))} /></div>
     <section className={styles.weekPanel} aria-label="Рабочая неделя">
       <div className={styles.scopeRow}>

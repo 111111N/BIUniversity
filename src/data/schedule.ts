@@ -3,14 +3,15 @@ import { getWeekStart, toLocalDateKey } from "../domain/schedule";
 import { getAcademicGroupByName, getAcademicGroupNameAt, getAcademicSubjectDefinition } from "./academicCatalog";
 import { createDemoWeekSchedule, DEMO_STUDENT_GROUP, DEMO_TEACHER } from "./demoSchedule";
 import { readManagedScheduleState } from "./managedScheduleStore";
+import type { ManagedScheduleRead } from "./managedScheduleStore";
 import type { AcademicMembership } from "./academicCatalog";
 
 export { DEMO_STUDENT_GROUP, DEMO_TEACHER } from "./demoSchedule";
 
 // Повторяемая демонстрационная неделя до подключения API вуза.
-export const getDemoWeekSchedule = (date: Date): WeeklyScheduleData => {
+export const getDemoWeekSchedule = (date: Date, source: ManagedScheduleRead = readManagedScheduleState()): WeeklyScheduleData => {
   const weekStart = toLocalDateKey(getWeekStart(date));
-  const { snapshot, error } = readManagedScheduleState();
+  const { snapshot, error } = source;
   if (error) return [];
   const managed = snapshot.published.filter((week) => week.weekStart === weekStart);
   const replacedGroups = new Set(managed.map((week) => week.groupId));

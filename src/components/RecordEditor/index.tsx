@@ -28,12 +28,13 @@ interface ActionsProps {
   label: string;
   disabled: boolean;
   busy: boolean;
+  busyLabel?: string;
   hint?: string;
   onCancel(): void;
 }
-export function RecordEditorActions({ label, disabled, busy, hint, onCancel }: ActionsProps) {
+export function RecordEditorActions({ label, disabled, busy, busyLabel = "Сохраняем…", hint, onCancel }: ActionsProps) {
   return <footer className={styles.actions}>
     {hint && <p>{hint}</p>}
-    <div><button type="button" disabled={busy} onClick={onCancel}>Отмена</button><button className={styles.primary} type="submit" disabled={disabled}>{busy ? "Сохраняем…" : label}</button></div>
+    <div><button type="button" disabled={busy} onClick={onCancel}>Отмена</button><button className={styles.primary} type="submit" disabled={disabled}>{busy ? busyLabel : label}</button></div>
   </footer>;
 }

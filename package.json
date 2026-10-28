@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "check:build": "node scripts/check-build.mjs",
+    "lint": "eslint src build scripts vite.config.ts eslint.config.js eslint.config.test.mjs",
+    "lint:fix": "eslint src build scripts vite.config.ts eslint.config.js eslint.config.test.mjs --fix",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.app.json --noEmit --incremental false",

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ACCOUNTS_STORAGE_KEY, accountService, createInitialAccountsDocument, readAccountsState, registerTeachingAssignmentGuard } from "./accountStore";
 import { ACADEMIC_GROUPS, ACADEMIC_SUBJECTS, DEMO_SUBJECTS, SUBJECTS, SUBJECT_GROUP_OFFERINGS, getAcademicSubjectDefinition, getSubjectGroups, refreshAcademicCatalog } from "./academicCatalog";
 import { SUBJECT_CATALOG_STORAGE_KEY, readSubjectCatalogState, subjectCatalogService, subscribeSubjectCatalog } from "./subjectCatalogStore";
+import { getSubjectDraftErrors } from "../domain/subjectCatalog";
 
 const context = { actorId: "configurator-demo", actorRevision: 1, expectedRevision: 0 };
 const draft = { name: "Иностранный язык", shortName: "ИЯ" };
@@ -17,6 +18,22 @@ beforeEach(() => {
 afterEach(() => { values.clear(); refreshAcademicCatalog(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("local subject catalog service", () => {
+  it("rechecks an unfinished creation after another catalog write and only saves the corrected draft", async () => {
+    const pending = { name: "  Иностранный   язык  ", shortName: " ия " }; const original = { ...pending };
+    expect(getSubjectDraftErrors(pending, readSubjectCatalogState().subjects)).toEqual([]); expect(values.size).toBe(0);
+    await subjectCatalogService.create({ ...context, draft });
+    const saved = values.get(SUBJECT_CATALOG_STORAGE_KEY);
+    await expect(subjectCatalogService.create({ ...context, draft: pending })).rejects.toThrow("изменились");
+    const current = readSubjectCatalogState(); const errors = getSubjectDraftErrors(pending, current.subjects);
+    expect(errors.map((error) => error.field)).toEqual(["name", "shortName"]);
+    await expect(subjectCatalogService.create({ ...context, expectedRevision: current.revision, draft: pending })).rejects.toThrow(errors[0].message);
+    expect(pending).toEqual(original); expect(values.get(SUBJECT_CATALOG_STORAGE_KEY)).toBe(saved); expect(values.has(ACCOUNTS_STORAGE_KEY)).toBe(false);
+    const created = await subjectCatalogService.create({ ...context, expectedRevision: current.revision, draft: { name: "  Второй   язык  ", shortName: " ВЯ " } });
+    expect(created).toMatchObject({ name: "Второй язык", shortName: "ВЯ" });
+    expect(readSubjectCatalogState().revision).toBe(2);
+    const document = JSON.parse(values.get(SUBJECT_CATALOG_STORAGE_KEY)!);
+    expect(document.history).toHaveLength(2); expect(document.subjects).toHaveLength(DEMO_SUBJECTS.length + 2);
+  });
   it("does not persist seeds and preserves damaged bytes, excluding unavailable custom subjects from read models", async () => {
     expect(readSubjectCatalogState()).toMatchObject({ revision: 0, subjects: DEMO_SUBJECTS, error: "" });
     expect(values.size).toBe(0);

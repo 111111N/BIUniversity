@@ -13,6 +13,8 @@ interface Props {
 const NotificationsPopup = ({ id, anchorRef, onClose }: Props) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [mobile, setMobile] = useState(() => window.innerWidth <= 760);
   const [position, setPosition] = useState({ left: 12, top: 12, maxHeight: window.innerHeight - 24 });
 
@@ -34,15 +36,17 @@ const NotificationsPopup = ({ id, anchorRef, onClose }: Props) => {
 
   useLayoutEffect(() => {
     if (mobile) return;
+    const panel = panelRef.current;
+    const anchor = anchorRef.current;
     closeRef.current?.focus();
     const outside = (event: PointerEvent) => {
-      if (!panelRef.current?.contains(event.target as Node) && !anchorRef.current?.contains(event.target as Node)) onClose();
+      if (!panel?.contains(event.target as Node) && !anchor?.contains(event.target as Node)) onCloseRef.current();
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); onClose(); }
+      if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); onCloseRef.current(); }
     };
     const focusOutside = (event: FocusEvent) => {
-      if (!panelRef.current?.contains(event.target as Node) && !anchorRef.current?.contains(event.target as Node)) onClose();
+      if (!panel?.contains(event.target as Node) && !anchor?.contains(event.target as Node)) onCloseRef.current();
     };
     document.addEventListener("pointerdown", outside);
     document.addEventListener("keydown", escape);
@@ -51,9 +55,9 @@ const NotificationsPopup = ({ id, anchorRef, onClose }: Props) => {
       document.removeEventListener("pointerdown", outside);
       document.removeEventListener("keydown", escape);
       document.removeEventListener("focusin", focusOutside);
-      if (panelRef.current?.contains(document.activeElement) || document.activeElement === document.body) anchorRef.current?.focus({ preventScroll: true });
+      if (anchor?.isConnected && (panel?.contains(document.activeElement) || document.activeElement === document.body)) anchor.focus({ preventScroll: true });
     };
-  }, [mobile, anchorRef, onClose]);
+  }, [mobile, anchorRef]);
 
   const content = <><header className={styles.heading}><h2 id={`${id}-title`}>Уведомления</h2><button ref={closeRef} type="button" onClick={onClose} aria-label="Закрыть уведомления"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg></button></header><Notifications compact onNavigate={onClose} /></>;
   if (mobile) return <Modal labelledBy={`${id}-title`} onClose={onClose} initialFocusRef={closeRef} className={styles.mobilePanel}><div id={id} className={styles.mobileBody}>{content}</div></Modal>;

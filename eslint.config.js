@@ -9,7 +9,7 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    files: ["**/*.{ts,tsx,js,jsx}"],
+    files: ["**/*.{ts,tsx,js,jsx,mjs}"],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -41,7 +41,17 @@ export default defineConfig([
       "react/prop-types": "off",
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
-      "no-console": "warn",
+      "no-console": ["warn", { allow: ["error", "warn"] }],
+      // Named scroll regions and embedded viewers need keyboard focus without pretending to be buttons.
+      "jsx-a11y/no-noninteractive-tabindex": ["error", {
+        ...jsxA11y.configs.recommended.rules["jsx-a11y/no-noninteractive-tabindex"][1],
+        roles: ["tabpanel", "region"],
+        tags: ["object"],
+      }],
     },
+  },
+  {
+    files: ["build/**/*.ts", "scripts/**/*.mjs", "vite.config.ts", "eslint.config.js", "eslint.config.test.mjs"],
+    languageOptions: { globals: globals.node },
   },
 ]);

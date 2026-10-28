@@ -14,6 +14,16 @@ const props: ComponentProps<typeof EducationOperations> = {
 const render = (patch: Partial<typeof props> = {}) => renderToStaticMarkup(<MemoryRouter><EducationOperations {...props} {...patch} /></MemoryRouter>);
 
 describe("education operation workspace", () => {
+  it("keeps alternative actions in a collapsed disclosure with a document-retention explanation", () => {
+    const html = render({ operation: "graduate", draft: prepareEducationOperation(account, account, "graduate") });
+    expect(html).toMatch(/<details[^>]*><summary>Сменить действие/);
+    expect(html).toContain("Дата, основание и документ останутся в форме");
+    expect(html).toContain("Оформить отчисление</button>"); expect(html).toContain("Перевести в другую группу</button>");
+  });
+  it("keeps the archived selected transfer group visible for correction", () => {
+    const html = render({ operation: "transfer", draft: { ...account, studentGroupId: "g2" }, groups: [{ id: "g1", name: "112-МКо" }, { id: "g2", name: "113-МКо", status: "archived" }], problem: "Выберите действующую учебную группу для перевода." });
+    expect(html).toContain("113-МКо · В архиве"); expect(html).toContain("Выберите действующую учебную группу");
+  });
   it("opens with current education and explicit actions, without an overwhelming editable form", () => {
     const html = render();
     expect(html).toContain("Текущая группа"); expect(html).toContain("112-МКо");

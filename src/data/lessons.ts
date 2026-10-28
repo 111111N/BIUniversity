@@ -1,6 +1,7 @@
 import type { AcademicLesson, LessonType } from "../domain/academic";
 import { readManagedScheduleState } from "./managedScheduleStore";
 import { DEMO_GROUPS, DEMO_SUBJECTS } from "./academicCatalog";
+import type { ManagedScheduleSnapshot } from "../domain/scheduleManagement";
 
 const initialLessonTemplates: Array<{ date: string; startsAt: string; type: LessonType; topic: string; room: string }> = [
   { date: "2026-09-04", startsAt: "10:10", type: "lecture", topic: "Введение в дисциплину", room: "305" },
@@ -18,7 +19,7 @@ const weeklySlots: Array<{ day: number; startsAt: string; type: LessonType; room
 ];
 
 /** Stable catalog: old lesson IDs remain valid; new dates are empty until an explicit demo import. */
-export const createSubjectLessons = (subjectId: string, groupId: string): AcademicLesson[] => {
+export const createSubjectLessons = (subjectId: string, groupId: string, now = Date.now(), journal: ManagedScheduleSnapshot["journal"] = readManagedScheduleState().snapshot.journal): AcademicLesson[] => {
   const legacy = DEMO_SUBJECTS.some((subject) => subject.id === subjectId) && DEMO_GROUPS.some((group) => group.id === groupId);
   const initial: AcademicLesson[] = (legacy ? initialLessonTemplates : []).map((lesson, index) => ({
     ...lesson,
@@ -28,7 +29,6 @@ export const createSubjectLessons = (subjectId: string, groupId: string): Academ
     semesterId: "2026-fall",
     state: "completed",
   }));
-  const now = Date.now();
   const additional: AcademicLesson[] = (legacy ? weeklyTopics : []).flatMap((topic, week) => weeklySlots.map((slot): AcademicLesson => {
     const day = new Date(2026, 8, 14 + week * 7 + slot.day, 12);
     const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
@@ -42,7 +42,7 @@ export const createSubjectLessons = (subjectId: string, groupId: string): Academ
   }));
   // Legacy demo lessons and their marks keep their identities. Managed lessons have
   // their own namespace; removals remain visible as cancelled journal entries.
-  const managed: AcademicLesson[] = readManagedScheduleState().snapshot.journal
+  const managed: AcademicLesson[] = journal
     .filter((lesson) => lesson.subjectId === subjectId && lesson.groupId === groupId)
     .map((lesson) => ({
       id: lesson.id, subjectId, groupId, semesterId: `${lesson.date.slice(0, 4)}-${Number(lesson.date.slice(5, 7)) >= 8 ? "fall" : "spring"}`,

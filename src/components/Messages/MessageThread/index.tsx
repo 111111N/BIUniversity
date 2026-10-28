@@ -152,6 +152,7 @@ const MessageThread = ({ messages, contactName, positions, positionKey, searchOp
     return () => observer.disconnect();
   }, []);
 
+  // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Delegates shortcuts from nested controls; this layout wrapper is not a control.
   return <div className={styles.frame} onKeyDown={(event) => {
     if (event.defaultPrevented || !event.currentTarget.contains(event.target as Node)) return;
     if (event.key === "Escape" && selectionMode) { event.preventDefault(); clearSelection(); }
@@ -179,6 +180,7 @@ const MessageThread = ({ messages, contactName, positions, positionKey, searchOp
           const joined = !newDay && previous.incoming === message.incoming && (!group || !message.incoming) && Boolean(previous.sentAt && message.sentAt && Math.abs(Date.parse(message.sentAt) - Date.parse(previous.sentAt)) < 5 * 60_000);
           const original = message.replyTo === undefined ? undefined : messages.find((item) => item.id === message.replyTo);
           const summary = message.text || message.attachments?.[0]?.name || "Сообщение";
+          // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- Pointer shortcuts duplicate the native action-menu button and selection checkbox below.
           return <Fragment key={message.id}>{newDay && <div className={styles.dayDivider}><span>{messageDayLabel(message)}</span></div>}<div ref={(node) => { if (node) messageRefs.current.set(message.id, node); else messageRefs.current.delete(message.id); }} tabIndex={-1} className={`${message.incoming ? styles.incoming : styles.outgoing} ${joined ? styles.joined : ""} ${selectedIds.includes(message.id) ? styles.selectedMessage : ""} ${searchOpen && searchId === message.id ? styles.searchResult : ""} ${locatedId === message.id ? styles.located : ""}`} onClick={(event) => {
             if ((event.target as HTMLElement).closest("button, a, input, label") || (!selectionMode && !event.shiftKey && window.getSelection()?.toString())) return;
             if (selectionMode || event.ctrlKey || event.metaKey || event.shiftKey) { setSelectionMode(true); toggleSelection(message.id, event.shiftKey); }

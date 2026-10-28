@@ -16,7 +16,7 @@ export default function MessageActionsMenu({ x, y, actions, onClose, returnFocus
     if (!menu) return;
     const box = menu.getBoundingClientRect();
     setPosition({ left: Math.max(8, Math.min(x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(y, window.innerHeight - box.height - 8)) });
-    menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
+    (menu.querySelector<HTMLButtonElement>("button:not(:disabled)") ?? menu).focus({ preventScroll: true });
     const outside = (event: PointerEvent) => { if (!menu.contains(event.target as Node)) closeRef.current(); };
     const close = () => closeRef.current();
     document.addEventListener("pointerdown", outside, true);
@@ -25,7 +25,7 @@ export default function MessageActionsMenu({ x, y, actions, onClose, returnFocus
     return () => { document.removeEventListener("pointerdown", outside, true); window.removeEventListener("resize", close); window.removeEventListener("scroll", close, true); };
   }, [x, y]);
 
-  return createPortal(<div ref={ref} className={styles.menu} style={position} role="menu" aria-label="Действия с сообщением" onKeyDown={(event) => {
+  return createPortal(<div ref={ref} className={styles.menu} style={position} role="menu" tabIndex={-1} aria-label="Действия с сообщением" onKeyDown={(event) => {
     if (event.key === "Escape" || event.key === "Tab") { event.stopPropagation(); if (event.key === "Escape") event.preventDefault(); onClose(); returnFocus(); return; }
     if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
