@@ -1,0 +1,1 @@
+const n="bi-university-demo-planner",r="teacher-elena-volkova",o=e=>e===r?n:`${n}:${encodeURIComponent(e)}`,a=e=>{if(e===n)return r;if(e.startsWith(`${n}:`))try{const t=decodeURIComponent(e.slice(n.length+1));if(t.trim()&&o(t)===e)return t}catch{return}};export{r as L,n as P,o as a,a as g};
