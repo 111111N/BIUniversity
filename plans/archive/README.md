@@ -8,6 +8,7 @@
 
 После очистки добавлены отдельные отчёты:
 
+- [Рабочие планы перед повторным сокращением, 30 октября](2026-10-30-plans-before-cleanup.txt). Содержит прежнюю подробную матрицу ещё не пройденной ручной приёмки.
 - [Обновление незавершённого зачисления, 28 октября](2026-10-28-admission-refresh-review.txt).
 - [Параметры массового учебного действия, 28 октября](2026-10-28-student-operation-parameters-review.txt).
 - [Ревью длинных списков, импорта и сравнений, 28 октября](2026-10-28-administration-long-states-review.txt).
@@ -18,3 +19,60 @@
 - [Проверка и предпросмотр резервной копии, 28 октября](2026-10-28-local-backup-inspection-review.txt).
 - [Внутренние документы и ссылки архива, 28 октября](2026-10-28-local-backup-documents-review.txt).
 - [Публикация накопленных изменений, 28 октября](2026-10-28-release-review.txt).
+- [Области нажатия общего WeekPicker, 29 октября](2026-10-29-week-picker-targets-review.txt).
+- [Недоступная отправка и сохранность ответа, 29 октября](2026-10-29-assignment-admission-ui-review.txt).
+- [Недоступный ответ и возврат к списку работ, 29 октября](2026-10-29-submission-navigation-review.txt).
+- [Проверка преподавателя при ошибке чтения, 29 октября](2026-10-29-teacher-review-availability-review.txt).
+- [Редактор и предпросмотр при недоступном сохранении, 29 октября](2026-10-29-assignment-editor-availability-review.txt).
+- [Принадлежность сообщений заданию и работе, 29 октября](2026-10-29-assignment-feedback-context-review.txt).
+- [Возврат к списку заданий и цель фокуса, 29 октября](2026-10-29-assignment-list-return-review.txt).
+- [Контекст списка работ при переходах, 29 октября](2026-10-29-submission-review-context-review.txt).
+- [Общая очередь и пустой поиск работ, 29 октября](2026-10-29-submission-search-summary-review.txt).
+- [Вложения и результаты прошлых попыток, 29 октября](2026-10-29-assignment-history-files-review.txt).
+- [Сохранённые вложения в формах и предпросмотре, 29 октября](2026-10-29-retained-attachment-ui-review.txt).
+- [Компактная история длинных ответов, 29 октября](2026-10-29-long-answer-history-review.txt).
+- [Фокус и прокрутка при обновлении работы, 29 октября](2026-10-29-submission-focus-review.txt).
+- [Читаемость и клавиатура расписания на главных, 29 октября](2026-10-29-home-schedule-readability-review.txt).
+- [Состояния ошибок данных главных: H05, 29 октября](2026-10-29-home-data-errors-review.txt).
+- [Фокус после повторной загрузки главных, 29 октября](2026-10-29-home-retry-focus-review.txt).
+- [Подписи поиска и длинные карточки главных, 29 октября](2026-10-29-home-search-readability-review.txt).
+- [Точные сроки и понятный статус опоздания на главной, 29 октября](2026-10-29-home-deadline-readability-review.txt).
+- [Полный отчёт проверки резервной копии, 29 октября](2026-10-29-backup-complete-report-review.txt).
+- [Проверка заданий и попыток ответов в архиве, 29 октября](2026-10-29-backup-learning-documents-review.txt).
+- [Согласованность карточки ответа и попыток в архиве, 29 октября](2026-10-29-backup-submission-consistency-review.txt).
+- [Схемы журналов и истории в архиве, 29 октября](2026-10-29-backup-journal-documents-review.txt).
+- [Проверка списков планировщика и владельцев в архиве, 29 октября](2026-10-29-backup-planner-documents-review.txt).
+- [Схемы, получатели и адреса уведомлений в архиве, 29 октября](2026-10-29-backup-notification-documents-review.txt).
+- [Настройки браузера в архиве, 29 октября](2026-10-29-backup-settings-documents-review.txt).
+- [Структура переписки и владельцы ящиков в архиве, 29 октября](2026-10-29-backup-messaging-documents-review.txt).
+- [Сверка копий личных сообщений в архиве, 29 октября](2026-10-29-backup-message-delivery-review.txt).
+- [Сверка исходных сообщений ответов в архиве, 29 октября](2026-10-29-backup-message-replies-review.txt).
+- [Цепочки ответов и расхождения дат в архиве, 29 октября](2026-10-29-backup-reply-chains-review.txt).
+- [Записи и принадлежность вложений переписки в архиве, 29 октября](2026-10-29-backup-message-attachments-review.txt).
+- [Содержимое копий вложений личных сообщений в архиве, 29 октября](2026-10-29-backup-message-file-content-review.txt).
+- [Значения событий истории журнала в архиве, 30 октября](2026-10-30-backup-journal-history-values-review.txt).
+- [Соседние изменения ячеек в истории журнала, 30 октября](2026-10-30-backup-journal-history-chain-review.txt).
+- [Последние изменения и сохранённые ячейки журнала, 30 октября](2026-10-30-backup-journal-history-snapshot-review.txt).
+- [Учебная область ключей журналов в архиве, 30 октября](2026-10-30-backup-journal-area-review.txt).
+- [Связи журналов с сохранёнными занятиями, 30 октября](2026-10-30-backup-journal-lessons-review.txt).
+- [Учётки студентов и авторов журнала в архиве, 30 октября](2026-10-30-backup-journal-people-review.txt).
+- [Сохранённый контекст автора события журнала, 30 октября](2026-10-30-backup-journal-actor-context-review.txt).
+- [Вложения заданий и всех попыток ответа в архиве, 30 октября](2026-10-30-backup-learning-files-review.txt).
+- [Материалы, метаданные и области владельцев в архиве, 30 октября](2026-10-30-backup-materials-review.txt).
+- [Состояния архивированных групп и сохранённые зависимости, 30 октября](2026-10-30-backup-group-states-review.txt).
+- [Пересечения опубликованных пар и черновиков в архиве, 30 октября](2026-10-30-backup-schedule-conflicts-review.txt).
+- [Цели уведомлений: задания, ответы и учебная область, 30 октября](2026-10-30-backup-notification-targets-review.txt).
+- [Коллизии дополнительных уникальных индексов файлов, 30 октября](2026-10-30-backup-file-indexes-review.txt).
+- [Составные ключи, массивы и multiEntry файловых индексов, 30 октября](2026-10-30-backup-complex-indexes-review.txt).
+- [Буквальные Unicode-пути файловых индексов, 30 октября](2026-10-30-backup-unicode-indexes-review.txt).
+- [Компактная сводка и поиск по замечаниям архива, 30 октября](2026-10-30-backup-findings-ui-review.txt).
+- [Фильтры и поиск различий архива с браузером, 30 октября](2026-10-30-backup-differences-ui-review.txt).
+- [Unicode-escape в путях файловых индексов, 30 октября](2026-10-30-backup-escaped-indexes-review.txt).
+- [Учебные области ссылок уведомлений, 30 октября](2026-10-30-backup-notification-areas-review.txt).
+- [Раскрытие коротких и чужих пар расписания, 30 октября](2026-10-30-schedule-public-preview-review.txt).
+- [Фокус при переходе к дню и открытии пары, 30 октября](2026-10-30-schedule-day-navigation-review.txt).
+- [Недоступные задания в окне пары, 30 октября](2026-10-30-schedule-assignment-read-review.txt).
+- [Открытая пара при обновлении расписания, 30 октября](2026-10-30-schedule-selection-refresh-review.txt).
+- [Недоступное расписание и пустой поиск, 30 октября](2026-10-30-schedule-unavailable-review.txt).
+- [Фокус при открытии поиска расписания, 30 октября](2026-10-30-schedule-search-focus-review.txt).
+- [Проверка выпуска портала, 30 октября](2026-10-30-portal-release-review.txt).
