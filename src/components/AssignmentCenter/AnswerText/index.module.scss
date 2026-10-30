@@ -1,0 +1,9 @@
+@use "../../../styles/variables" as *;
+@use "../ui";
+
+.answer { display: grid; min-width: 0; gap: 8px; }
+.text { margin: 0; color: $color-text-light; font-size: 16px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.collapsed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 8; overflow: hidden; }
+.toggle { @include ui.control; display: inline-flex; box-sizing: border-box; justify-self: start; align-items: center; gap: 7px; min-width: 0; min-height: 44px; max-width: 100%; padding: 7px 10px; font: inherit; font-size: 13px; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.toggle:hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-accent-hover; }
+.toggle:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }

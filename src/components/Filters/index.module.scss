@@ -18,7 +18,7 @@
 :root[data-theme="light"] .inputRow input { background: $color-dark-primary; }
 .inputRow input::placeholder { color: $color-text-secondary; opacity: 1; }
 .searchButton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; min-height: 48px; padding: 10px 18px; border: 1px solid $color-accent-primary; border-radius: 8px; background: $gradient-color-logo; color: $color-on-accent; font-size: 14px; font-weight: 600; }
-.searchButton:hover { background: $color-accent-hover; border-color: $color-accent-hover; color: $color-on-accent; }
+.searchButton:hover:not(:disabled) { background: $color-accent-hover; border-color: $color-accent-hover; color: $color-on-accent; }
 .results { display: grid; gap: 10px; }
 .resultsHeading { display: flex; align-items: center; gap: 8px; color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
 .resultsCount { @include switches.counter; }

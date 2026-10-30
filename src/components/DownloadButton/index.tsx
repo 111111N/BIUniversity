@@ -7,16 +7,17 @@ interface Props {
   onDownload(): void | Promise<void>;
   className?: string;
   compact?: boolean;
+  errorMessage?: string;
 }
 
-const DownloadButton = ({ name, onDownload, className = "", compact = false }: Props) => {
+const DownloadButton = ({ name, onDownload, className = "", compact = false, errorMessage = "Файл недоступен. Попробуйте ещё раз или попросите преподавателя загрузить его повторно." }: Props) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const download = async () => {
     setBusy(true);
     setError("");
     try { await onDownload(); }
-    catch { setError("Файл недоступен. Попробуйте ещё раз или попросите преподавателя загрузить его повторно."); }
+    catch { setError(errorMessage); }
     finally { setBusy(false); }
   };
   return <div className={styles.wrapper}>

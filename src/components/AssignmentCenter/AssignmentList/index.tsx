@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import type { Assignment, Submission } from "../../../data/assignmentStore";
 import { getCurrentSubmissionAttempt, getSubmissionStatus } from "../../../domain/assignments";
 import { getStudentAssignmentLabel, indexAssignmentSubmissions, matchesAssignmentView, selectAssignmentList, studentAssignmentViews, teacherAssignmentViews, type AssignmentSort, type AssignmentView } from "../../../domain/assignmentViews";
@@ -16,6 +17,7 @@ interface Props {
   sort: AssignmentSort;
   now: Date;
   showContext: boolean;
+  listRef?: Ref<HTMLElement>;
   onView(view: AssignmentView): void;
   onQuery(query: string): void;
   onSort(sort: AssignmentSort): void;
@@ -27,17 +29,17 @@ const dateFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "sh
 const dateLabel = (value: string) => Number.isFinite(Date.parse(value)) ? dateFormat.format(new Date(value)) : "Срок не указан";
 const studentAction = (answer?: Submission) => getSubmissionStatus(answer) === "graded" ? "Посмотреть результат" : getSubmissionStatus(answer) === "submitted" ? "Посмотреть ответ" : getSubmissionStatus(answer) === "revision" ? "Исправить работу" : "Открыть задание";
 
-export default function AssignmentList({ assignments, indexes, role, view, query, sort, now, showContext, onView, onQuery, onSort, onOpen, onCreate }: Props) {
+export default function AssignmentList({ assignments, indexes, role, view, query, sort, now, showContext, listRef, onView, onQuery, onSort, onOpen, onCreate }: Props) {
   const views = role === "teacher" ? teacherAssignmentViews : studentAssignmentViews;
   const items = selectAssignmentList(assignments, indexes, view, query, sort, now);
-  return <section className={styles.list} aria-label={role === "teacher" ? "Задания группы" : "Мои задания"}>
+  return <section ref={listRef} tabIndex={-1} className={styles.list} aria-label={role === "teacher" ? "Задания группы" : "Мои задания"}>
     <div className={styles.controlPanel}>
     <div className={styles.toolbar}>
     <div className={styles.views} role="group" aria-label="Представления заданий">{views.map((option) => {
       const count = assignments.filter((item) => matchesAssignmentView(item, option.value, indexes.pending.get(item.id) ?? 0, indexes.mine.get(item.id), now)).length;
       return <button type="button" aria-pressed={view === option.value} className={view === option.value ? styles.active : ""} key={option.value} onClick={() => onView(option.value)}>{option.label}<span>{count}</span></button>;
     })}</div>
-      {role === "teacher" && <button type="button" className={styles.primary} onClick={onCreate}><AssignmentIcon name="plus" />Создать задание</button>}
+      {role === "teacher" && <button type="button" data-assignment-create className={styles.primary} onClick={onCreate}><AssignmentIcon name="plus" />Создать задание</button>}
     </div>
     {assignments.length > 0 && <div className={styles.tools}><div className={styles.searchField}><AssignmentIcon name="search" className={styles.searchIcon} /><SearchField label="Поиск заданий" value={query} onChange={onQuery} placeholder="Название или текст задания" /></div><Dropdown className={styles.sortField} label="Порядок заданий" value={sort} onChange={(value) => onSort(value as AssignmentSort)} options={[{ value: "deadline", label: "По сроку сдачи" }, { value: "newest", label: "Сначала новые" }, { value: "title", label: "По названию" }]} /></div>}
     </div>

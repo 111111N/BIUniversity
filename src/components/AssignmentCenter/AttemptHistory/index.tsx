@@ -1,9 +1,10 @@
-import { useId, useState } from "react";
-import { downloadAssignmentFile, SubmissionAttempt } from "../../../data/assignmentStore";
+import { useState } from "react";
+import type { SubmissionAttempt } from "../../../data/assignmentStore";
 import styles from "./index.module.scss";
-import DownloadButton from "../../DownloadButton";
+import AssignmentFile from "../AssignmentFile";
 import ArrowCircle from "../../ArrowCircle";
 import SubmissionResult from "../SubmissionResult";
+import AnswerText from "../AnswerText";
 
 const STATUS_LABELS: Record<SubmissionAttempt["status"], string> = {
   submitted: "На проверке",
@@ -18,16 +19,6 @@ interface Props {
   label?: string;
 }
 
-const AnswerText = ({ text }: { text: string }) => {
-  const [expanded, setExpanded] = useState(false);
-  const textId = useId();
-  const long = text.length > 900 || text.split("\n").length > 10;
-  return <div className={styles.answer}>
-    <p id={textId} className={`${styles.answerText} ${long && !expanded ? styles.collapsed : ""}`}>{text || "Ответ без текста"}</p>
-    {long && <button type="button" className={styles.expandAnswer} aria-expanded={expanded} aria-controls={textId} onClick={() => setExpanded(!expanded)}>{expanded ? "Свернуть ответ" : "Читать ответ полностью"}<ArrowCircle direction={expanded ? "up" : "down"} /></button>}
-  </div>;
-};
-
 const AttemptHistory = ({ attempts, hideCurrentResult = false, hideCurrentAnswer = false, label = "Мой ответ" }: Props) => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const current = attempts[attempts.length - 1];
@@ -40,9 +31,9 @@ const AttemptHistory = ({ attempts, hideCurrentResult = false, hideCurrentAnswer
       <span className={styles.attemptNumber}>{latest ? `Попытка ${attempt.number}` : STATUS_LABELS[attempt.status]}</span>
     </header>
     <div className={styles.attemptMeta}><time dateTime={attempt.sentAt}>{new Date(attempt.sentAt).toLocaleString("ru-RU", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time>{attempt.submittedLate && <span className={styles.late}>После дедлайна</span>}</div>
-    <AnswerText text={attempt.text} />
-    {attempt.attachmentId && attempt.attachmentName && <div className={styles.attachment}><span>Вложение к ответу</span><DownloadButton name={attempt.attachmentName} className={styles.attemptFile} onDownload={() => downloadAssignmentFile(attempt.attachmentId!, attempt.attachmentName!)} /></div>}
-    {attempt.status !== "submitted" && (!latest || !hideCurrentResult) && <SubmissionResult attempt={attempt} />}
+    <AnswerText text={attempt.text} className={styles.answer} textClassName={styles.answerText} />
+    {attempt.attachmentId && <div className={styles.attachment}><span>Вложение к ответу</span><AssignmentFile attachment={attempt} kind="answer" className={styles.attemptFile} /></div>}
+    {attempt.status !== "submitted" && (!latest || !hideCurrentResult) && <SubmissionResult attempt={attempt} historical={!latest} />}
   </article>;
 
   return <div className={styles.history}>

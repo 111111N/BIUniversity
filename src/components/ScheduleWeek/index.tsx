@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import type { ScheduleItem, WeeklyScheduleData } from "../../types/sched";
-import { getAssignments, subscribeAssignmentStore } from "../../data/assignmentStore";
+import { subscribeAssignmentStore } from "../../data/assignmentStore";
+import { readAssignmentListState } from "../../data/assignmentData";
 import { getScheduleRange, getWeekDays, layoutScheduleDay, timeToMinutes } from "../../domain/scheduleLayout";
 import { toLocalDateKey } from "../../domain/schedule";
 import { formatCount } from "../../domain/formatCount";
@@ -10,26 +11,35 @@ import { canOpenScheduleLesson } from "../../domain/scheduleAccess";
 import ScheduleCard from "../ScheduleCard";
 import ArrowCircle from "../ArrowCircle";
 import LessonDetails from "./LessonDetails";
+import LessonOverview from "./LessonDetails/Overview";
+import DashboardReadError from "../DashboardReadError";
 import WeekList from "./WeekList";
 import useDragScroll from "../../hooks/useDragScroll";
 import useViewPreference from "../../hooks/useViewPreference";
+import { currentScheduleSelection, scheduleWorkspaceKey, type ScheduleLessonSelection } from "./selection";
 import styles from "./index.module.scss";
 
 const PIXELS_PER_MINUTE = 1.1;
 const TIME_COLUMN_WIDTH = 56;
 const MIN_DAY_WIDTH = 200;
 const VIEWS = ["grid", "list"] as const;
-interface Props { schedule: WeeklyScheduleData; selectedWeek: Date; context?: ReactNode; toolbarActions?: ReactNode; searchPanel?: ReactNode }
-const WeeklySchedule = ({ schedule, selectedWeek, context, toolbarActions, searchPanel }: Props) => {
+interface Props { schedule: WeeklyScheduleData; selectedWeek: Date; onRetry(): void; readError?: string; filtered?: boolean; selectionContext?: string; context?: ReactNode; toolbarActions?: ReactNode; searchPanel?: ReactNode }
+const WeeklySchedule = ({ schedule, selectedWeek, onRetry, readError = "", filtered = false, selectionContext = "", context, toolbarActions, searchPanel }: Props) => {
   const { role, currentUser } = useRole();
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(900);
   const [view, setView] = useViewPreference(`bi-university-schedule-view:${currentUser.role}:${currentUser.id}`, VIEWS, "list");
-  const [opened, setOpened] = useState<ScheduleItem | null>(null);
-  const [assignments, setAssignments] = useState(getAssignments);
+  const [selection, setSelection] = useState<ScheduleLessonSelection | null>(null);
+  const [assignmentState, setAssignmentState] = useState(readAssignmentListState);
+  const refreshAssignments = useCallback(() => setAssignmentState(readAssignmentListState()), []);
   const [scrollState, setScrollState] = useState({ left: false, right: true });
-  useEffect(() => subscribeAssignmentStore(() => setAssignments(getAssignments())), []);
+  useEffect(() => {
+    const unsubscribe = subscribeAssignmentStore(refreshAssignments);
+    refreshAssignments();
+    return unsubscribe;
+  }, [refreshAssignments]);
   useEffect(() => {
     if (!rootRef.current) return;
     const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
@@ -37,10 +47,11 @@ const WeeklySchedule = ({ schedule, selectedWeek, context, toolbarActions, searc
     return () => observer.disconnect();
   }, []);
   const days = getWeekDays(selectedWeek);
-  const weekKey = days[0].key;
-  const dragScroll = useDragScroll(scrollRef, { axis: "both", enabled: view === "grid", resetKey: weekKey });
+  const scopeKey = scheduleWorkspaceKey(selectedWeek, currentUser, selectionContext);
+  const dragScroll = useDragScroll(scrollRef, { axis: "both", enabled: view === "grid", resetKey: scopeKey });
   const weekKeys = new Set(days.map((entry) => entry.key));
-  const lessons = schedule.filter((item) => weekKeys.has(item.date)).sort((a, b) => a.date.localeCompare(b.date) || timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  const lessons = readError ? [] : schedule.filter((item) => weekKeys.has(item.date)).sort((a, b) => a.date.localeCompare(b.date) || timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  const opened = currentScheduleSelection(lessons, selection, scopeKey);
   const activeView = view;
   const dayWidth = Math.max(MIN_DAY_WIDTH, (width - TIME_COLUMN_WIDTH) / Math.max(1, Math.min(days.length, Math.floor((width - TIME_COLUMN_WIDTH) / MIN_DAY_WIDTH))));
   const range = getScheduleRange(lessons);
@@ -48,20 +59,21 @@ const WeeklySchedule = ({ schedule, selectedWeek, context, toolbarActions, searc
   const times = Array.from({ length: Math.ceil((range.end - range.start) / 60) + 1 }, (_, index) => range.start + index * 60);
   const today = toLocalDateKey(new Date());
   const canOpen = (item: ScheduleItem) => canOpenScheduleLesson(item, currentUser);
-  const openLesson = (item: ScheduleItem) => { if (canOpen(item)) setOpened(item); };
-  const lessonAssignments = (item: ScheduleItem) => canOpen(item) ? assignments.filter((assignment) => (assignment.status === "published" || (role === "teacher" && assignment.status === "draft")) && assignment.subject === item.subject && assignment.group === item.group && assignment.lessonDate.startsWith(item.date) && isAcademicMembershipMatch(currentUser.memberships, assignment.subject, assignment.group)) : [];
+  const openLesson = (item: ScheduleItem) => setSelection({ id: item.id, scopeKey });
+  const lessonAssignments = (item: ScheduleItem) => canOpen(item) ? assignmentState.assignments.filter((assignment) => (assignment.status === "published" || (role === "teacher" && assignment.status === "draft")) && assignment.subject === item.subject && assignment.group === item.group && assignment.lessonDate.startsWith(item.date) && isAcademicMembershipMatch(currentUser.memberships, assignment.subject, assignment.group)) : [];
   const syncScroll = () => {
     const element = scrollRef.current;
     if (element) setScrollState({ left: element.scrollLeft > 1, right: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 });
   };
-  useEffect(() => { setOpened(null); scrollRef.current?.scrollTo({ top: 0, left: 0 }); }, [weekKey, schedule, currentUser.id]);
+  useEffect(() => { if (selection && !opened) setSelection((current) => current === selection ? null : current); }, [selection, opened]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, left: 0 }); }, [scopeKey]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const element = scrollRef.current;
       if (element) setScrollState({ left: element.scrollLeft > 1, right: element.scrollLeft + element.clientWidth < element.scrollWidth - 1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [width, activeView, lessons.length]);
+  }, [width, activeView, lessons.length, scopeKey]);
   const move = (direction: number) => scrollRef.current?.scrollBy({ left: dayWidth * direction, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   const onGridKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
@@ -69,11 +81,13 @@ const WeeklySchedule = ({ schedule, selectedWeek, context, toolbarActions, searc
   };
 
   return <div className={styles.container} ref={rootRef}>
-    <div className={styles.toolbar}><div className={styles.context}>{context}<div className={styles.summary}><span>{formatCount(lessons.length, ["занятие", "занятия", "занятий"])}</span><span>{formatCount(new Set(lessons.map((item) => item.date)).size, ["учебный день", "учебных дня", "учебных дней"])}</span></div></div><div className={styles.actions}>{toolbarActions}<div className={styles.views} role="group" aria-label="Вид расписания"><button type="button" aria-pressed={activeView === "grid"} onClick={() => setView("grid")}>Сетка</button><button type="button" aria-pressed={activeView === "list"} onClick={() => setView("list")}>Список</button></div><button type="button" className={styles.print} onClick={() => window.print()}>Печать / PDF</button></div></div>
+    <div className={styles.toolbar}><div className={styles.context}>{context}{!readError && <div className={styles.summary}><span>{formatCount(lessons.length, ["занятие", "занятия", "занятий"])}</span><span>{formatCount(new Set(lessons.map((item) => item.date)).size, ["учебный день", "учебных дня", "учебных дней"])}</span></div>}</div><div className={styles.actions}>{toolbarActions}<div className={styles.views} role="group" aria-label="Вид расписания"><button type="button" aria-pressed={activeView === "grid"} onClick={() => setView("grid")}>Сетка</button><button type="button" aria-pressed={activeView === "list"} onClick={() => setView("list")}>Список</button></div><button type="button" className={styles.print} disabled={Boolean(readError)} onClick={() => window.print()}>Печать / PDF</button></div></div>
     {searchPanel}
-    {!lessons.length ? <div className={styles.empty} role="status"><strong>На этой неделе занятий нет</strong><span>Выберите другую неделю или измените запрос поиска.</span></div> : <>
+    <section ref={contentRef} tabIndex={-1} className={styles.content} aria-label="Расписание выбранной недели">
+    {readError ? <DashboardReadError messages={["Не удалось загрузить расписание."]} onRetry={onRetry} recoveryTarget={contentRef} />
+      : !lessons.length ? <div className={styles.empty} role="status"><strong>{filtered ? "По этому запросу занятий нет" : "На этой неделе занятий нет"}</strong><span>Выберите другую неделю или измените запрос поиска.</span></div> : <>
       <div className={`${styles.gridView} ${activeView !== "grid" ? styles.inactive : ""}`}>
-        <div className={styles.gridTools}><span>Листайте сетку или перемещайте её мышью</span><div><button type="button" disabled={!scrollState.left} onClick={() => move(-1)} aria-label="Предыдущие дни"><ArrowCircle direction="left" /></button><button type="button" disabled={!scrollState.right} onClick={() => move(1)} aria-label="Следующие дни"><ArrowCircle /></button></div></div>
+        <div className={styles.gridTools}><span>Нажмите на пару, чтобы открыть сведения. Сетку можно листать или перемещать мышью.</span><div><button type="button" disabled={!scrollState.left} onClick={() => move(-1)} aria-label="Предыдущие дни"><ArrowCircle direction="left" /></button><button type="button" disabled={!scrollState.right} onClick={() => move(1)} aria-label="Следующие дни"><ArrowCircle /></button></div></div>
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- A focusable scroll region supports keyboard scrolling; lessons remain native buttons. */}
         <div className={`${styles.scroller} ${dragScroll.dragging ? styles.dragging : ""}`} ref={scrollRef} role="region" tabIndex={0} aria-label="Недельное расписание. Стрелки влево и вправо переключают дни. Зажмите мышь для перемещения сетки" onScroll={syncScroll} onKeyDown={onGridKey} onPointerDown={dragScroll.onPointerDown} onClickCapture={dragScroll.onClickCapture} onDragStartCapture={dragScroll.onDragStartCapture}>
           <div className={styles.calendar} style={{ "--day-count": days.length, "--time-width": `${TIME_COLUMN_WIDTH}px`, "--day-width": `${dayWidth}px`, "--hour-height": `${60 * PIXELS_PER_MINUTE}px` } as CSSProperties}>
@@ -87,7 +101,10 @@ const WeeklySchedule = ({ schedule, selectedWeek, context, toolbarActions, searc
         <WeekList lessons={lessons} selectedWeek={selectedWeek} canOpen={canOpen} onOpen={openLesson} />
       </div>
     </>}
-    {opened && canOpen(opened) && lessons.some((item) => item.id === opened.id) && <LessonDetails item={opened} assignments={lessonAssignments(opened)} onClose={() => setOpened(null)} />}
+    </section>
+    {opened && (canOpen(opened)
+      ? <LessonDetails item={opened} assignments={lessonAssignments(opened)} assignmentError={assignmentState.error} onRetryAssignments={refreshAssignments} onClose={() => setSelection(null)} />
+      : <LessonOverview item={opened} readOnly onClose={() => setSelection(null)} />)}
   </div>;
 };
 

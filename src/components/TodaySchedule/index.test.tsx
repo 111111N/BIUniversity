@@ -11,6 +11,7 @@ describe("home schedule on a free day", () => {
     session.role = role;
     const html = renderToStaticMarkup(<MemoryRouter><TodaySchedule date={new Date(2026, 9, 25)} /></MemoryRouter>);
     expect(html).toContain("Следующий учебный день");
+    expect(html).toMatch(/<h2[^>]*tabindex="-1"[^>]*>/);
     expect(html).toContain("/schedule?date=2026-10-26");
     expect(html).not.toContain("data-lesson-id");
     expect(html).not.toContain("занятий нет");

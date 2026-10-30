@@ -74,7 +74,10 @@ export const formatDashboardDeadline = (deadline: string, now: Date) => {
   if (days === -1) return "Просрочено со вчера";
   if (days === 0) return `Сегодня, ${time}`;
   if (days === 1) return `Завтра, ${time}`;
-  return value.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  return value.toLocaleString("ru-RU", {
+    day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+    ...(value.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
 };
 
 export const formatDashboardValue = (value: number | null, digits = 0) =>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useId, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import WeeklySchedule from "../../components/ScheduleWeek";
 import WeekPicker from "../../components/WeekPicker";
@@ -12,6 +12,7 @@ import { parseCalendarDate } from "../../domain/calendar";
 import { toLocalDateKey } from "../../domain/schedule";
 import styles from "./index.module.scss";
 import useManagedScheduleSnapshot from "../../hooks/useManagedScheduleSnapshot";
+import { focusScheduleSearch } from "./searchFocus";
 
 const CONTEXT_LABELS = { group: "Группа", auditory: "Аудитория", teacher: "Преподаватель" };
 
@@ -30,22 +31,27 @@ export default function ScheduleIndex() {
   const searchId = useId();
   const searchRef = useRef<HTMLElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
-  const closeSearch = () => { setSearchOpen(false); searchToggleRef.current?.focus(); };
-  const toggleSearch = () => {
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    searchToggleRef.current?.focus({ preventScroll: true });
+  }, []);
+  const toggleSearch = (event: MouseEvent<HTMLButtonElement>) => {
+    event.currentTarget.focus({ preventScroll: true });
     setSearchOpen((open) => !open);
-    if (!searchOpen) requestAnimationFrame(() => searchRef.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus());
   };
+  useLayoutEffect(() => {
+    if (searchOpen) focusScheduleSearch(searchToggleRef.current, searchRef.current);
+  }, [searchOpen]);
   useEffect(() => {
     if (!searchOpen) return;
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented || !searchRef.current?.contains(event.target as Node)) return;
       event.preventDefault();
-      setSearchOpen(false);
-      searchToggleRef.current?.focus();
+      closeSearch();
     };
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
-  }, [searchOpen]);
+  }, [searchOpen, closeSearch]);
 
   const searchSchedule = (result: FilterResult) => {
     setSearchParams((current) => { const next = new URLSearchParams(current); next.set("type", result.type); next.set("query", result.title); return next; });
@@ -58,12 +64,11 @@ export default function ScheduleIndex() {
   }, [sourceSchedule, filterType, filterQuery, currentUser]);
 
   return <div className={`pageContainer ${styles.page}`}>
-    {scheduleError && <p className={styles.error} role="alert">{scheduleError}</p>}
     <WeekPicker value={selectedWeek} onWeekChange={(week) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set("date", toLocalDateKey(week)); return next; })} />
-    <WeeklySchedule schedule={scheduleForWeek} selectedWeek={selectedWeek}
+    <WeeklySchedule schedule={scheduleForWeek} selectedWeek={selectedWeek} readError={scheduleError} onRetry={scheduleSource.refresh} filtered={Boolean(selectedSchedule)} selectionContext={JSON.stringify(selectedSchedule ? [selectedSchedule.type, selectedSchedule.title] : ["personal"])}
       context={<div className={styles.context}><span>{selectedSchedule ? `${CONTEXT_LABELS[selectedSchedule.type]} · ${selectedSchedule.title}` : "Моё расписание"}</span>{selectedSchedule && <button type="button" onClick={() => setSearchParams((current) => { const next = new URLSearchParams(current); next.delete("type"); next.delete("query"); return next; })}>Моё расписание</button>}</div>}
       toolbarActions={<button type="button" ref={searchToggleRef} className={styles.searchToggle} aria-label="Поиск расписания" aria-expanded={searchOpen} aria-controls={searchId} onClick={toggleSearch}><SearchIcon /><span>Поиск</span><ChevronIcon size={14} direction={searchOpen ? "up" : "down"} /></button>}
-      searchPanel={<section id={searchId} ref={searchRef} hidden={!searchOpen} className={styles.searchPanel} aria-label="Поиск другого расписания"><Filters schedule={sourceSchedule} selected={selectedSchedule} onSearch={searchSchedule} onClose={closeSearch} /></section>}
+      searchPanel={<section id={searchId} ref={searchRef} hidden={!searchOpen} className={styles.searchPanel} aria-label="Поиск другого расписания"><Filters schedule={sourceSchedule} selected={selectedSchedule} unavailable={Boolean(scheduleError)} onSearch={searchSchedule} onClose={closeSearch} /></section>}
     />
   </div>;
 }

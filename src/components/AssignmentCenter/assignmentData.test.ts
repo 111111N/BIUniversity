@@ -24,6 +24,18 @@ describe("assignment screen read failures", () => {
     expect(readAssignmentState()).toEqual({ assignments: [], submissions: [], error: "" });
   });
 
+  it("reads each assignment source once instead of re-reading through a silent fallback", () => {
+    const calls = new Map<string, number>();
+    vi.stubGlobal("localStorage", { getItem: (key: string) => {
+      const count = (calls.get(key) ?? 0) + 1; calls.set(key, count);
+      if (count > 1) throw new Error("Second read failed");
+      return "[]";
+    } });
+    expect(readAssignmentData()).toEqual({ assignments: [], submissions: [] });
+    expect(calls.get("bi-university-demo-assignments")).toBe(1);
+    expect(calls.get("bi-university-demo-submissions")).toBe(1);
+  });
+
   it.each([
     null, "broken", {}, [null], [{}], [{ ...attempt, text: { damaged: true } }],
     [{ ...attempt, id: "" }], [{ ...attempt, number: 0 }], [{ ...attempt, number: 1.5 }],

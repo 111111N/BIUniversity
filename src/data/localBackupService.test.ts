@@ -18,6 +18,13 @@ beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => undefined))
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("administrative backup orchestration", () => {
+  it("explicitly excludes temporary drafts without reading sessionStorage", async () => {
+    const forbidden = vi.fn(() => { throw new Error("Temporary drafts must not be read for the backup"); });
+    vi.stubGlobal("sessionStorage", { getItem: forbidden, key: forbidden, get length() { forbidden(); return 0; } });
+    const result = await setup().service.exportAdministrative(command);
+    const archive = JSON.parse(await result.blob.text()) as AdministrativeBackup;
+    expect(archive.exclusions).toContain("sessionStorage: временные черновики"); expect(forbidden).not.toHaveBeenCalled();
+  });
   it("keeps raw corrupt JSON byte-for-byte, original keys, ownership and complete binary content", async () => {
     const state = setup();
     state.readDatabase.mockImplementation(async (name) => name === BACKUP_DATABASES[0].name ? {

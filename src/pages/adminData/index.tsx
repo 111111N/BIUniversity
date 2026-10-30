@@ -6,6 +6,7 @@ import { assertAdministrativeBackupAccess, localBackupService, type BackupReceip
 import BackupPanel from "./BackupPanel";
 import InspectionPanel from "./InspectionPanel";
 import { backupInspectionService, type BackupInspection } from "../../data/localBackupInspectionService";
+import { prepareBackupInspectionReport } from "../../data/localBackupInspectionReport";
 import Tabs from "../../components/Tabs";
 import styles from "./index.module.scss";
 
@@ -18,9 +19,12 @@ export default function AdminDataPage() {
   const [view, setView] = useState("export");
   const [file, setFile] = useState<File | null>(null);
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
+  const [reportMessage, setReportMessage] = useState("");
+  const [reportError, setReportError] = useState("");
   const operation = useRef<AbortController | null>(null);
   const actor = accounts.find((account) => account.id === currentUser.id);
   const unavailable = Boolean(accountError) || !actor || actor.role !== "configurator" || !isAccountActive(actor);
+  const currentInspection = !unavailable && inspection?.actor.id === actor?.id && inspection?.actor.revision === actor?.revision ? inspection : null;
   useEffect(() => () => { operation.current?.abort(); operation.current = null; }, []);
 
   const exportData = async () => {
@@ -49,7 +53,7 @@ export default function AdminDataPage() {
   const inspect = async () => {
     if (operation.current || unavailable || !actor || !file) return;
     const controller = new AbortController(); operation.current = controller;
-    setBusy(true); setError(""); setInspection(null); setProgress("Проверяем доступ…");
+    setBusy(true); setError(""); setInspection(null); setReportMessage(""); setReportError(""); setProgress("Проверяем доступ…");
     try {
       const next = await backupInspectionService.inspect({ actorId: actor.id, actorRevision: actor.revision, file, signal: controller.signal,
         onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); },
@@ -61,9 +65,21 @@ export default function AdminDataPage() {
       setError(reason instanceof Error ? reason.message : "Не удалось проверить файл. Исходные данные не изменены.");
     } finally { if (operation.current === controller) { operation.current = null; setBusy(false); setProgress(""); } }
   };
+  const downloadReport = () => {
+    if (operation.current || unavailable || !actor || !currentInspection) return;
+    setReportError(""); setReportMessage("");
+    try {
+      const report = prepareBackupInspectionReport({ actorId: actor.id, actorRevision: actor.revision, inspection: currentInspection });
+      downloadBlob(report.blob, report.filename);
+      setReportMessage("Отчёт передан браузеру для скачивания. Проверьте папку загрузок.");
+    } catch (reason) {
+      console.error("Не удалось скачать отчёт проверки резервной копии:", reason);
+      setReportError(reason instanceof Error ? reason.message : "Не удалось скачать отчёт. Повторите попытку.");
+    }
+  };
   return <div className={`pageContainer ${styles.page}`}>
     <Tabs ariaLabel="Действия с резервной копией" value={view} items={[{ value: "export", label: "Скачать" }, { value: "inspect", label: "Проверить файл" }]} onChange={(next) => { if (next === view) return; cancel(); setView(next); }} />
     <div hidden={view !== "export"} role="tabpanel" aria-label="Скачать резервную копию"><BackupPanel busy={busy} progress={progress} error={error} result={result} unavailable={unavailable} onExport={() => void exportData()} onCancel={cancel} /></div>
-    <div hidden={view !== "inspect"} role="tabpanel" aria-label="Проверить файл"><InspectionPanel file={file} busy={busy} progress={progress} error={error} result={inspection} unavailable={unavailable} onFile={(next) => { setFile(next); setInspection(null); setError(""); }} onInspect={() => void inspect()} onCancel={cancel} /></div>
+    <div hidden={view !== "inspect"} role="tabpanel" aria-label="Проверить файл"><InspectionPanel file={file} busy={busy} progress={progress} error={error} result={currentInspection} unavailable={unavailable} reportMessage={reportMessage} reportError={reportError} onReport={downloadReport} onFile={(next) => { setFile(next); setInspection(null); setError(""); setReportMessage(""); setReportError(""); }} onInspect={() => void inspect()} onCancel={cancel} /></div>
   </div>;
 }

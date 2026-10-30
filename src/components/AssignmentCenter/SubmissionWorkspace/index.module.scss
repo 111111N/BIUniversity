@@ -17,6 +17,11 @@
 .sidebar { @include ui.panel; display: grid; gap: 16px; min-width: 0; padding: 16px; }
 .search, .order { display: grid; gap: 8px; }
 .search label, .order label { color: $color-text-secondary; font-size: 13px; }
+.searchRow { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
+.searchRow input { flex: 1; }
+.searchRow button, .showAll { @include ui.control; flex-shrink: 0; min-height: 44px; padding: 8px 10px; font: inherit; font-size: 13px; }
+.searchRow button:not(:disabled):hover, .showAll:not(:disabled):hover { border-color: $color-accent-primary; }
+.searchResult { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .search input, .order select { box-sizing: border-box; min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; @include ui.control; font: inherit; font-size: 14px; }
 .order select { font-size: 13px; }
 .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding-bottom: 14px; border-bottom: 1px solid $color-border; }
@@ -51,12 +56,19 @@
 .empty, .placeholder { margin: 0; padding: 20px 4px; color: $color-text-secondary; font-size: 16px; line-height: 1.6; }
 .empty strong { color: $color-text-light; font-weight: 600; }
 .empty p { margin-bottom: 0; font-size: 13px; }
+.empty .showAll { margin-top: 14px; }
 .placeholder { padding: 24px; border: 1px dashed $color-border; border-radius: $border-radius; }
+.unavailable { @include ui.panel; display: grid; justify-items: start; gap: 12px; padding: 24px; }
+.unavailable h4 { margin: 0; font-size: 18px; font-weight: 600; }
+.unavailable p { margin: 0; color: $color-text-secondary; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.unavailable button { @include ui.control; min-height: 44px; padding: 10px 16px; color: $color-text-light; font: inherit; font-size: 14px; }
+.unavailable:focus { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 .workspace :is(a, button, input, select):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 @media (max-width: 850px) {
   .layout { grid-template-columns: 1fr; }
   .detail { display: none; scroll-margin-top: 76px; }
   .list { scroll-margin-top: 76px; }
+  .search input, .students button { scroll-margin-top: 76px; }
   .answerOpen .sidebar { display: none; }
   .answerOpen .detail { display: grid; }
   .back { display: inline-flex; justify-self: start; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid ui.$line; background: ui.$surface; font-size: 14px; }

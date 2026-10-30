@@ -20,17 +20,18 @@ export default function Schedule({ schedule, currentTime, fill = false }: Schedu
     const container = listRef.current;
     const target = container?.querySelector<HTMLElement>(`[data-lesson-id="${activeId}"]`);
     if (!container || !target) return;
-    container.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+    container.scrollTo({ top: target.offsetTop, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [activeId]);
 
   if (!lessons.length) return <p className={styles.empty}>Сегодня занятий нет. <Link to="/schedule">Посмотреть неделю <ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link></p>;
 
   return (
-    <div className={`${styles.scheduleWrapper} ${fill ? styles.fill : ""}`} ref={listRef}>
+    <div className={`${styles.scheduleWrapper} ${fill ? styles.fill : ""}`} ref={listRef} role="region" aria-label="Занятия на выбранный день" tabIndex={0}>
       <ul className={styles.scheduleList}>
         {lessons.map((item) => {
           const status = getLessonStatus(item, currentTime);
           const label = item.date !== toLocalDateKey(currentTime) && status.state === "next" ? "Запланировано" : status.label;
+          const linkLabel = [item.subject, `${item.startTime}–${item.endTime}`, item.group, item.location].filter(Boolean).join(", ");
           return (
             <li key={item.id} data-lesson-id={item.id} className={`${styles.scheduleItem} ${styles[status.state]} ${item.id === activeId && status.state === "next" ? styles.firstNext : ""}`}>
               <div className={styles.scheduleTime}>{item.startTime}–{item.endTime}<span className={styles.status}>{label}</span></div>
@@ -39,7 +40,7 @@ export default function Schedule({ schedule, currentTime, fill = false }: Schedu
                 <div className={styles.group}>{item.group} · {item.location}</div>
                 <div className={styles.group}>{item.teacher}</div>
               </div>
-              <Link to={`/schedule?date=${item.date}`} className={styles.lessonLink} aria-label={`Открыть расписание: ${item.subject}`}><ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
+              <Link to={`/schedule?date=${item.date}`} className={styles.lessonLink} aria-label={`Открыть расписание: ${linkLabel}`}><ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
             </li>
           );
         })}

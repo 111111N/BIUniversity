@@ -6,6 +6,7 @@ import { inspectBackupDocuments, type BackupDocumentReview } from "../domain/loc
 export type BackupDifferenceKind = "new" | "different" | "current-only" | "schema";
 export interface BackupDifference { kind: BackupDifferenceKind; area: string; id: string }
 export interface BackupInspection {
+  actor: { id: string; revision: number };
   filename: string; source: AdministrativeBackup["source"]; completedAt: string; inspectedAt: string; sha256: string;
   totals: AdministrativeBackup["totals"]; warnings: string[]; documents: BackupDocumentReview;
   comparison: { same: number; new: number; different: number; currentOnly: number; schema: number; differences: BackupDifference[] };
@@ -35,7 +36,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       command.onProgress?.("Проверяем документы и учебные ссылки архива…");
       const documents = await inspectBackupDocuments(archive, command.actorId, dependencies.documentBaseline, command.signal);
       dependencies.authorize(command);
-      const warnings = ["Результаты проверки поддерживаемых документов и их ссылок указаны отдельно. Внутренние схемы остальных записей, владельцы вложений и возможность восстановления ещё не проверены.", "Архив не подписан: совпадение формата и отпечаток файла не подтверждают его автора и подлинность."];
+      const warnings = ["Результаты проверки поддерживаемых документов, ссылок, материалов, учебных файлов и вложений переписки указаны отдельно. Внутренние схемы остальных записей, подлинность заявленных владельцев, права участников и возможность восстановления ещё не подтверждены.", "Архив не подписан: совпадение формата и отпечаток файла не подтверждают его автора и подлинность."];
       if (archive.source.origin !== dependencies.origin || archive.source.basePath !== dependencies.basePath) warnings.push("Архив создан по другому адресу портала. Совпадение ID между разными установками требует отдельной проверки.");
       for (const entry of archive.localStorage) {
         if (!["bi-university-theme", "bi-university-demo-account", "bi-university-demo-role", "bi-university-planner-view"].includes(entry.key) && !entry.key.startsWith("bi-university-schedule-view:")) {
@@ -91,7 +92,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       }
       const latest = await dependencies.listDatabases(); checkBackupAbort(command.signal); dependencies.authorize(command);
       if (JSON.stringify(before) !== JSON.stringify(capturePortalStorage(dependencies.storage)) || BACKUP_DATABASES.some(({ name }) => available.find((item) => item.name === name)?.version !== latest.find((item) => item.name === name)?.version)) throw new Error("Текущие данные изменились во время сравнения. Завершите редактирование в других вкладках и повторите проверку.");
-      return { filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison };
+      return { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison };
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Не удалось проверить резервную копию портала:", error);
       throw error;

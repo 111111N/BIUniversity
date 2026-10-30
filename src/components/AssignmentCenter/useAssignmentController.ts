@@ -6,14 +6,16 @@ import { saveAssignmentFile } from "../../data/assignmentStore";
 import { getCurrentSubmissionAttempt, getSubmissionAttempts, isAssignmentVisibleToStudent, isAttemptLate, isSubmissionAllowed } from "../../domain/assignments";
 import { addNotification } from "../../data/notificationStore";
 import { ACADEMIC_GROUPS, ACADEMIC_SUBJECTS, getAcademicGroup, getAcademicGroupByName, getAcademicSubjectByName } from "../../data/academicCatalog";
-import { getAssignmentHref } from "../../domain/journalNavigation";
+import { changeAssignmentSelection, getAssignmentHref } from "../../domain/journalNavigation";
+import { getAssignmentFeedbackScope, retainAssignmentFeedback, type AssignmentOperationFeedback } from "../../domain/assignmentFeedback";
+import { clearSubmissionReviewView, selectReviewSubmission } from "../../domain/submissionReviewNavigation";
 import { getAssignmentFormError, type AssignmentForm } from "../../domain/assignmentForm";
 import type { ReviewDraft } from "../../domain/submissionReview";
 import { useRole } from "../RoleContext";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import { changesAssignmentEditor, changesJournalSection } from "../../domain/unsavedNavigation";
 import { useJournal } from "../../data/journalStore";
-import { readAssignmentData, readAssignmentState } from "./assignmentData";
+import { readAssignmentData, readAssignmentState } from "../../data/assignmentData";
 
 const DEMO_STUDENT_GROUP = "112-МКо";
 const DEMO_STUDENT_ID = "anna-smirnova";
@@ -59,8 +61,14 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
   const answerSendLock = useRef(false);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const updateReviewDraft = (attemptId: string, values: Partial<ReviewDraft>) => setReviewDrafts((current) => ({ ...current, [attemptId]: { ...(current[attemptId] ?? { comment: "", grade: "" }), ...values } }));
-  const [operationError, setOperationError] = useState("");
-  const [operationMessage, setOperationMessage] = useState("");
+  const feedbackIdentity = JSON.stringify([currentUser.id, role, subject ?? null, group ?? null]);
+  const feedbackScope = getAssignmentFeedbackScope(searchParams, feedbackIdentity);
+  const [operationFeedback, setOperationFeedback] = useState<AssignmentOperationFeedback | null>(null);
+  const visibleFeedback = retainAssignmentFeedback(operationFeedback, feedbackScope);
+  const operationError = visibleFeedback?.kind === "error" ? visibleFeedback.message : "";
+  const operationMessage = visibleFeedback?.kind === "success" ? visibleFeedback.message : "";
+  const setOperationError = (message: string) => setOperationFeedback({ scope: feedbackScope, kind: "error", message });
+  const setOperationMessage = (message: string, scope = feedbackScope) => setOperationFeedback({ scope, kind: "success", message });
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Assignment | null>(null);
   const [deleteError, setDeleteError] = useState("");
@@ -90,29 +98,20 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     setRecords((current) => next.error ? { ...current, error: next.error } : next);
   }), []);
 
+  useEffect(() => {
+    setOperationFeedback((current) => retainAssignmentFeedback(current, feedbackScope));
+  }, [feedbackScope]);
+
   const mine = useMemo(() => submissions.filter((item) => item.studentId === student.id), [submissions, student.id]);
   const visible = assignments
     .filter((item) => currentUser.memberships.some((membership) => membership.subjectId === item.subjectId && membership.groupIds.includes(item.groupId)) && (role === "teacher" || isAssignmentVisibleToStudent(item, student.group)) && (!subject || item.subject === subject) && (!group || item.group === group))
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
   const visibleIds = new Set(visible.map((item) => item.id));
   const expanded = requestedAssignment && visibleIds.has(requestedAssignment) ? requestedAssignment : null;
-  const setExpanded = (id: string | null) => setSearchParams((current) => {
-    const next = new URLSearchParams(current);
-    if (id) { next.set("assignment", id); next.set("tab", "assignments"); }
-    else next.delete("assignment");
-    next.delete("submission");
-    next.delete("editor");
-    next.delete("publish");
-    next.delete("assignmentTab");
-    return next;
-  });
+  const setExpanded = (id: string | null) => setSearchParams((current) => changeAssignmentSelection(current, id));
+  const assignmentResultScope = (id: string | null) => getAssignmentFeedbackScope(changeAssignmentSelection(searchParams, id), feedbackIdentity);
 
-  const selectSubmission = (id: string) => setSearchParams((current) => {
-    const next = new URLSearchParams(current);
-    next.set("submission", id);
-    next.set("assignmentTab", "work");
-    return next;
-  }, { replace: true });
+  const selectSubmission = (id: string) => setSearchParams((current) => selectReviewSubmission(current, id), { replace: true });
   const persistAssignments = (items: Assignment[]) => { saveAssignments(items); setAssignments(items); };
   const persistSubmissions = (items: Submission[]) => { saveSubmissions(items); setSubmissions(items); };
 
@@ -120,8 +119,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     event.preventDefault();
     const error = getAssignmentFormError(form, currentUser.memberships);
     setFormError(error);
-    setOperationError("");
-    setOperationMessage("");
+    setOperationFeedback(null);
     if (error) requestAnimationFrame(() => formErrorRef.current?.focus({ preventScroll: false }));
     if (!error && role === "teacher") setPreviewing(true);
   };
@@ -133,8 +131,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     if (error) { setFormError(error); if (!previewing) requestAnimationFrame(() => formErrorRef.current?.focus()); return; }
     assignmentSaveLock.current = true;
     setFormError("");
-    setOperationError("");
-    setOperationMessage("");
+    setOperationFeedback(null);
     setSaving(true);
     let attachmentId: string | undefined;
     try {
@@ -157,7 +154,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     setTaskFile(null);
     allowEditorExit.current = true;
     setExpanded(item.id);
-    setOperationMessage(editingId ? "Изменения задания сохранены." : item.status === "draft" ? "Черновик сохранён. Студенты увидят задание после публикации." : "Задание сохранено.");
+    setOperationMessage(editingId ? "Изменения задания сохранены." : item.status === "draft" ? "Черновик сохранён. Студенты увидят задание после публикации." : "Задание сохранено.", assignmentResultScope(item.id));
     } catch (error) {
       console.error("Не удалось сохранить задание:", error);
       if (attachmentId) void deleteAssignmentFile(attachmentId).catch(() => {});
@@ -170,9 +167,10 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
   };
 
   const startAssignment = () => setSearchParams((current) => {
-    const next = new URLSearchParams(current);
+    const next = clearSubmissionReviewView(current);
     next.set("tab", "assignments"); next.set("editor", "new");
     next.delete("assignment"); next.delete("submission"); next.delete("publish");
+    next.delete("assignmentTab");
     return next;
   });
   const closeEditor = () => setSearchParams((current) => {
@@ -181,9 +179,10 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     return next;
   });
   const editAssignment = (assignment: Assignment, publish = false) => setSearchParams((current) => {
-    const next = new URLSearchParams(current);
+    const sameAssignment = current.get("assignment") === assignment.id;
+    const next = sameAssignment ? new URLSearchParams(current) : clearSubmissionReviewView(current);
     next.set("tab", "assignments"); next.set("assignment", assignment.id); next.set("editor", "edit");
-    next.delete("submission");
+    if (!sameAssignment) { next.delete("submission"); next.delete("assignmentTab"); }
     if (publish) next.set("publish", "1"); else next.delete("publish");
     return next;
   });
@@ -193,8 +192,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
 
   const deleteAssignment = async (assignment: Assignment) => {
     if (storageError || saving || role !== "teacher" || !visibleIds.has(assignment.id)) return;
-    setOperationError("");
-    setOperationMessage("");
+    setOperationFeedback(null);
     setDeleteError("");
     setSaving(true);
     try {
@@ -204,7 +202,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
       const cleanup = await Promise.allSettled([...fileIds].map(deleteAssignmentFile));
       setPendingDelete(null);
       setExpanded(null);
-      setOperationMessage(cleanup.some((result) => result.status === "rejected") ? "Задание и ответы удалены. Некоторые вложения не удалось очистить из хранилища браузера." : "Задание и связанные ответы удалены.");
+      setOperationMessage(cleanup.some((result) => result.status === "rejected") ? "Задание и ответы удалены. Некоторые вложения не удалось очистить из хранилища браузера." : "Задание и связанные ответы удалены.", assignmentResultScope(null));
     } catch (error) {
       console.error("Не удалось удалить задание:", error);
       setDeleteError("Не удалось удалить задание. Проверьте доступ к хранилищу и повторите попытку.");
@@ -228,8 +226,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
       if ((previous && currentAttempt?.status !== "revision") || currentAttempt?.id !== expectedAttempt?.id || currentAttempt?.updatedAt !== expectedAttempt?.updatedAt) throw new AnswerSendError("Ответ уже изменён в другой вкладке. Проверьте актуальную попытку перед отправкой.");
       return { target, records, previous, currentAttempt };
     };
-    setOperationError("");
-    setOperationMessage("");
+    setOperationFeedback(null);
     setSaving(true);
     let newAttachmentId: string | undefined;
     try {
@@ -300,8 +297,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     const teacherComment = comment.trim();
     const grade = gradeValue.trim();
     if ((status === "revision" && !teacherComment) || (status === "graded" && !["5", "4", "3", "2"].includes(grade))) return false;
-    setOperationError("");
-    setOperationMessage("");
+    setOperationFeedback(null);
     setSaving(true);
     try {
     const now = new Date().toISOString();
@@ -343,7 +339,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     setForm(publishRequested ? { ...initial, status: "published" } : initial);
     editingVersionRef.current = source?.updatedAt ?? null;
     setFormError(""); setTaskFile(null); setPreviewing(publishRequested);
-    setOperationError(""); setOperationMessage("");
+    setOperationFeedback(null);
     const frame = requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
     return () => cancelAnimationFrame(frame);
   }, [creating, editorMode, editingId, publishRequested, assignments, subject, group]);

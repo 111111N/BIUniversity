@@ -2,6 +2,8 @@
 @use "../../styles/variables" as *;
 
 .container { min-width: 0; margin-top: 24px; color: $color-text-light; }
+.content { min-width: 0; }
+.content:focus { outline: 2px solid $color-accent-primary; outline-offset: 4px; border-radius: 12px; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid $color-border; }
 .context { display: grid; gap: 4px; min-width: 0; }
 .summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
@@ -9,7 +11,7 @@
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .views { @include switches.group(true); }
 .print { min-height: 44px; padding: 8px 12px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: 13px; font-weight: 500; }
-.print:hover { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
+.print:hover:not(:disabled) { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
 .gridView { border: 1px solid $color-border; border-radius: 12px; overflow: hidden; background: $color-dark-primary; }
 .gridTools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid $color-border; }
 .gridTools > span { color: $color-text-secondary; font-size: 13px; line-height: 1.5; }

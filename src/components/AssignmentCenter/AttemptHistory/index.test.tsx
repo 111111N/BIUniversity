@@ -12,7 +12,19 @@ describe("attempt history", () => {
     expect(markup.indexOf("Исправленный ответ")).toBeLessThan(markup.indexOf("<details"));
     expect(markup.indexOf("Первый ответ")).toBeGreaterThan(markup.indexOf("<details"));
     expect(markup).toContain("Исправьте вывод");
+    expect(markup).toContain("Результат предыдущей попытки");
+    expect(markup).not.toContain("Ожидается новая попытка");
     expect(markup).not.toContain("<details open");
+  });
+
+  it("keeps unnamed attachments accessible in both the current and previous attempt", () => {
+    const markup = renderToStaticMarkup(<AttemptHistory attempts={[
+      { ...attempt, attachmentId: "previous-file" },
+      { ...attempt, id: "second", number: 2, status: "submitted", attachmentId: "current-file", attachmentName: " " },
+    ]} />);
+    expect(markup.match(/aria-label="Скачать файл Вложение к ответу"/g)).toHaveLength(2);
+    expect(markup.indexOf("Скачать файл Вложение к ответу")).toBeLessThan(markup.indexOf("<details"));
+    expect(markup.lastIndexOf("Скачать файл Вложение к ответу")).toBeGreaterThan(markup.indexOf("<details"));
   });
 
   it("does not duplicate the current result when the review panel shows it", () => {
@@ -24,6 +36,21 @@ describe("attempt history", () => {
   it("does not show an empty history for one or zero attempts", () => {
     expect(renderToStaticMarkup(<AttemptHistory attempts={[attempt]} />)).not.toContain("<details");
     expect(renderToStaticMarkup(<AttemptHistory attempts={[]} />)).toBe("");
+  });
+
+  it("gives each multiline attempt its own expansion control and preserves the full text", () => {
+    const text = Array.from({ length: 9 }, (_, index) => `Строка ${index + 1}`).join("\n");
+    const markup = renderToStaticMarkup(<AttemptHistory attempts={[
+      { ...attempt, text },
+      { ...attempt, id: "second", number: 2, text: `${text}\nВывод <b>остаётся текстом</b>`, status: "submitted" },
+    ]} />);
+    expect(markup).toContain(text);
+    expect(markup).toContain("&lt;b&gt;остаётся текстом&lt;/b&gt;");
+    const controls = Array.from(markup.matchAll(/aria-controls="([^"]+)"/g), (match) => match[1]);
+    expect(controls).toHaveLength(2);
+    expect(new Set(controls).size).toBe(2);
+    for (const id of controls) expect(markup).toContain(`<p id="${id}"`);
+    expect(markup.match(/aria-expanded="false"/g)).toHaveLength(2);
   });
 
   it("can show only previous attempts after a separately rendered answer and result", () => {

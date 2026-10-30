@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { PlannerDraftConflictError } from "../domain/plannerDraft";
 import { useRole } from "../components/RoleContext";
+import { getPlannerStorageKey, LEGACY_PLANNER_OWNER_ID as LEGACY_OWNER_ID } from "../domain/plannerStorage";
+export { getPlannerStorageKey } from "../domain/plannerStorage";
 
 export interface PlannerNote {
   id: string;
@@ -14,9 +16,6 @@ export interface PlannerNote {
   category: "study" | "personal";
 }
 
-const STORAGE_KEY = "bi-university-demo-planner";
-const LEGACY_OWNER_ID = "teacher-elena-volkova";
-export const getPlannerStorageKey = (userId: string) => userId === LEGACY_OWNER_ID ? STORAGE_KEY : `${STORAGE_KEY}:${encodeURIComponent(userId)}`;
 const CHANGE_EVENT = "bi-university-planner-change";
 export class PlannerWriteError extends Error {}
 const validDate = (value: unknown) => {

@@ -1,3 +1,4 @@
+import { decodeSavedAssignments, decodeSavedSubmissions, type SavedSubmission } from "../domain/assignmentStorage";
 import { getAcademicGroupByName, getAcademicSubjectByName } from "./academicCatalog";
 import { getAttachmentError } from "../domain/files";
 import { downloadBlob } from "../domain/fileDownload";
@@ -145,6 +146,18 @@ const normalizeSubmission = (item: PersistedSubmission): Submission => {
     attempts,
   };
 };
+
+const readSavedList = <T,>(key: string, fallback: T[], decode: (raw: string) => T[]): T[] => {
+  const raw = localStorage.getItem(key);
+  return raw === null ? fallback : decode(raw);
+};
+
+export const readAssignmentList = () => readSavedList(ASSIGNMENTS_KEY, initialAssignments, decodeSavedAssignments).map(normalizeAssignment);
+
+export const readAssignmentData = () => ({
+  assignments: readAssignmentList(),
+  submissions: readSavedList<SavedSubmission>(SUBMISSIONS_KEY, [], decodeSavedSubmissions).map(normalizeSubmission),
+});
 
 export const getAssignments = () => readList(ASSIGNMENTS_KEY, initialAssignments).map(normalizeAssignment);
 export const saveAssignments = (items: Assignment[]) => {

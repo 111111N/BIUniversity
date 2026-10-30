@@ -1,0 +1,7 @@
+@use "../../styles/variables" as *;
+
+.error { display: grid; justify-items: start; gap: 10px; margin-block: 12px; padding: 14px; border: 1px solid $color-border; border-left: 3px solid $color-warning; border-radius: 8px; background: $color-dark-primary; color: $color-text-light; }
+.error p { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.error button { min-height: 44px; padding: 8px 12px; border: 1px solid $color-border; background: $color-dark-primary; color: $color-text-light; font: inherit; font-size: 14px; }
+.error button:hover { border-color: $color-accent-primary; }
+.error button:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }

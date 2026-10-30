@@ -9,7 +9,7 @@ interface CalendarProps {
   months?: number;
   selectedDate?: Date;
   onSelectDate?(date: Date): void;
-  getDaySummary?(date: Date): { lessons: number; tasks: number | null };
+  getDaySummary?(date: Date): { lessons: number | null; tasks: number | null };
 }
 
 const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -85,7 +85,7 @@ const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary }: Cal
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
             const dateKey = toLocalDateKey(date);
             const summary = getDaySummary?.(date) ?? { lessons: 0, tasks: 0 };
-            const label = `Занятия: ${summary.lessons}, задачи: ${summary.tasks ?? "недоступны"}`;
+            const label = `Занятия: ${summary.lessons ?? "недоступны"}, задачи: ${summary.tasks ?? "недоступны"}`;
             return <Tooltip key={dateKey} label={label}><button
               type="button"
               data-calendar-date={dateKey}
@@ -99,12 +99,12 @@ const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary }: Cal
               onFocus={() => setFocusedKey(dateKey)}
               onKeyDown={(event) => onDayKeyDown(event, date)}
               onClick={() => { if (!isCurrentMonth) { focusRequested.current = true; setFirstMonth(new Date(date.getFullYear(), date.getMonth(), 1)); } setFocusedKey(dateKey); onSelectDate?.(date); }}
-            ><time dateTime={dateKey}>{date.getDate()}</time><span className={styles.dots} aria-hidden="true">{summary.lessons > 0 && <i className={styles.lessonDot} />}{(summary.tasks ?? 0) > 0 && <i className={styles.taskDot} />}</span></button></Tooltip>;
+            ><time dateTime={dateKey}>{date.getDate()}</time><span className={styles.dots} aria-hidden="true">{(summary.lessons ?? 0) > 0 && <i className={styles.lessonDot} />}{(summary.tasks ?? 0) > 0 && <i className={styles.taskDot} />}</span></button></Tooltip>;
           })}
         </div>
       </div>)}
     </div>
-    {onSelectDate && <div className={styles.daySummary} aria-live="polite" aria-atomic="true"><span>{(selectedDate ?? today).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</span><strong>{`Занятия: ${selectedSummary.lessons}, задачи: ${selectedSummary.tasks ?? "недоступны"}`}</strong><p>Выберите день, чтобы увидеть его занятия и задачи в обзоре.</p></div>}
+    {onSelectDate && <div className={styles.daySummary} aria-live="polite" aria-atomic="true"><span>{(selectedDate ?? today).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</span><strong>{`Занятия: ${selectedSummary.lessons ?? "недоступны"}, задачи: ${selectedSummary.tasks ?? "недоступны"}`}</strong><p>Выберите день, чтобы увидеть его занятия и задачи в обзоре.</p></div>}
   </div>;
 };
 

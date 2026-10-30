@@ -1,10 +1,10 @@
 import { useId, useRef } from "react";
-import { downloadAssignmentFile, type Assignment, type Submission } from "../../../data/assignmentStore";
+import type { Assignment, Submission } from "../../../data/assignmentStore";
 import { getAssignmentDeadlineState, getCurrentSubmissionAttempt, getStudentAssignmentState, getSubmissionAttempts, isSubmissionAllowed } from "../../../domain/assignments";
 import AnswerComposer from "../AnswerComposer";
 import AttemptHistory from "../AttemptHistory";
 import SubmissionResult from "../SubmissionResult";
-import DownloadButton from "../../DownloadButton";
+import AssignmentFile from "../AssignmentFile";
 import styles from "./index.module.scss";
 
 interface Props {
@@ -12,10 +12,11 @@ interface Props {
   submission?: Submission;
   studentId: string;
   saving: boolean;
+  unavailableReason?: string;
   onSend(text: string, file: File | null): Promise<boolean>;
 }
 
-const StudentAssignmentWorkspace = ({ assignment, submission, studentId, saving, onSend }: Props) => {
+const StudentAssignmentWorkspace = ({ assignment, submission, studentId, saving, unavailableReason, onSend }: Props) => {
   const sectionId = useId();
   const current = getCurrentSubmissionAttempt(submission);
   const attempts = getSubmissionAttempts(submission);
@@ -41,14 +42,6 @@ const StudentAssignmentWorkspace = ({ assignment, submission, studentId, saving,
     : revising ? "Исправьте ответ по замечанию преподавателя и проверьте его перед повторной отправкой."
     : state === "late-allowed" ? "Подготовьте ответ ниже. Он будет отмечен как отправленный после срока."
     : "Прочитайте условие, подготовьте ответ и проверьте его перед отправкой.";
-  const downloadTask = async () => {
-    try { await downloadAssignmentFile(assignment.attachmentId!, assignment.attachmentName!); }
-    catch (error) {
-      console.error("Не удалось скачать файл задания.", error);
-      throw error;
-    }
-  };
-
   return <div className={styles.workspace}>
     <section className={styles.status} data-status={reviewed ? "graded" : revising ? "revision" : current?.status ?? "ready"} aria-labelledby={`${sectionId}-status`}>
       <h3 id={`${sectionId}-status`}>{title}</h3>
@@ -66,16 +59,15 @@ const StudentAssignmentWorkspace = ({ assignment, submission, studentId, saving,
     <section className={styles.brief} aria-labelledby={`${sectionId}-brief`}>
       <h3 id={`${sectionId}-brief`}>Условие задания</h3>
       <p className={styles.description}>{assignment.description || "Описание не добавлено."}</p>
-      {assignment.attachmentId && assignment.attachmentName && <div className={styles.attachment}>
-        <span>Файл задания</span><DownloadButton name={assignment.attachmentName} onDownload={downloadTask} className={styles.file} />
+      {assignment.attachmentId && <div className={styles.attachment}>
+        <span>Файл задания</span><AssignmentFile attachment={assignment} className={styles.file} />
       </div>}
     </section>
 
     {showComposer ? <div className={styles.myWork}>
-      {!canSend && <p role="status">Приём завершён. Текст и выбранный файл остались в форме; скопируйте ответ перед уходом.</p>}
       {current && <details className={styles.previousAnswer}><summary>Ответ до исправления</summary><div><AttemptHistory attempts={[current]} hideCurrentResult label="Отправленный ответ" /></div></details>}
       <AnswerComposer key={`${studentId}:${assignment.id}:${current?.id ?? "first"}`} studentId={studentId} assignmentId={assignment.id}
-        assignmentVersion={assignment.updatedAt} attempt={current} saving={saving || !canSend} onSend={onSend} showTeacherComment={false} />
+        assignmentVersion={assignment.updatedAt} attempt={current} saving={saving} blockedReason={!admissionOpen ? nextAction : unavailableReason} onSend={onSend} showTeacherComment={false} />
     </div> : <section className={styles.myWork} aria-labelledby={`${sectionId}-work`}>
       <h3 id={`${sectionId}-work`}>Моя работа</h3>
       {current ? <AttemptHistory attempts={[current]} hideCurrentResult label="Отправленный ответ" /> : <p className={styles.empty}>Ответ ещё не отправлен.</p>}

@@ -3,9 +3,11 @@
 .dialog { display: grid; gap: 24px; box-sizing: border-box; width: min(640px, 100%); padding: 24px; border: 1px solid $color-border; border-radius: 16px; background: $color-dark-primary; color: $color-text-light; }
 .header { display: flex; align-items: start; gap: 16px; }
 .header > div { flex: 1; min-width: 0; }
+.badges { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.viewOnly { color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
 .type { display: inline-flex; padding: 4px 8px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; font-size: 13px; font-weight: 500; }
 .dialog h2 { margin: 12px 0 0; font-size: 26px; line-height: 1.35; letter-spacing: -.02em; overflow-wrap: anywhere; }
-.close { display: grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 1px solid $color-border; border-radius: 8px; background: transparent; font-size: 26px; font-weight: 400; }
+.close { display: grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 1px solid $color-border; border-radius: 8px; background: transparent; color: $color-text-light; font-size: 26px; font-weight: 400; }
 .date { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding-bottom: 20px; border-bottom: 1px solid $color-border; }
 .date > span { display: grid; gap: 6px; min-width: 0; }
 .date small { color: $color-text-secondary; font-size: 13px; }
@@ -31,6 +33,7 @@
 .assignments { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid $color-border; }
 .sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sectionHeading h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.sectionHeading h3:focus { outline: 2px solid $color-accent-primary; outline-offset: 4px; border-radius: 4px; }
 .sectionHeading > span { display: grid; place-items: center; min-width: 20px; height: 20px; padding-inline: 4px; border-radius: 5px; background: $color-ghost; color: $color-text-secondary; font-size: 12px; }
 .assignmentList { display: grid; gap: 8px; }
 .empty { display: grid; gap: 6px; padding: 16px; border-radius: 10px; background: $color-ghost; }

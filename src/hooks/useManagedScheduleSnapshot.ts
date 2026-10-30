@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { readManagedScheduleState, subscribeManagedSchedule } from "../data/managedScheduleStore";
 
 export default function useManagedScheduleSnapshot() {
@@ -9,5 +9,5 @@ export default function useManagedScheduleSnapshot() {
     refresh();
     return unsubscribe;
   }, [refresh]);
-  return snapshot;
+  return useMemo(() => ({ ...snapshot, refresh }), [snapshot, refresh]);
 }

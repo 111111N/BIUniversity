@@ -1,17 +1,12 @@
-// SearchInput.tsx
-
-import React from "react";
+import React, { useId } from "react";
+import { searchOnEnter } from "./keyboard";
 
 interface SearchInputProps {
-  /** Текущее значение поля ввода */
   query: string;
-  /** Функция для обновления значения поля ввода */
   setQuery: React.Dispatch<React.SetStateAction<string>>;
-  /** Текст-подсказка (placeholder) для поля ввода */
-  placeholder: string;
-  /** Функция, вызываемая при нажатии на кнопку поиска или Enter (опционально) */
+  label: string;
+  labelClassName?: string;
   onSearch: () => void;
-  /** CSS-класс для контейнера, для инпута и для кнопки (если нужно сохранить ваши стили) */
   inputClassName?: string;
   searchButtonClassName?: string;
   containerClassName?: string;
@@ -20,29 +15,27 @@ interface SearchInputProps {
 const SearchInput: React.FC<SearchInputProps> = ({
   query,
   setQuery,
-  placeholder,
+  label,
+  labelClassName,
   onSearch,
-  inputClassName = "input", // Условные классы
-  searchButtonClassName = "searchButton", // Условные классы
-  containerClassName = "searchRow" // Условные классы
+  inputClassName = "input",
+  searchButtonClassName = "searchButton",
+  containerClassName = "searchRow"
 }) => {
-  // Добавляем обработчик нажатия Enter для удобства
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onSearch();
-    }
-  };
+  const inputId = useId();
 
   return (
+    <>
+    <label htmlFor={inputId} className={labelClassName}>{label}</label>
     <div className={containerClassName}>
       <input
+        id={inputId}
         type="text"
-        placeholder={placeholder}
-        aria-label={placeholder}
+        placeholder=""
+        enterKeyHint="search"
         value={query}
         onChange={e => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={(event) => searchOnEnter(event, onSearch)}
         className={inputClassName}
       />
       <button 
@@ -51,8 +44,8 @@ const SearchInput: React.FC<SearchInputProps> = ({
         onClick={onSearch} 
         className={searchButtonClassName}
       >
-        {/* SVG-иконка лупы */}
         <svg
+          aria-hidden="true"
           xmlns="http://www.w3.org/2000/svg"
           width="20"
           height="20"
@@ -68,6 +61,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
         </svg>
       </button>
     </div>
+    </>
   );
 };
 

@@ -23,6 +23,8 @@
   margin: 0 0 15px;
   color: $color-text-light;
 }
+.cardTitle[tabindex="-1"] { scroll-margin-top: 84px; }
+.cardTitle[tabindex="-1"]:focus { outline: 2px solid $color-accent-primary; outline-offset: 4px; border-radius: 4px; }
 
 .flexParams {
   margin-top: 0;
@@ -71,12 +73,14 @@
 .taskNotice strong { color: $color-text-light; font-weight: 500; }
 .taskNotice a { display: inline-flex; align-items: center; gap: 2px; color: $color-accent-hover; text-decoration: none; }
 .taskNotice button { padding: 0; flex: 0 0 24px; width: 24px; height: 24px; border: 0; background: transparent; font-size: 1rem; }
-.focusHeader { display: flex; align-items: flex-start; justify-content: space-between; }
+.focusHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.focusHeader > div { min-width: 0; overflow-wrap: anywhere; }
 .focusHeader > div > span { color: $color-accent-primary; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .focusHeader .cardTitle { margin: 5px 0 15px; }
-.focusHeader > strong { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid $color-accent-primary; border-radius: 50%; }
+.focusHeader > strong { display: grid; box-sizing: border-box; flex-shrink: 0; place-items: center; min-width: 34px; height: 34px; padding-inline: 6px; border: 2px solid $color-accent-primary; border-radius: 99px; font-variant-numeric: tabular-nums; }
 .focusList { display: flex; flex-direction: column; }
-.focusList a { display: grid; grid-template-columns: 9px 1fr auto; align-items: center; gap: 11px; padding: 12px 0; border-top: 1px solid $color-border; color: $color-text-light; text-decoration: none; }
+.focusList a { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 12px 0; border-top: 1px solid $color-border; color: $color-text-light; text-decoration: none; }
+.focusList a > div { min-width: 0; overflow-wrap: anywhere; }
 .focusList i { width: 7px; height: 7px; border-radius: 50%; background: $color-success; }
 .focusList .urgent { background: $color-error; }.focusList .warning { background: $color-warning; }
 .focusList strong, .focusList span { display: block; }.focusList strong { font-size: .78rem; }.focusList span { margin-top: 4px; color: $color-text-secondary; font-size: .66rem; }.focusList b { display: inline-flex; align-items: center; gap: 2px; color: $color-text-secondary; font-size: .65rem; }.focusList a:hover b, .focusList a:focus-visible b { color: $color-accent-hover; }
@@ -91,6 +95,6 @@
 @media (max-width: 620px) {
   .flexParams { display: grid; grid-template-columns: 1fr; gap: 16px; text-align: left; }
   .paramBox:not(:last-child) { padding-bottom: 16px; border-right: 0; border-bottom: 1px solid $color-text-secondary; }
-  .focusList a { grid-template-columns: 9px 1fr; }
+  .focusList a { grid-template-columns: 9px minmax(0, 1fr); }
   .focusList b { grid-column: 2; }
 }

@@ -18,12 +18,9 @@
 .footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: auto; color: var(--schedule-card-muted); }
 .openLabel { font-size: 13px; }
 .viewOnly { color: var(--schedule-card-muted); font-size: 12px; font-weight: 400; }
-.card.readOnly { cursor: default; }
-.card.readOnly:hover { border-color: theme-alpha($color-text-secondary, .15); background: var(--schedule-card-surface); }
 .row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 24px; align-items: center; gap: 16px; min-height: 76px; padding: 12px 16px; border: 0; border-bottom: 1px solid $color-border; border-radius: 0; box-shadow: none; }
 .row:last-child { border-bottom: 0; }
 .row:hover { border-color: $color-border; background: color-mix(in srgb, var(--schedule-card-surface) 94%, #{$color-text-light}); }
-.row.readOnly:hover { background: var(--schedule-card-surface); }
 .row:focus-visible { position: relative; z-index: 1; outline-offset: -3px; }
 .rowArrow { justify-self: end; }
 .rowTime { display: grid; align-self: start; gap: 4px; padding-top: 2px; font-variant-numeric: tabular-nums; }
@@ -46,7 +43,6 @@
 .grid .footer { position: absolute; bottom: 4px; right: 5px; }
 .grid .footer > span { width: 18px; height: 18px; flex-basis: 18px; }
 .grid .footer svg { width: 15px; height: 15px; }
-.grid.readOnly .teacher { padding-right: 0; }
 .grid.compact { gap: 3px; padding: 5px; }
 .grid.compact .type, .grid.compact .info, .grid.compact .footer { display: none; }
 .grid.compact .subject { font-size: 13px; line-height: 1.3; }

@@ -1,4 +1,3 @@
-// Search.tsx
 import React from "react";
 import styles from "./index.module.scss";
 import SearchInput from "./search";
@@ -13,9 +12,7 @@ interface SearchProps {
 
 const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQuery, onSearch }) => {
   
-  const placeholderText = searchMode === "group" 
-    ? "Введите название группы" 
-    : "Введите номер аудитории";
+  const searchLabel = searchMode === "group" ? "Группа" : "Аудитория";
 
   return (
     <div className={styles.dashboardCard}>
@@ -38,13 +35,12 @@ const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQu
         </button>
       </div>
 
-      {/* Вместо старого блока searchRow используем новый компонент SearchInput */}
       <SearchInput
         query={query}
         setQuery={setQuery}
-        placeholder={placeholderText}
-        onSearch={onSearch} // Передаем функцию поиска
-        // Передаем классы из ваших исходных стилей, чтобы сохранить внешний вид
+        label={searchLabel}
+        labelClassName={styles.searchLabel}
+        onSearch={onSearch}
         containerClassName={styles.searchRow}
         inputClassName={styles.input}
         searchButtonClassName={styles.searchButton}

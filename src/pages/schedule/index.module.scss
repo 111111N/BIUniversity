@@ -3,7 +3,6 @@
 @use "../../styles/switches" as switches;
 
 .page { min-width: 0; }
-.error { padding: 14px 16px; border: 1px solid $color-error; border-radius: 12px; color: $color-text-light; background: $color-dark-primary; line-height: 1.6; }
 .context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
 .context > span { color: $color-text-light; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
 .context button { min-height: 44px; padding: 8px 10px; border: 0; background: transparent; color: $color-accent-hover; font-size: 13px; font-weight: 500; }

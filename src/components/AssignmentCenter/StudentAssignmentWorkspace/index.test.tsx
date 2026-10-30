@@ -70,6 +70,13 @@ describe("student assignment workspace", () => {
     expect(markup).not.toContain("<textarea");
   });
 
+  it("offers both task and answer downloads even when filenames are missing", () => {
+    const markup = render({ ...assignment, attachmentId: "task-file" }, { ...submission, attachmentId: "answer-file" });
+    expect(markup).toContain("Скачать файл Файл задания");
+    expect(markup).toContain("Скачать файл Вложение к ответу");
+    expect(markup).not.toContain("<textarea");
+  });
+
   it("shows the current revision comment once, before conditions, and offers correction", () => {
     const markup = render(assignment, { ...submission, attempts: [attempt] });
     expect(markup.split(attempt.teacherComment!).length - 1).toBe(1);
@@ -123,5 +130,11 @@ describe("student assignment workspace", () => {
     expect(markup).toContain("Не удалось восстановить черновик");
     expect(markup).toContain('role="alert"');
     expect(markup).not.toContain("Текст сохранён до закрытия вкладки");
+  });
+  it("passes a storage failure as a reason to block sending while preserving copyable revision text", () => {
+    const markup = renderToStaticMarkup(<StudentAssignmentWorkspace assignment={assignment} submission={{ ...submission, attempts: [attempt] }} studentId="anna-smirnova" saving={false} unavailableReason="Не удалось обновить данные задания." onSend={async () => true} />);
+    expect(markup).toContain("Не удалось обновить данные задания"); expect(markup).toContain('aria-busy="false"');
+    expect(markup).toMatch(/<textarea[^>]*readOnly=""/); expect(markup).not.toMatch(/<textarea[^>]*disabled=/); expect(markup).not.toContain("Отправляем");
+    expect(markup).toContain(attempt.text); expect(markup).toContain(attempt.teacherComment!);
   });
 });

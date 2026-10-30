@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { getAssignments, getSubmissions, subscribeAssignmentStore } from "./assignmentStore";
-import { getJournalSnapshot, subscribeJournalStore } from "./journalStore";
+import { useCallback, useEffect, useState } from "react";
+import { subscribeAssignmentStore } from "./assignmentStore";
+import { readAssignmentState } from "./assignmentData";
+import { getJournalViewSnapshot, journalKey, subscribeJournalStore } from "./journalStore";
 import { getDemoWeekSchedule, getPersonalSchedule } from "./schedule";
 import { toLocalDateKey } from "../domain/schedule";
 import {
@@ -8,39 +9,65 @@ import {
   type DashboardJournal,
   type DashboardMembership,
 } from "../domain/dashboard";
-import { getAcademicGroup } from "./academicCatalog";
+import { ACADEMIC_GROUPS, refreshAcademicCatalog } from "./academicCatalog";
 import { getStudentDashboardTasks } from "../domain/dashboardAssignments";
 import { getAssignmentHref } from "../domain/journalNavigation";
 import { getSubmissionStatus } from "../domain/assignments";
 import { createSubjectLessons } from "./lessons";
-import { subscribeManagedSchedule } from "./managedScheduleStore";
+import { readManagedScheduleState, subscribeManagedSchedule } from "./managedScheduleStore";
+import { readAccountsState, subscribeAccounts } from "./accountStore";
+import { subscribeSubjectCatalog } from "./subjectCatalogStore";
 import type { CurrentUser } from "../domain/accounts";
 
-export const useDashboardUpdate = () => {
+export const useDashboardRefresh = () => {
   const [now, setNow] = useState(() => new Date());
+  const refresh = useCallback(() => setNow(new Date()), []);
   useEffect(() => {
-    const refresh = () => setNow(new Date());
     const unsubscribeAssignments = subscribeAssignmentStore(refresh);
     const unsubscribeJournal = subscribeJournalStore(refresh);
     const unsubscribeSchedule = subscribeManagedSchedule(refresh);
+    const unsubscribeAccounts = subscribeAccounts(refresh);
+    const unsubscribeCatalog = subscribeSubjectCatalog(refresh);
     const timer = window.setInterval(refresh, 60_000);
     return () => {
       unsubscribeAssignments();
       unsubscribeJournal();
       unsubscribeSchedule();
+      unsubscribeAccounts();
+      unsubscribeCatalog();
       window.clearInterval(timer);
     };
-  }, []);
-  return now;
+  }, [refresh]);
+  return { now, refresh };
 };
 
-const readJournal = (subjectId: string, groupId: string): DashboardJournal => {
-  return { subjectId, groupId, students: getJournalSnapshot(subjectId, groupId), lessons: createSubjectLessons(subjectId, groupId) };
-};
+export const useDashboardUpdate = () => useDashboardRefresh().now;
 
-const readMembershipJournals = (memberships: DashboardMembership[]) => memberships.flatMap(
-  (membership) => membership.groupIds.map((groupId) => readJournal(membership.subjectId, groupId)),
-);
+const readDashboardSources = (memberships: DashboardMembership[], now: Date, studentId?: string) => {
+  const catalogError = refreshAcademicCatalog().error;
+  const schedule = readManagedScheduleState();
+  const assignments = readAssignmentState();
+  const assignmentError = catalogError ? "Учебный каталог недоступен. Список заданий временно недоступен." : assignments.error ? "Не удалось прочитать задания и ответы." : "";
+  const scheduleError = catalogError || schedule.error ? "Расписание временно недоступно." : "";
+  let journal: ReturnType<typeof calculateDashboardJournalMetrics> | null = null;
+  let journalError = "";
+  try {
+    if (catalogError || schedule.error) throw new Error(catalogError || schedule.error);
+    const accounts = readAccountsState();
+    if (accounts.error) throw new Error(accounts.error);
+    const journals: DashboardJournal[] = memberships.flatMap((membership) => membership.groupIds.map((groupId) => {
+      const lessons = createSubjectLessons(membership.subjectId, groupId, now.getTime(), schedule.snapshot.journal);
+      const students = getJournalViewSnapshot(localStorage.getItem(journalKey(membership.subjectId, groupId)), membership.subjectId, groupId, { lessons, accounts: accounts.accounts });
+      if (!students) throw new Error("Сохранённый журнал повреждён");
+      return { subjectId: membership.subjectId, groupId, lessons, students };
+    }));
+    journal = calculateDashboardJournalMetrics(journals, studentId);
+  } catch (error) {
+    console.error("Не удалось рассчитать журнальные показатели главной страницы:", error);
+    journalError = "Не удалось прочитать данные для показателей журнала.";
+  }
+  return { assignments, journal, schedule, errors: { assignments: assignmentError, journal: journalError, schedule: scheduleError } };
+};
 
 export const getStudentDashboard = ({
   studentId,
@@ -54,24 +81,24 @@ export const getStudentDashboard = ({
   studentGroupId?: string;
 }) => {
   const groupId = studentGroupId ?? memberships[0]?.groupIds[0];
-  const groupName = getAcademicGroup(groupId)?.name;
-  const journals = readMembershipJournals(memberships);
-  const journal = calculateDashboardJournalMetrics(journals, studentId);
-  const tasks = getStudentDashboardTasks(getAssignments(), getSubmissions(), memberships, studentId, now);
-  const weekSchedule = getPersonalSchedule(getDemoWeekSchedule(now), { id: studentId, role: "student", memberships });
+  const { assignments, journal, schedule, errors } = readDashboardSources(memberships, now, studentId);
+  const groupName = ACADEMIC_GROUPS.find((group) => group.id === groupId)?.name;
+  const tasks = errors.assignments ? [] : getStudentDashboardTasks(assignments.assignments, assignments.submissions, memberships, studentId, now);
+  const weekSchedule = errors.schedule ? [] : getPersonalSchedule(getDemoWeekSchedule(now, schedule), { id: studentId, role: "student", memberships });
   const todaySchedule = weekSchedule.filter((lesson) => lesson.date === toLocalDateKey(now));
   const nextTask = tasks.find((task) => task.canSubmit);
 
   return {
     groupName: groupName ?? "Группа не указана",
-    weekLessons: weekSchedule.length,
-    todayLessons: todaySchedule.length,
-    activeAssignments: tasks.filter((task) => task.canSubmit).length,
-    awaitingReview: tasks.filter((task) => task.state === "submitted" || task.state === "resubmitted").length,
+    errors,
+    weekLessons: errors.schedule ? null : weekSchedule.length,
+    todayLessons: errors.schedule ? null : todaySchedule.length,
+    activeAssignments: errors.assignments ? null : tasks.filter((task) => task.canSubmit).length,
+    awaitingReview: errors.assignments ? null : tasks.filter((task) => task.state === "submitted" || task.state === "resubmitted").length,
     tasks,
-    attendance: journal.attendance,
-    averageGrade: journal.averageGrade,
-    gradesCount: journal.gradesCount,
+    attendance: journal?.attendance ?? null,
+    averageGrade: journal?.averageGrade ?? null,
+    gradesCount: journal?.gradesCount ?? null,
     nextAction: nextTask ? {
       title: nextTask.state === "revision" ? "Исправить работу по комментарию" : nextTask.overdue ? "Сдать работу с опозданием" : "Ближайший учебный дедлайн",
       description: `${nextTask.subject} · ${nextTask.title}. ${nextTask.deadline}`,
@@ -81,13 +108,14 @@ export const getStudentDashboard = ({
 };
 
 export const getTeacherDashboard = ({ memberships, now, teacher }: { memberships: DashboardMembership[]; now: Date; teacher?: CurrentUser }) => {
-  const schedule = getPersonalSchedule(getDemoWeekSchedule(now), teacher ?? "teacher");
+  const source = readDashboardSources(memberships, now);
+  const { journal, errors } = source;
+  const schedule = errors.schedule ? [] : getPersonalSchedule(getDemoWeekSchedule(now, source.schedule), teacher ?? "teacher");
   const today = schedule.filter((lesson) => lesson.date === toLocalDateKey(now));
   const nowTime = now.getTime();
   const conducted = today.filter((lesson) => new Date(`${lesson.date}T${lesson.endTime}:00`).getTime() <= nowTime).length;
-  const journal = calculateDashboardJournalMetrics(readMembershipJournals(memberships));
-  const assignments = getAssignments().filter((assignment) => memberships.some((membership) => membership.subjectId === assignment.subjectId && membership.groupIds.includes(assignment.groupId)));
-  const submissions = getSubmissions().filter((submission) => {
+  const assignments = errors.assignments ? [] : source.assignments.assignments.filter((assignment) => memberships.some((membership) => membership.subjectId === assignment.subjectId && membership.groupIds.includes(assignment.groupId)));
+  const submissions = source.assignments.submissions.filter((submission) => {
     const assignment = assignments.find((item) => item.id === submission.assignmentId);
     return assignment !== undefined;
   });
@@ -108,7 +136,7 @@ export const getTeacherDashboard = ({ memberships, now, teacher }: { memberships
       action: "Проверить",
       href: firstReviewAssignment ? getAssignmentHref(firstReviewAssignment, pendingAnswers[0].id) : "/journal",
     } : null,
-    journal.unmarked ? {
+    journal?.unmarked ? {
       level: "warning" as const,
       title: `В журналах не заполнено ${journal.unmarked} отметок`,
       description: "Данные рассчитаны по доступным дисциплинам и группам",
@@ -131,12 +159,14 @@ export const getTeacherDashboard = ({ memberships, now, teacher }: { memberships
   ].filter((item): item is NonNullable<typeof item> => item !== null);
 
   return {
-    todayLessons: today.length,
-    conductedLessons: conducted,
-    attendanceMarked: journal.attendanceMarked,
-    gradesCount: journal.gradesCount,
-    journalCells: journal.totalCells,
-    gradeCells: journal.gradeCells,
+    errors,
+    scheduleSource: source.schedule,
+    todayLessons: errors.schedule ? null : today.length,
+    conductedLessons: errors.schedule ? null : conducted,
+    attendanceMarked: journal?.attendanceMarked ?? null,
+    gradesCount: journal?.gradesCount ?? null,
+    journalCells: journal?.totalCells ?? null,
+    gradeCells: journal?.gradeCells ?? null,
     focus,
   };
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeJournalSection, getAssignmentHref, getJournalSection } from "./journalNavigation";
+import { changeAssignmentSelection, changeJournalSection, getAssignmentHref, getJournalSection } from "./journalNavigation";
 
 describe("journal navigation", () => {
   it("opens the assignment section from a direct link and restricts history to teachers", () => {
@@ -25,5 +25,17 @@ describe("journal navigation", () => {
     expect(url.searchParams.get("assignment")).toBe("task & special");
     expect(url.searchParams.get("submission")).toBe("answer/1?tab=history");
     expect(getAssignmentHref({ id: "missing", subjectId: "unknown", groupId: "112-mko" })).toBe("/journal");
+  });
+
+  it.each(["next & task", null])("changes assignment selection without losing list filters (%s)", (assignmentId) => {
+    const current = new URLSearchParams("tab=assignments&assignment=one&submission=anna&editor=edit&publish=1&assignmentTab=work&tasks=review&taskSearch=теория&taskSort=newest");
+    const next = changeAssignmentSelection(current, assignmentId);
+    expect(next.get("assignment")).toBe(assignmentId);
+    for (const key of ["submission", "editor", "publish", "assignmentTab"]) expect(next.has(key)).toBe(false);
+    expect(next.get("tasks")).toBe("review");
+    expect(next.get("taskSearch")).toBe("теория");
+    expect(next.get("taskSort")).toBe("newest");
+    expect(current.get("assignment")).toBe("one");
+    expect(current.get("editor")).toBe("edit");
   });
 });

@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Calendar from "../../components/CalendarWidget";
 import ArrowCircle from "../../components/ArrowCircle";
 import { useRole } from "../../components/RoleContext";
 import Search from "../../components/SearchWidget";
 import TodaySchedule from "../../components/TodaySchedule";
-import { getTeacherDashboard, useDashboardUpdate } from "../../data/studentDashboard";
+import DashboardReadError from "../../components/DashboardReadError";
+import { getTeacherDashboard, useDashboardRefresh } from "../../data/studentDashboard";
 import { usePlannerNotes, type PlannerNote } from "../../data/plannerStore";
 import { getDemoWeekSchedule, getPersonalSchedule } from "../../data/schedule";
 import { createPlannerNote, getPlannerDayNotes, getPlannerNoteDate, getPlannerHref } from "../../domain/planner";
@@ -20,7 +21,8 @@ export default function Home() {
   const navigate = useNavigate();
   const [searchMode, setSearchMode] = useState<"group" | "auditorium">("group");
   const [query, setQuery] = useState("");
-  const now = useDashboardUpdate();
+  const { now, refresh } = useDashboardRefresh();
+  const focusHeadingRef = useRef<HTMLHeadingElement>(null);
   const [params, setParams] = useSearchParams();
   const dateParam = params.get("date");
   const selectedDate = useMemo(() => parseCalendarDate(dateParam), [dateParam]);
@@ -35,7 +37,7 @@ export default function Home() {
     setSavedTask(task);
   };
   const getDaySummary = (date: Date) => ({
-    lessons: getPersonalSchedule(getDemoWeekSchedule(date), currentUser).filter((lesson) => lesson.date === toLocalDateKey(date)).length,
+    lessons: dashboard.errors.schedule ? null : getPersonalSchedule(getDemoWeekSchedule(date, dashboard.scheduleSource), currentUser).filter((lesson) => lesson.date === toLocalDateKey(date)).length,
     tasks: plannerError ? null : getPlannerDayNotes(notes, date).length,
   });
 
@@ -43,6 +45,7 @@ export default function Home() {
     () => getTeacherDashboard({ memberships: currentUser.memberships, now, teacher: currentUser }),
     [currentUser, now],
   );
+  const focusError = Boolean(dashboard.errors.assignments || dashboard.errors.journal);
 
   return (
     <div className="pageContainer">
@@ -64,7 +67,7 @@ export default function Home() {
           />
 
           <div className={`${styles.dashboardCard} ${styles.scheduleCard}`}>
-            <TodaySchedule date={activeDate} />
+            <TodaySchedule date={activeDate} unavailableReason={dashboard.errors.schedule} onRetry={refresh} />
           </div>
 
           <div className={styles.dashboardCard}>
@@ -74,15 +77,15 @@ export default function Home() {
 
           <div className={`${styles.dashboardCard} ${styles.flexParams}`}>
             <div className={styles.paramBox}>
-              <div className={styles.summaryValue}>{dashboard.todayLessons ? `${dashboard.conductedLessons} / ${dashboard.todayLessons}` : "Нет пар"}</div>
+              <div className={styles.summaryValue}>{dashboard.todayLessons === null ? "—" : dashboard.todayLessons ? `${dashboard.conductedLessons} / ${dashboard.todayLessons}` : "Нет пар"}</div>
               <div className={styles.summaryLabel}>Проведено пар сегодня</div>
             </div>
             <div className={styles.paramBox}>
-              <div className={styles.summaryValue}>{dashboard.attendanceMarked} / {dashboard.journalCells}</div>
+              <div className={styles.summaryValue}>{dashboard.attendanceMarked === null ? "—" : `${dashboard.attendanceMarked} / ${dashboard.journalCells}`}</div>
               <div className={styles.summaryLabel}>Заполнено отметок</div>
             </div>
             <div className={styles.paramBox}>
-              <div className={styles.summaryValue}>{dashboard.gradesCount} / {dashboard.gradeCells}</div>
+              <div className={styles.summaryValue}>{dashboard.gradesCount === null ? "—" : `${dashboard.gradesCount} / ${dashboard.gradeCells}`}</div>
               <div className={styles.summaryLabel}>Оценки · практики и лабораторные</div>
             </div>
           </div>
@@ -91,9 +94,10 @@ export default function Home() {
         <div className={styles.rightColumn}>
           <div className={`${styles.dashboardCard} ${styles.focusCard}`}>
             <div className={styles.focusHeader}>
-              <div><span>Фокус на сегодня</span><h2 className={styles.cardTitle}>Что требует внимания</h2></div>
-              <strong>{dashboard.focus.length}</strong>
+              <div><span>Фокус на сегодня</span><h2 ref={focusHeadingRef} tabIndex={-1} className={styles.cardTitle}>Что требует внимания</h2></div>
+              <strong>{focusError ? "—" : dashboard.focus.length}</strong>
             </div>
+            <DashboardReadError messages={[dashboard.errors.assignments, dashboard.errors.journal]} onRetry={refresh} recoveryTarget={focusHeadingRef} />
             {dashboard.focus.length ? (
               <div className={styles.focusList}>
                 {dashboard.focus.map((item) => (
@@ -104,12 +108,12 @@ export default function Home() {
                   </Link>
                 ))}
               </div>
-            ) : (
+            ) : !focusError ? (
               <div className={styles.emptyState}>
                 <strong>Всё под контролем</strong>
                 <span>Непроверенных работ и незаполненных журналов сейчас нет.</span>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className={`${styles.dashboardCard} ${styles.calendarCard}`}>

@@ -1,5 +1,6 @@
 import { getJournalHrefById } from "../data/academicCatalog";
 import type { Assignment } from "../data/assignmentStore";
+import { clearSubmissionReviewView } from "./submissionReviewNavigation";
 
 export type JournalSection = "journal" | "assignments" | "materials" | "history";
 
@@ -10,7 +11,7 @@ export const getJournalSection = (params: URLSearchParams, allowHistory = false)
 };
 
 export const changeJournalSection = (params: URLSearchParams, section: string) => {
-  const next = new URLSearchParams(params);
+  const next = clearSubmissionReviewView(params);
   if (section === "journal") next.delete("tab");
   else next.set("tab", section);
   next.delete("assignment");
@@ -18,6 +19,14 @@ export const changeJournalSection = (params: URLSearchParams, section: string) =
   next.delete("editor");
   next.delete("publish");
   next.delete("assignmentTab");
+  return next;
+};
+
+export const changeAssignmentSelection = (params: URLSearchParams, assignmentId: string | null) => {
+  const next = clearSubmissionReviewView(params);
+  if (assignmentId) { next.set("assignment", assignmentId); next.set("tab", "assignments"); }
+  else next.delete("assignment");
+  for (const key of ["submission", "editor", "publish", "assignmentTab"]) next.delete(key);
   return next;
 };
 

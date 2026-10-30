@@ -79,4 +79,57 @@ describe("assignment editor", () => {
     expect(markup).toMatch(/aria-describedby="[^"]+-deadline-error"/);
     expect(markup).toContain("19 октября");
   });
+
+  it.each([false, true])("keeps unavailable content copyable and exit available (editing: %s)", (editing) => {
+    const markup = render({ editing, originalStatus: "draft", dirty: true, unavailableReason: "Ошибка чтения заданий.", file: new File(["условие"], "Мои условия.txt") });
+    const title = markup.match(/<input[^>]*id="[^"]+-title"[^>]*>/)?.[0] ?? "";
+    const description = markup.match(/<textarea[^>]*>/)?.[0] ?? "";
+    expect(markup).toContain('aria-busy="false"');
+    expect(markup).not.toContain("Сохраняем");
+    expect(markup).toContain("Сохранение недоступно. Ошибка чтения заданий.");
+    expect(markup).toContain("Текст можно выделить и скопировать");
+    expect(title).toContain('readOnly=""');
+    expect(title).toContain('value="Условная вероятность"');
+    expect(description).toContain('readOnly=""');
+    expect(markup).toContain("Решите задачи и объясните ход решения.</textarea>");
+    expect(markup.match(/<fieldset[^>]*disabled=""/g)).toHaveLength(2);
+    expect(markup).not.toMatch(/<button[^>]*disabled=""[^>]*>Отмена/);
+    const backButton = markup.match(/<button[^>]*>/)?.[0] ?? "";
+    expect(backButton).toContain('type="button"');
+    expect(backButton).not.toContain("disabled=");
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Сохранить черновик/);
+    expect(markup).toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
+    expect(markup).toContain("Мои условия.txt");
+    const reasonId = title.match(/aria-describedby="([^"]+)"/)?.[1];
+    expect(reasonId).toBeTruthy();
+    expect(markup).toContain(`id="${reasonId}"`);
+    expect(description).toContain(reasonId);
+  });
+
+  it("disables date pickers explicitly so an existing portalled calendar cannot keep editing", () => {
+    for (const state of [{ saving: true }, { unavailableReason: "Ошибка чтения." }]) {
+      const markup = render(state);
+      for (const label of ["Дата и время занятия", "Срок сдачи"]) {
+        const trigger = markup.match(new RegExp(`<button[^>]*aria-label="${label}:[^"]*"[^>]*>`))?.[0] ?? "";
+        expect(trigger).toContain('disabled=""');
+        expect(trigger).toContain('aria-expanded="false"');
+      }
+    }
+  });
+
+  it("preserves genuine busy feedback and blocks exit during a save", () => {
+    const markup = render({ saving: true, dirty: true });
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup).toContain("Сохраняем…");
+    expect(markup.match(/<fieldset[^>]*disabled=""/g)).toHaveLength(3);
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Отмена/);
+  });
+
+  it("shows an unavailable deleted assignment separately from field validation errors", () => {
+    const markup = render({ editing: true, unavailableReason: "Задание больше недоступно. Возможно, оно удалено в другой вкладке.", retainedAttachmentName: "Прежнее условие.pdf" });
+    expect(markup).toContain("Задание больше недоступно.");
+    expect(markup).toContain("Прежнее условие.pdf");
+    expect(markup).not.toContain('aria-invalid="true"');
+    expect(markup).not.toContain('role="alert"');
+  });
 });

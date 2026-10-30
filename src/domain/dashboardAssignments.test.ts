@@ -51,6 +51,7 @@ describe("student dashboard assignments", () => {
     expect(items.map((item) => item.id)).toEqual(["late", "task-1", "closed"]);
     expect(items[0].canSubmit).toBe(true);
     expect(items[0].state).toBe("late-allowed");
+    expect(items[0].tag).toBe("Можно сдать с опозданием");
     expect(tasks([task({ deadline: "2026-10-08T18:00" })])[0].canSubmit).toBe(false);
   });
 });

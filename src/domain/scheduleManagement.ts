@@ -54,7 +54,7 @@ export const getManagedLessonIssues = (lesson: ManagedLesson): { field: keyof Ma
   return errors;
 };
 export const validateManagedLesson = (lesson: ManagedLesson): string[] => getManagedLessonIssues(lesson).map((issue) => issue.message);
-const normalizedRoom = (room: string) => room.toLocaleLowerCase("ru").replace(/^ауд[.]?\s*/u, "").replace(/\s+/g, "").trim();
+export const getScheduleRoomKey = (room: string) => room.toLocaleLowerCase("ru").replace(/^ауд[.]?\s*/u, "").replace(/\s+/g, "").trim();
 export const findScheduleConflicts = (lessons: ManagedLesson[], others: ManagedLesson[] = []): ScheduleConflict[] => {
   const result: ScheduleConflict[] = [];
   const all = [...lessons, ...others];
@@ -64,7 +64,7 @@ export const findScheduleConflicts = (lessons: ManagedLesson[], others: ManagedL
       const add = (kind: ScheduleConflict["kind"], message: string) => result.push({ lessonId: lesson.id, otherId: other.id, kind, message: `${lesson.date}, ${lesson.startsAt}: ${message}` });
       if (lesson.teacherId === other.teacherId) add("teacher", "преподаватель занят на другой паре.");
       if (lesson.groupId === other.groupId) add("group", "у группы уже есть занятие в это время.");
-      if (normalizedRoom(lesson.room) === normalizedRoom(other.room)) add("room", "аудитория занята другой парой.");
+      if (getScheduleRoomKey(lesson.room) === getScheduleRoomKey(other.room)) add("room", "аудитория занята другой парой.");
     });
   });
   return result;

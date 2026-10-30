@@ -1,3 +1,5 @@
+import { isLocalNotificationHref } from "../domain/localNotificationHref";
+
 type LegacyNotificationRole = "teacher" | "student";
 
 export type NotificationKind = "assignment" | "submission" | "grade" | "revision" | "schedule";
@@ -77,8 +79,7 @@ const isNotificationKind = (value: unknown): value is NotificationKind => (
 const normalizeHref = (value: unknown) => {
   if (typeof value !== "string") return "/notifications";
   const href = value.trim();
-  const hasControlCharacter = Array.from(href).some((character) => character.charCodeAt(0) <= 31 || character.charCodeAt(0) === 127);
-  return href.startsWith("/") && !href.startsWith("//") && !href.includes("\\") && !hasControlCharacter ? href : "/notifications";
+  return isLocalNotificationHref(href) ? href : "/notifications";
 };
 
 const normalizeDate = (value: unknown) => {

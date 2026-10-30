@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { coreBackupFixture } from "../testSupport/localBackupDocuments";
 import { backupFixture } from "../testSupport/localBackup";
-import { BACKUP_CORE_DOCUMENTS, inspectBackupDocuments, type BackupDocumentKind } from "./localBackupDocuments";
+import { BACKUP_CORE_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 
 const forbidden = vi.fn(() => { throw new Error("Archive checks must not access live storage"); });
 beforeEach(() => { forbidden.mockClear(); vi.stubGlobal("localStorage", { getItem: forbidden, setItem: forbidden }); });
@@ -11,22 +11,23 @@ describe("archived core document checks", () => {
   it("uses existing schemas and archived references without mutating raw documents or reading live storage", async () => {
     const state = coreBackupFixture(); const before = JSON.stringify(state.archive);
     const result = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(result.counts).toEqual({ valid: 4, invalid: 0, absent: 0, unchecked: 0, errors: 0, reviews: 0, hiddenIssues: 0 });
-    expect(result.checks.every((check) => check.status === "valid" && check.revision === 1)).toBe(true);
+    expect(result.counts).toEqual({ valid: 4, invalid: 0, absent: 9, unchecked: 0, errors: 0, reviews: 0 });
+    expect(result.checks.slice(0, 4).every((check) => check.status === "valid" && check.revision === 1)).toBe(true);
+    expect(result.checks.slice(4).every((check) => check.status === "absent")).toBe(true);
     expect(forbidden).not.toHaveBeenCalled(); expect(JSON.stringify(state.archive)).toBe(before);
     expect(JSON.stringify(result)).not.toContain("Иван Петров"); expect(JSON.stringify(result)).not.toContain("Анна Смирнова");
   });
   it("does not infer demo documents, an empty successful account list or a usable login for absent sources", async () => {
     const result = await inspectBackupDocuments(backupFixture(), "configurator-demo");
-    expect(result.counts).toMatchObject({ absent: 4, valid: 0, errors: 0, reviews: 1 });
+    expect(result.counts).toMatchObject({ absent: 13, valid: 0, errors: 0, reviews: 1 });
     expect(result.checks.every((check) => check.status === "absent")).toBe(true);
     expect(result.issues).toContainEqual(expect.objectContaining({ code: "unchecked-access", level: "review" })); expect(forbidden).not.toHaveBeenCalled();
   });
-  it.each(Object.keys(BACKUP_CORE_DOCUMENTS) as BackupDocumentKind[])("rejects unsupported internal version of %s", async (kind) => {
+  it.each(Object.keys(BACKUP_CORE_DOCUMENTS) as (keyof typeof BACKUP_CORE_DOCUMENTS)[])("rejects unsupported internal version of %s", async (kind) => {
     const state = coreBackupFixture(); const row = state.archive.localStorage.find((entry) => entry.key === BACKUP_CORE_DOCUMENTS[kind].key)!;
     row.raw = JSON.stringify({ ...JSON.parse(row.raw), version: 99 });
     const result = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(result.checks.find((check) => check.kind === kind)).toMatchObject({ status: "invalid", message: "Поддерживается только документ версии 1." });
+    expect(result.checks.find((check) => check.kind === kind)).toMatchObject({ status: "invalid", message: expect.stringContaining("Поддерживается только документ версии 1.") });
     expect(result.counts.invalid).toBe(1);
   });
   it("keeps malformed inner JSON as a finding without exposing SyntaxError snippets or aborting other document checks", async () => {
@@ -45,7 +46,7 @@ describe("archived core document checks", () => {
     const state = coreBackupFixture(); state.accounts.accounts.push({ ...state.accounts.accounts[0] }); state.groups.groups[0].campus = 10;
     state.subjects.subjects.push({ ...state.subjects.subjects[0] }); state.schedule.published = state.schedule.drafts; state.schedule.drafts = []; state.save();
     const result = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(result.counts.invalid).toBe(4); expect(result.checks.every((check) => check.status === "invalid")).toBe(true); expect(result.counts.valid).toBe(0);
+    expect(result.counts.invalid).toBe(4); expect(result.checks.slice(0, 4).every((check) => check.status === "invalid")).toBe(true); expect(result.counts.valid).toBe(0);
   });
   it("distinguishes the current configurator losing access from a schema that still has another active configurator", async () => {
     const state = coreBackupFixture(); state.accounts.accounts.push({ ...state.accounts.accounts[0], id: "another", login: "another" });
@@ -82,13 +83,14 @@ describe("archived core document checks", () => {
     expect(incompatible.checks.find((check) => check.kind === "subjects")?.status).toBe("invalid");
   });
   it("counts all unsupported documents as unreviewed instead of claiming full archive compatibility", async () => {
-    const state = coreBackupFixture(); state.archive.localStorage.push({ key: "bi-university-demo-submissions", raw: "[]" }, { key: "bi-university-theme", raw: "light" });
-    const result = await inspectBackupDocuments(state.archive, "configurator-demo"); expect(result.counts.unchecked).toBe(2); expect(result.counts.valid).toBe(4);
+    const state = coreBackupFixture(); state.archive.localStorage.push({ key: "bi-university-unknown-module", raw: "[]" }, { key: "bi-university-theme", raw: "light" });
+    const result = await inspectBackupDocuments(state.archive, "configurator-demo"); expect(result.counts.unchecked).toBe(1); expect(result.counts.valid).toBe(5);
   });
-  it("limits displayed findings while keeping the complete number of distinct problems", async () => {
+  it("retains every distinct finding beyond the old preview limit", async () => {
     const state = coreBackupFixture(); state.accounts.accounts[1].memberships = Array.from({ length: 205 }, (_, index) => ({ subjectId: `missing-${index}`, groupIds: ["group-1"] })); state.save();
     const result = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(result.issues).toHaveLength(200); expect(result.counts.errors).toBe(205); expect(result.counts.hiddenIssues).toBe(5);
+    expect(result.issues).toHaveLength(205); expect(result.counts.errors).toBe(205);
+    expect(result.issues.at(-1)).toMatchObject({ referenceId: "missing-204", code: "missing-subject" });
   });
   it("honours cancellation between document decoders", async () => {
     const controller = new AbortController(); const promise = inspectBackupDocuments(coreBackupFixture().archive, "configurator-demo", undefined, controller.signal); controller.abort();

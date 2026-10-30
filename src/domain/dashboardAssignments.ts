@@ -9,7 +9,7 @@ const stateLabels = {
   resubmitted: "На проверке",
   revision: "На доработке",
   graded: "Проверено",
-  "late-allowed": "Можно сдать позже",
+  "late-allowed": "Можно сдать с опозданием",
   overdue: "Приём завершён",
 } as const;
 

@@ -17,7 +17,6 @@
 .answerContent { display: grid; align-content: start; gap: 16px; min-width: 0; }
 .sectionLabel { margin: 0; color: $color-text-secondary; font-size: 13px; font-weight: 500; }
 .answer { display: grid; gap: 16px; min-width: 0; }
-.answer > p { margin: 0; color: $color-text-light; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.8; }
 .file { box-sizing: border-box; min-height: 44px; max-width: 100%; padding: 10px 14px; font-size: 14px; text-align: left; overflow-wrap: anywhere; }
 .previous { padding-block: 10px; border-block: 1px solid ui.$line; }
 .previous > summary { display: list-item; padding: 10px 0; min-height: 24px; cursor: pointer; color: $color-text-secondary; font-size: 14px; }
@@ -35,10 +34,12 @@
 .grades label.chosenGrade { background: $color-accent-background-hover; color: $color-accent-hover; border-color: $color-accent-primary; box-shadow: inset 0 0 0 1px $color-accent-primary; }
 .grades label:hover { border-color: $color-text-secondary; }
 .grades label:has(input:disabled) { cursor: not-allowed; opacity: .5; }
+.grades label.chosenGrade:has(input:disabled) { opacity: 1; }
 .grades label:has(input:focus-visible) { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 .comment { display: grid; gap: 8px; font-size: 14px; }
 .comment textarea { box-sizing: border-box; width: 100%; min-height: 96px; padding: 12px; @include ui.control; font: inherit; font-size: 15px; line-height: 1.6; resize: vertical; }
 .draftHint { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
+.unavailable { margin: 0; padding: 12px; border: 1px solid ui.$line; border-left: 3px solid $color-warning; border-radius: 6px; background: ui.$surface; color: $color-text-light; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .gradeActions { display: flex; flex-wrap: wrap; gap: 8px; }
 .reviewPanel button { min-height: 44px; padding: 10px 12px; border-width: 1px; font-size: 14px; }
 .reviewPanel .primary { @include ui.primary; flex-grow: 1; }

@@ -12,6 +12,7 @@
 .layout :where(button, input, textarea, select, summary):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 .error, .notice, .unavailable { margin: 0; padding: 14px 18px; border: 1px solid ui.$line; border-radius: ui.$radius; font-size: 14px; line-height: 1.6; }
 .error { border-color: theme-alpha($color-error, .4); color: $color-error; background: theme-alpha($color-error, .06); }
+.error h2:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 4px; }
 .notice { border-color: theme-alpha($color-success, .3); color: $color-text-light; background: theme-alpha($color-success, .06); }
 .unavailable { @include ui.panel; padding: 28px; }
 .unavailable h3 { margin: 0 0 8px; }
