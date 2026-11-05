@@ -2,6 +2,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import InspectionPanel from "./InspectionPanel";
 import type { BackupInspection } from "../../data/localBackupInspectionService";
+import { compareBackupPlannerRecords } from "../../domain/backupPlannerComparison";
+import { getPlannerStorageKey } from "../../domain/plannerStorage";
+import { compareBackupCatalogRecords } from "../../domain/backupCatalogComparison";
+import { compareBackupAccountRecords } from "../../domain/backupAccountComparison";
+import { compareBackupLearningRecords } from "../../domain/backupLearningComparison";
+import { learningBackupFixture } from "../../testSupport/localBackupDocuments";
+import { compareBackupScheduleRecords } from "../../domain/backupScheduleComparison";
 
 const noop = () => undefined;
 const result: BackupInspection = {
@@ -13,6 +20,52 @@ const result: BackupInspection = {
 };
 const render = (patch = {}) => renderToStaticMarkup(<InspectionPanel file={null} busy={false} progress="" error="" result={null} unavailable={false} reportMessage="" reportError="" onFile={noop} onInspect={noop} onCancel={noop} onReport={noop} {...patch} />);
 describe("backup file preview", () => {
+  it("counts an invalid schedule document once across both modes in the main status", async () => {
+    const scheduleComparison = await compareBackupScheduleRecords([], [{ key: "bi-university-managed-schedule-v1", raw: "PRIVATE{broken" }]);
+    const html = render({ result: { ...result, scheduleComparison } });
+    expect(html).toContain("Документы расписания не сравнены: 1"); expect(html).not.toContain("Документы расписания не сравнены: 2"); expect(html).not.toContain("PRIVATE");
+  });
+  it("counts each failed learning document once across parent cards and child histories", async () => {
+    const fixture = learningBackupFixture(); fixture.submissions[0].text = "PRIVATE CONFLICT"; fixture.save();
+    const learningComparison = await compareBackupLearningRecords([], fixture.archive.localStorage);
+    const html = render({ result: { ...result, learningComparison } });
+    expect(html).toContain("Списки заданий и ответов сравнены не полностью: 1");
+    expect(html).not.toContain("Списки заданий и ответов сравнены не полностью: 2"); expect(html).not.toContain("PRIVATE");
+  });
+  it("announces unsafely comparable answer sources in the main status while keeping details collapsed", async () => {
+    const fixture = learningBackupFixture(); fixture.submissions[0].text = "PRIVATE CONFLICT"; fixture.save();
+    const learningComparison = await compareBackupLearningRecords([], fixture.archive.localStorage);
+    const html = render({ result: { ...result, learningComparison } });
+    expect(html).toContain("Списки заданий и ответов сравнены не полностью: 1"); expect(html).toContain("не сравнено 1");
+    expect(html).not.toContain("PRIVATE"); expect(html).not.toContain("Восстановить</button>");
+  });
+  it("announces an unsupported accounts source in the main status before the disclosure is opened", async () => {
+    const accountComparison = await compareBackupAccountRecords([], [{ key: "bi-university-accounts-v2", raw: "PRIVATE" }]);
+    const html = render({ result: { ...result, accountComparison } });
+    expect(html).toContain("Документы учёток не сравнены: 1"); expect(html).toContain("не сравнено 1");
+    expect(html).not.toContain("PRIVATE"); expect(html).not.toContain("Восстановить</button>");
+  });
+  it("announces an unreadable live catalog in the main status before opening the detailed section", async () => {
+    const catalogComparison = await compareBackupCatalogRecords([], [{ key: "bi-university-group-catalog-v1", raw: "PRIVATE{broken" }]);
+    const html = render({ result: { ...result, catalogComparison } });
+    expect(html).toContain("Каталоги не сравнены: 1"); expect(html).toContain("не сравнено 1");
+    expect(html).not.toContain("PRIVATE"); expect(html).not.toContain("Восстановить</button>");
+  });
+  it("announces an uncompared live planner in the main status even while its detail section is collapsed", async () => {
+    const plannerComparison = await compareBackupPlannerRecords([], [{ key: getPlannerStorageKey("student-1"), raw: "PRIVATE{broken" }]);
+    const html = render({ result: { ...result, plannerComparison } });
+    expect(html).toContain("Списки планировщика не сравнены: 1"); expect(html).toContain("не сравнено 1");
+    expect(html).not.toContain("PRIVATE"); expect(html).not.toContain("Готов к восстановлению");
+  });
+  it("shows key types for file differences with matching display IDs while retaining the read-only interface", () => {
+    const comparison = { ...result.comparison, differences: [
+      { kind: "different" as const, area: "Файлы", id: '["number",1]', reference: { storage: "indexedDB" as const, database: "db", store: "files", key: { type: "number" as const, value: 1 } } },
+      { kind: "different" as const, area: "Файлы", id: '["number",1]', reference: { storage: "indexedDB" as const, database: "db", store: "files", key: { type: "string" as const, value: '["number",1]' } } },
+    ] };
+    const html = render({ result: { ...result, comparison } });
+    expect(html).toContain("Ключ: число"); expect(html).toContain("Ключ: строка");
+    expect((html.match(/<li>/g) ?? []).length).toBe(2); expect(html).not.toContain("Восстановить</button>");
+  });
   it("has an explicit labelled file chooser and no restore or upload action", () => {
     const html = render();
     expect(html).toContain('for="backup-file"'); expect(html).toContain('type="file"'); expect(html).toContain('accept=".json,application/json"');

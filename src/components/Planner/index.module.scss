@@ -68,6 +68,7 @@
 .listView .emptyState { justify-content: start; padding-inline: 12px; }
 .planner :is(button, input, summary):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 .dragging, .dragging * { cursor: grabbing !important; user-select: none; }
+.planner .dayColumn.dropTarget { outline: 2px dashed $color-accent-primary; outline-offset: -3px; background: $color-accent-background-hover; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 :root[data-theme="light"] {

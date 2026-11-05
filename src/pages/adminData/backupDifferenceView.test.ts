@@ -5,6 +5,25 @@ import { changeBackupDifferenceQuery, emptyBackupDifferenceQuery, getBackupDiffe
 const kinds = ["new", "different", "current-only", "schema"] as const;
 const differences: BackupDifference[] = Array.from({ length: 230 }, (_, index) => ({ kind: kinds[index % 4], area: index % 2 ? "Материалы" : "Локальные данные", id: `record-${index}` }));
 describe("archive difference view", () => {
+  it("finds journal records by exact subject/group IDs without multiplying area options", () => {
+    const rows: BackupDifference[] = ["1", "2"].map((suffix) => ({ kind: "different", area: "Связи занятий с журналом", id: "managed:same", reference: { storage: "localStorage-journal-record", key: "bi-university-managed-schedule-v1", collection: "schedule-journal", id: "managed:same", subjectId: `subject-${suffix}`, groupId: `group-${suffix}` } }));
+    expect(new Set(rows.map((row) => row.area)).size).toBe(1);
+    expect(getBackupDifferencePage(rows, { ...emptyBackupDifferenceQuery(), search: "subject-2 group-2" }).rows).toEqual([rows[1]]);
+  });
+  it("finds a scoped attempt by parent ID without creating one area option per answer", () => {
+    const rows: BackupDifference[] = ["answer-1", "answer-2"].map((parentId) => ({ kind: "different", area: "Попытки ответов · bi-university-demo-submissions", id: "attempt-1", reference: { storage: "localStorage-child-record", key: "bi-university-demo-submissions", collection: "submission-attempts", parentId, id: "attempt-1" } }));
+    expect(new Set(rows.map((row) => row.area)).size).toBe(1);
+    expect(getBackupDifferencePage(rows, { ...emptyBackupDifferenceQuery(), search: "answer-2" }).rows).toEqual([rows[1]]);
+  });
+  it("finds the displayed key type without confusing identical-looking file IDs", () => {
+    const common = { kind: "different" as const, area: "Файлы", id: '["number",1]' };
+    const rows: BackupDifference[] = [
+      { ...common, reference: { storage: "indexedDB", database: "db", store: "files", key: { type: "number", value: 1 } } },
+      { ...common, reference: { storage: "indexedDB", database: "db", store: "files", key: { type: "string", value: common.id } } },
+    ];
+    expect(getBackupDifferencePage(rows, { ...emptyBackupDifferenceQuery(), search: "число" }).rows).toEqual([rows[0]]);
+    expect(getBackupDifferencePage(rows, { ...emptyBackupDifferenceQuery(), search: "строка" }).rows).toEqual([rows[1]]);
+  });
   it("retains all differences and exposes the last page after 200 without changing the report source", () => {
     const before = JSON.stringify(differences); const view = getBackupDifferencePage(differences, { ...emptyBackupDifferenceQuery(), page: 12 });
     expect(view).toMatchObject({ total: 230, pages: 12, page: 12 }); expect(view.rows).toHaveLength(10); expect(view.rows.at(-1)!.id).toBe("record-229");

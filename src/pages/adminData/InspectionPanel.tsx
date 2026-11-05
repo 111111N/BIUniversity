@@ -2,6 +2,13 @@ import type { BackupInspection } from "../../data/localBackupInspectionService";
 import styles from "./index.module.scss";
 import DocumentReview from "./DocumentReview";
 import DifferenceReview from "./DifferenceReview";
+import PlannerComparisonReview from "./PlannerComparisonReview";
+import CatalogComparisonReview from "./CatalogComparisonReview";
+import AccountComparisonReview from "./AccountComparisonReview";
+import LearningComparisonReview from "./LearningComparisonReview";
+import { getUncheckedLearningDocuments } from "../../domain/backupLearningComparison";
+import ScheduleComparisonReview from "./ScheduleComparisonReview";
+import { getUncheckedScheduleDocuments } from "../../domain/backupScheduleComparison";
 
 export interface InspectionPanelProps {
   file: File | null; busy: boolean; progress: string; error: string; result: BackupInspection | null; unavailable: boolean;
@@ -11,6 +18,17 @@ export interface InspectionPanelProps {
 const when = (value: string) => new Date(value).toLocaleString("ru-RU");
 
 export default function InspectionPanel({ file, busy, progress, error, result, unavailable, reportMessage, reportError, onFile, onInspect, onCancel, onReport }: InspectionPanelProps) {
+  const uncheckedCatalogs = result?.catalogComparison ? result.catalogComparison.groups.counts.uncheckedDocuments + result.catalogComparison.subjects.counts.uncheckedDocuments : 0;
+  const uncheckedAccounts = result?.accountComparison?.counts.uncheckedDocuments ?? 0;
+  const uncheckedLearning = result?.learningComparison ? getUncheckedLearningDocuments(result.learningComparison) : 0;
+  const incompleteStatus = [
+    { count: result?.plannerComparison?.counts.uncheckedDocuments ?? 0, label: "Списки планировщика не сравнены" },
+    { count: uncheckedCatalogs, label: "Каталоги не сравнены" },
+    { count: uncheckedAccounts, label: "Документы учёток не сравнены" },
+    { count: uncheckedLearning, label: "Списки заданий и ответов сравнены не полностью" },
+    { count: result?.scheduleComparison ? getUncheckedScheduleDocuments(result.scheduleComparison) : 0, label: "Документы расписания не сравнены" },
+  ].filter(({ count }) => count > 0).map(({ count, label }) => `${label}: ${count}.`).join(" ");
+  const completedStatus = result ? `Проверка завершена. Ошибки в документах: ${result.documents.counts.errors}. Требуют проверки: ${result.documents.counts.reviews}. Сравнение с браузером готово.${incompleteStatus ? ` ${incompleteStatus}` : ""}` : "";
   return <section className={styles.card} aria-labelledby="inspection-title">
     <h1 id="inspection-title" className={styles.title}>Проверить резервную копию</h1>
     <p className={styles.intro}>Выберите ранее скачанный JSON. Файл проверяется на этом устройстве, без отправки на сервер. Данные портала не изменяются.</p>
@@ -22,7 +40,7 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
       <button type="button" className={styles.primary} disabled={!file || busy || unavailable} onClick={onInspect}>{busy ? "Проверяем…" : "Проверить файл"}</button>
       {busy && <button type="button" onClick={onCancel}>Отменить</button>}
     </div>
-    <p role="status" aria-live="polite" aria-atomic="true" className={styles.status}>{busy ? progress : result ? `Проверка завершена. Ошибки в документах: ${result.documents.counts.errors}. Требуют проверки: ${result.documents.counts.reviews}. Сравнение с браузером готово.` : ""}</p>
+    <p role="status" aria-live="polite" aria-atomic="true" className={styles.status}>{busy ? progress : completedStatus}</p>
     {unavailable && <p className={styles.error} role="alert">Проверка доступна только действующему настройщику.</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
     {result && <div className={styles.inspection}>
@@ -46,6 +64,11 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
       <p className={styles.hint}>Подсчитаны сохранённые локальные записи и файловые записи по ID, а не студенты или дисциплины внутри документов. Совпадение ID с другим содержимым отмечено как различие. Записи только в браузере сохраняются: этот просмотр ничего не удаляет.</p>
       <div className={styles.notice}><strong>Это предпросмотр, данные не восстановлены.</strong><p>Общий моментальный снимок разных хранилищ не гарантирован. Проверки учебных связей пока частичные; для восстановления ещё нужны проверки прав, владельцев файлов и совместимости всех документов.</p></div>
       <DifferenceReview key={`${result.sha256}:${result.inspectedAt}`} differences={result.comparison.differences} />
+      {result.plannerComparison && <PlannerComparisonReview key={`planner:${result.sha256}:${result.inspectedAt}`} review={result.plannerComparison} />}
+      {result.catalogComparison && <CatalogComparisonReview key={`catalog:${result.sha256}:${result.inspectedAt}`} review={result.catalogComparison} />}
+      {result.accountComparison && <AccountComparisonReview key={`account:${result.sha256}:${result.inspectedAt}`} review={result.accountComparison} />}
+      {result.learningComparison && <LearningComparisonReview key={`learning:${result.sha256}:${result.inspectedAt}`} review={result.learningComparison} />}
+      {result.scheduleComparison && <ScheduleComparisonReview key={`schedule:${result.sha256}:${result.inspectedAt}`} review={result.scheduleComparison} />}
       <details className={styles.details}><summary>Что проверено и какие есть ограничения</summary><div>
         {result.warnings.map((warning) => <p key={warning}>{warning}</p>)}
         <p>Источник: {result.source.origin}{result.source.basePath}. Сравнение выполнено {when(result.inspectedAt)}. Если данные изменились после проверки, результат нужно получить заново.</p>

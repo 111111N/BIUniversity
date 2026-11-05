@@ -4,6 +4,10 @@ import type { SubjectCatalogDocument } from "../domain/subjectCatalog";
 import type { ManagedScheduleSnapshot } from "../domain/scheduleManagement";
 import { BACKUP_CORE_DOCUMENTS, BACKUP_LEARNING_DOCUMENTS } from "../domain/localBackupDocuments";
 import { backupFixture, backupTime } from "./localBackup";
+import { applyStudentBulk } from "../domain/studentBulk";
+import type { StudentBulkAction } from "../domain/studentBulkReceipt";
+import type { EducationEventDetails } from "../domain/studentEducationEvent";
+import { applyStudentImport, previewStudentImport, type StudentImportRequest } from "../domain/studentImport";
 import type { Assignment, Submission } from "../data/assignmentStore";
 import type { Student } from "../components/Attendance/data/students";
 import type { JournalChange } from "../data/journalStore";
@@ -27,6 +31,31 @@ export const coreBackupFixture = () => {
   const documents = { accounts, groups, subjects, schedule };
   const save = () => { archive.localStorage = (Object.entries(documents) as [keyof typeof documents, unknown][]).map(([kind, value]) => ({ key: BACKUP_CORE_DOCUMENTS[kind].key, raw: JSON.stringify(value) })); archive.totals.storageEntries = archive.localStorage.length; return archive; };
   save(); return { archive, accounts, groups, subjects, schedule, save };
+};
+
+export const studentImportBackupFixture = (includeExisting = false) => {
+  const state = coreBackupFixture();
+  const request: StudentImportRequest = { defaultGroupId: "group-1", defaultCampus: null, rows: [{ line: 2, name: "PRIVATE IMPORTED STUDENT", login: "imported.student", email: "", group: "", campus: "" }] };
+  if (includeExisting) request.rows.push({ ...request.rows[0], line: 3, name: state.accounts.accounts[2].name, login: state.accounts.accounts[2].login });
+  const plan = previewStudentImport(state.accounts, state.groups.groups, request, backupTime);
+  const result = applyStudentImport(state.accounts, {
+    actorId: "configurator-demo", actorRevision: 1, expectedRevision: state.accounts.revision, expectedGroupRevision: state.groups.revision,
+    batchId: "import-1", fingerprint: "a".repeat(64), request, expectedYear: plan.year,
+    expectedStudentNumbers: plan.rows.filter((row) => row.status === "ready").map((row) => row.studentNumber!),
+  }, state.groups.groups, state.groups.revision, backupTime, [{ id: "imported-student", changeId: "import-audit-1" }]);
+  Object.assign(state.accounts, result.state); state.save();
+  return { ...state, receipt: result.receipt, audit: state.accounts.history.at(-1)! };
+};
+
+export const studentOperationBackupFixture = (action: StudentBulkAction = { kind: "transfer", groupId: "group-2" }, education?: EducationEventDetails) => {
+  const state = coreBackupFixture();
+  state.groups.groups.push({ ...state.groups.groups[0], id: "group-2", name: "PRIVATE TARGET GROUP" });
+  const result = applyStudentBulk(state.accounts, {
+    actorId: "configurator-demo", actorRevision: 1, expectedRevision: state.accounts.revision, expectedGroupRevision: state.groups.revision,
+    batchId: "bulk-1", fingerprint: "a".repeat(64), request: { targets: [{ accountId: "student-1", revision: 1 }], action, ...(education ? { education } : {}) },
+  }, state.groups.groups, state.groups.revision, backupTime, ["bulk-audit-1"]);
+  Object.assign(state.accounts, result.state); state.save();
+  return { ...state, operation: result.receipt, row: result.receipt.rows[0], audit: state.accounts.history.at(-1)! };
 };
 
 export const scheduleConflictBackupFixture = () => {

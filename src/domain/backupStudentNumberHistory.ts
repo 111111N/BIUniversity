@@ -1,20 +1,21 @@
 import type { AccountsDocument } from "./accounts";
 import { checkBackupAbort } from "./localBackup";
 import type { BackupDocumentIssue } from "./localBackupDocuments";
+import { resolveArchivedAccountHistory, type ArchivedAccountHistoryIndex } from "./backupAccountHistory";
 
 /** Check explicit issuance events only; creation and imports need not have a separate event. */
-export const inspectArchivedStudentNumberHistory = async (document: AccountsDocument, signal?: AbortSignal) => {
+export const inspectArchivedStudentNumberHistory = async (document: AccountsDocument, signal?: AbortSignal, historyIndex?: ArchivedAccountHistoryIndex) => {
   checkBackupAbort(signal);
   const accounts = new Map(document.accounts.map((account) => [account.id, account]));
-  const ids = new Map<string, number>(); const issues: BackupDocumentIssue[] = [];
+  const history = await resolveArchivedAccountHistory(document.history, signal, historyIndex);
+  const ids = history.idCounts; const issues: BackupDocumentIssue[] = [];
   let total = 0; let matched = 0; let count = 0;
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
-  for (const entry of document.history) { await step(); ids.set(entry.id, (ids.get(entry.id) ?? 0) + 1); }
-  for (const [index, entry] of document.history.entries()) {
+  for (const { entry, position } of history.issuances) {
     await step();
     if (entry.action !== "student-number-issued") continue;
     total++;
-    const note = (level: BackupDocumentIssue["level"], code: string, message: string) => issues.push({ kind: "accounts", level, code, recordId: JSON.stringify(["history", entry.id, index + 1]), message });
+    const note = (level: BackupDocumentIssue["level"], code: string, message: string) => issues.push({ kind: "accounts", level, code, recordId: JSON.stringify(["history", entry.id, position + 1]), message });
     if (!entry.id.trim() || ids.get(entry.id) !== 1) {
       note("review", "unresolved-student-number-history-id", "У записи выдачи нет однозначного ID события. Строка истории сохранена отдельно; событие по совпадению других полей не выбиралось."); continue;
     }

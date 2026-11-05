@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { PlannerDraftConflictError } from "../domain/plannerDraft";
+import { PlannerMoveError } from "../domain/plannerMove";
 import { useRole } from "../components/RoleContext";
 import { getPlannerStorageKey, LEGACY_PLANNER_OWNER_ID as LEGACY_OWNER_ID } from "../domain/plannerStorage";
 export { getPlannerStorageKey } from "../domain/plannerStorage";
@@ -34,8 +35,10 @@ export const readPlannerState = (userId = LEGACY_OWNER_ID): { notes: PlannerNote
       if (!value || typeof value !== "object") return [];
       const note = value as Record<string, unknown>;
       const createdAt = validDate(note.createdAt);
+      const startAt = validDate(note.startAt); const endAt = validDate(note.endAt);
       if (typeof note.id !== "string" || typeof note.title !== "string" || !createdAt) return [];
-      return [{ id: note.id, title: note.title, text: typeof note.text === "string" ? note.text : "", createdAt, startAt: validDate(note.startAt), endAt: validDate(note.endAt), completed: note.completed === true, priority: note.priority === "low" || note.priority === "high" ? note.priority : "medium", category: note.category === "personal" ? "personal" : "study" }];
+      if ((note.startAt !== undefined && !startAt) || (note.endAt !== undefined && !endAt)) return [];
+      return [{ id: note.id, title: note.title, text: typeof note.text === "string" ? note.text : "", createdAt, startAt, endAt, completed: note.completed === true, priority: note.priority === "low" || note.priority === "high" ? note.priority : "medium", category: note.category === "personal" ? "personal" : "study" }];
     });
     if (notes.length !== payload.length || new Set(notes.map((note) => note.id)).size !== notes.length) return { notes, error: "В данных планировщика есть повреждённые записи. Сохранение приостановлено, чтобы не потерять задачи." };
     return { notes, error: "" };
@@ -62,6 +65,22 @@ export const appendPlannerDemoNotes = (notes: PlannerNote[], userId = LEGACY_OWN
   return added.length;
 };
 
+export const updatePlannerNotes = (userId: string, update: PlannerNote[] | ((notes: PlannerNote[]) => PlannerNote[])) => {
+  try {
+    const current = readPlannerState(userId);
+    if (current.error) throw new PlannerWriteError(`${current.error} Сохранение отменено, чтобы не перезаписать данные.`);
+    const notes = typeof update === "function" ? update(current.notes) : update;
+    if (notes !== current.notes) {
+      localStorage.setItem(getPlannerStorageKey(userId), JSON.stringify(notes));
+      window.dispatchEvent(new Event(CHANGE_EVENT));
+    }
+    return notes;
+  } catch (error) {
+    console.error("Не удалось сохранить задачи планировщика:", error);
+    throw error;
+  }
+};
+
 export const usePlannerNotes = () => {
   const { currentUser } = useRole();
   const userId = currentUser.id;
@@ -70,16 +89,11 @@ export const usePlannerNotes = () => {
   useEffect(() => subscribePlannerStore(refreshNotes, userId), [refreshNotes, userId]);
   const setNotes = (update: PlannerNote[] | ((notes: PlannerNote[]) => PlannerNote[])) => {
     try {
-      const current = readPlannerState(userId);
-      if (current.error) throw new PlannerWriteError(`${current.error} Сохранение отменено, чтобы не перезаписать данные.`);
-      const notes = typeof update === "function" ? update(current.notes) : update;
-      localStorage.setItem(getPlannerStorageKey(userId), JSON.stringify(notes));
+      const notes = updatePlannerNotes(userId, update);
       setState({ notes, error: "" });
-      window.dispatchEvent(new Event(CHANGE_EVENT));
       return true;
     } catch (error) {
-      console.error("Не удалось сохранить задачи планировщика:", error);
-      setState((current) => ({ ...current, error: error instanceof PlannerWriteError || error instanceof PlannerDraftConflictError ? error.message : "Не удалось сохранить изменения. Данные не изменены — повторите попытку." }));
+      setState((current) => ({ ...current, error: error instanceof PlannerWriteError || error instanceof PlannerDraftConflictError || error instanceof PlannerMoveError ? error.message : "Не удалось сохранить изменения. Данные не изменены — повторите попытку." }));
       return false;
     }
   };

@@ -3,6 +3,7 @@ import { addDays, format, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { PlusIcon } from "../ButtonIcons/Icons";
 import PlannerNoteForm from "../PlannerNoteForm";
+import PlannerMoveDialog from "../PlannerMoveDialog";
 import PlannerTaskCard from "../PlannerTaskCard";
 import SearchField from "../SearchField";
 import WeekNavigation from "./WeekNavigation";
@@ -11,6 +12,9 @@ import { PlannerWriteError, usePlannerNotes, type PlannerNote } from "../../data
 import { toLocalDateKey } from "../../domain/schedule";
 import { createPlannerNote, getPlannerDayNotes, getPlannerNoteDate } from "../../domain/planner";
 import { mergePlannerDraft } from "../../domain/plannerDraft";
+import { applyPlannerMove, undoPlannerMove, type PlannerMoveSnapshot } from "../../domain/plannerMove";
+import { usePlannerTaskFocus } from "./useTaskFocus";
+import { usePlannerTaskDrag } from "./useTaskDrag";
 import { matchesSearchText } from "../../domain/search";
 import useDragScroll from "../../hooks/useDragScroll";
 import useViewPreference from "../../hooks/useViewPreference";
@@ -33,6 +37,8 @@ interface PlannerProps {
 const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTaskId, onClearTask, onSaved }: PlannerProps) => {
   const { notes, setNotes, refreshNotes, error: storageError } = usePlannerNotes();
   const [editingNote, setEditingNote] = useState<PlannerNote | null>(null);
+  const [movingNote, setMovingNote] = useState<PlannerNote | null>(null);
+  const [moveUndo, setMoveUndo] = useState<PlannerMoveSnapshot | null>(null);
   const [filter, setFilter] = useState<TaskFilter>("all");
   const [query, setQuery] = useState("");
   const [deletedNote, setDeletedNote] = useState<PlannerNote | null>(null);
@@ -45,12 +51,14 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
     if (!selectedTaskId) { handledTaskId.current = null; return; }
     if (requestedNote && handledTaskId.current !== selectedTaskId) {
       handledTaskId.current = selectedTaskId;
+      setMovingNote(null);
       setEditingNote(requestedNote);
     }
   }, [selectedTaskId, requestedNote]);
   const activeNote = editingNote;
   const closeForm = () => { setEditingNote(null); refreshNotes(); onClearTask?.(); };
   const gridRef = useRef<HTMLDivElement>(null);
+  const focusDayTask = usePlannerTaskFocus(gridRef, toLocalDateKey(selectedWeekStart));
   const dragScroll = useDragScroll(gridRef, { axis: "x", enabled: view === "board", resetKey: toLocalDateKey(selectedWeekStart) });
   const selectedKey = selectedDate ? toLocalDateKey(selectedDate) : "";
   const [focusedDay, setFocusedDay] = useState(selectedKey);
@@ -75,7 +83,7 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
     });
     observer?.observe(grid);
     return () => observer?.disconnect();
-  }, [focusedDay, view]);
+  }, [focusedDay, view, selectedWeekStart]);
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(selectedWeekStart, index)),
@@ -105,6 +113,7 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
     if (!saved) return;
     setEditingNote(null);
     setDeletedNote(null);
+    setMoveUndo(null);
     const hiddenByFilters = !matchesFilter(savedNote, filter) || !matchesSearchText(`${savedNote.title} ${savedNote.text}`, query);
     if (hiddenByFilters) resetFilters();
     setFocusedDay(toLocalDateKey(getPlannerNoteDate(savedNote)));
@@ -123,15 +132,41 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
   const completedCount = weekNotes.filter((note) => note.completed).length;
   const hasFilters = filter !== "all" || Boolean(query.trim());
   const resetFilters = () => { setFilter("all"); setQuery(""); };
-  const focusDayTask = (dayKey: string, preferredIds: string[] = [], revealCompleted = false) => requestAnimationFrame(() => {
-    const day = gridRef.current?.querySelector<HTMLElement>(`[data-date="${dayKey}"]`);
-    if (!day) return;
-    const completed = day.querySelector<HTMLDetailsElement>("details");
-    if (revealCompleted && completed) completed.open = true;
-    const toggles = Array.from(day.querySelectorAll<HTMLButtonElement>("[data-task-toggle]")).filter((button) => button.getClientRects().length > 0);
-    const preferred = preferredIds.map((id) => toggles.find((button) => button.dataset.taskToggle === id)).find(Boolean);
-    (preferred ?? toggles[0] ?? day.querySelector<HTMLButtonElement>("button"))?.focus({ preventScroll: true });
-  });
+  const revealMovedNote = (note: PlannerNote) => {
+    if (!matchesFilter(note, filter) || !matchesSearchText(`${note.title} ${note.text}`, query)) resetFilters();
+    const day = toLocalDateKey(getPlannerNoteDate(note));
+    setFocusedDay(day);
+    if (onSaved) onSaved(note); else onClearTask?.();
+    focusDayTask(day, [note.id], note.completed);
+  };
+  const transferNote = (original: PlannerNote, target: Date) => {
+    const outcome: { result?: ReturnType<typeof applyPlannerMove> } = {};
+    if (!setNotes((items) => {
+      const result = applyPlannerMove(items, original, target);
+      outcome.result = result;
+      return result.notes;
+    }) || !outcome.result) return;
+    const result = outcome.result;
+    setMovingNote(null);
+    setDeletedNote(null);
+    setMoveUndo(result.changed ? { before: result.before, after: result.after } : null);
+    setSaveMessage(result.changed ? `Задача перенесена на ${format(getPlannerNoteDate(result.after), "d MMMM yyyy", { locale: ru })}` : "Задача уже находится в выбранном дне");
+    revealMovedNote(result.after);
+  };
+  const undoTransfer = () => {
+    if (!moveUndo) return;
+    const outcome: { result?: ReturnType<typeof undoPlannerMove> } = {};
+    if (!setNotes((items) => {
+      const result = undoPlannerMove(items, moveUndo);
+      outcome.result = result;
+      return result.notes;
+    }) || !outcome.result) return;
+    setMoveUndo(null);
+    setSaveMessage("Перенос отменён");
+    revealMovedNote(outcome.result.after);
+  };
+  const openMove = (note: PlannerNote) => { if (!editingNote) setMovingNote(note); };
+  const taskDrag = usePlannerTaskDrag(gridRef, `${toLocalDateKey(selectedWeekStart)}:${view}`, !editingNote && !movingNote && !storageError, transferNote);
   const toggleCompleted = (id: string) => {
     let changedNote = notes.find((item) => item.id === id);
     if (!setNotes((items) => {
@@ -157,6 +192,7 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
       return items.filter((item) => item.id !== note.id);
     })) return;
     setDeletedNote(removedNote ?? null);
+    setMoveUndo(null);
     setSaveMessage("");
     focusDayTask(dayKey, neighbours);
   };
@@ -185,7 +221,7 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
       <p className={styles.srOnly} role="status">{completionMessage}</p>
       {storageError && <div className={styles.storageError} role="alert"><span>{storageError}</span><button type="button" onClick={refreshNotes}>Повторить чтение</button></div>}
       {selectedTaskId && !requestedNote && !storageError && <div className={styles.actionNotice} role="status"><span>Задача не найдена. Возможно, она уже удалена.</span><button type="button" onClick={onClearTask}>Показать неделю</button></div>}
-      {(deletedNote || saveMessage) && <div className={styles.actionNotice} role="status"><span>{deletedNote ? `Задача «${deletedNote.title}» удалена` : saveMessage}</span>{deletedNote && <button type="button" onClick={restoreNote}>Отменить удаление</button>}<button type="button" className={styles.dismissNotice} aria-label="Скрыть сообщение" onClick={() => { setDeletedNote(null); setSaveMessage(""); }}>×</button></div>}
+      {!storageError && (deletedNote || saveMessage) && <div className={styles.actionNotice} role="status"><span>{deletedNote ? `Задача «${deletedNote.title}» удалена` : saveMessage}</span>{deletedNote && <button type="button" onClick={restoreNote}>Отменить удаление</button>}{!deletedNote && moveUndo && <button type="button" onClick={undoTransfer}>Отменить перенос</button>}<button type="button" className={styles.dismissNotice} aria-label="Скрыть сообщение" onClick={() => { setDeletedNote(null); setMoveUndo(null); setSaveMessage(""); }}>×</button></div>}
       <div className={styles.plannerToolbar}>
         <div className={styles.toolbarTop}><div className={styles.filters} role="group" aria-label="Фильтр задач">{FILTERS.map(([value, label]) => <button type="button" aria-pressed={filter === value} className={filter === value ? styles.filterActive : ""} onClick={() => setFilter(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilter(note, value)).length}</span></button>)}</div><div className={styles.toolbarActions}><button type="button" className={styles.createButton} aria-label="Создать задачу" onClick={() => createNoteForDay(activeDay)}><PlusIcon size={16} />Создать</button><div className={styles.viewSwitch} role="group" aria-label="Вид планировщика"><button type="button" aria-pressed={view === "board"} onClick={() => changeView("board")}>Неделя</button><button type="button" aria-pressed={view === "list"} onClick={() => changeView("list")}>Список</button></div></div></div>
         <div className={styles.tools}><div className={styles.search}><SearchField label="Поиск по неделе" value={query} onChange={setQuery} placeholder="Название или описание задачи" /></div><div className={styles.weekSummary}>{weekNotes.length ? <><span>Выполнено <strong>{completedCount} из {weekNotes.length}</strong></span><div className={styles.progress} role="progressbar" aria-label="Задачи за неделю выполнены" aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={weekNotes.length}><span style={{ width: `${completedCount / weekNotes.length * 100}%` }} /></div></> : <span>На этой неделе пока нет задач</span>}</div></div>
@@ -203,7 +239,7 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
           const doneNotes = dayNotes.filter((note) => note.completed);
 
           return (
-            <article className={`${styles.dayColumn} ${toLocalDateKey(day) === focusedDay ? styles.selectedDay : ""}`} key={day.toISOString()} data-date={toLocalDateKey(day)}>
+            <article className={`${styles.dayColumn} ${toLocalDateKey(day) === focusedDay ? styles.selectedDay : ""} ${taskDrag.targetDay === toLocalDateKey(day) ? styles.dropTarget : ""}`} key={day.toISOString()} data-date={toLocalDateKey(day)} onDragOver={(event) => taskDrag.over(event, toLocalDateKey(day))} onDragLeave={taskDrag.leave} onDrop={(event) => taskDrag.drop(event, toLocalDateKey(day))}>
               <header className={styles.dayHeader}>
                 <div className={styles.dayIdentity}>
                   <span className={styles.weekday}>{format(day, "EEEE", { locale: ru })}<small aria-label={`Задач за день: ${allDayNotes.length}`}>{allDayNotes.length}</small></span>
@@ -219,8 +255,8 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
                   </button>
                 )}
 
-                {(filter === "completed" ? doneNotes : activeNotes).map((note) => <PlannerTaskCard key={note.id} note={note} layout={view} onToggle={toggleCompleted} onEdit={setEditingNote} onDelete={deleteNote} />)}
-                {filter !== "completed" && doneNotes.length > 0 && <details className={styles.completedGroup} open={Boolean(query.trim())}><summary><span>Выполнено · {doneNotes.length}</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></summary><div>{doneNotes.map((note) => <PlannerTaskCard key={note.id} note={note} layout={view} onToggle={toggleCompleted} onEdit={setEditingNote} onDelete={deleteNote} />)}</div></details>}
+                {(filter === "completed" ? doneNotes : activeNotes).map((note) => <PlannerTaskCard key={note.id} note={note} layout={view} onToggle={toggleCompleted} onEdit={setEditingNote} onMove={openMove} onDragTask={taskDrag.start} onDragTaskEnd={taskDrag.clear} onDelete={deleteNote} />)}
+                {filter !== "completed" && doneNotes.length > 0 && <details className={styles.completedGroup} open={Boolean(query.trim())}><summary><span>Выполнено · {doneNotes.length}</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></summary><div>{doneNotes.map((note) => <PlannerTaskCard key={note.id} note={note} layout={view} onToggle={toggleCompleted} onEdit={setEditingNote} onMove={openMove} onDragTask={taskDrag.start} onDragTaskEnd={taskDrag.clear} onDelete={deleteNote} />)}</div></details>}
               </div>
               {dayNotes.length > 0 && <button type="button" className={styles.addAnother} onClick={() => createNoteForDay(day)}><PlusIcon size={12} />Добавить ещё</button>}
             </article>
@@ -228,7 +264,8 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, selectedTask
         })}
       </div>
 
-      {activeNote && <PlannerNoteForm key={activeNote.id || "new"} note={activeNote} currentNote={activeNote.id ? notes.find((note) => note.id === activeNote.id) ?? null : undefined} error={storageError} onSave={saveNote} onClose={closeForm} />}
+      {activeNote && <PlannerNoteForm key={activeNote.id || "new"} note={activeNote} currentNote={activeNote.id && !storageError ? notes.find((note) => note.id === activeNote.id) ?? null : undefined} error={storageError} onSave={saveNote} onClose={closeForm} />}
+      {movingNote && <PlannerMoveDialog key={movingNote.id} note={movingNote} currentNote={storageError ? undefined : notes.find((note) => note.id === movingNote.id) ?? null} error={storageError} onRetry={refreshNotes} onMove={(day) => transferNote(movingNote, day)} onClose={() => { setMovingNote(null); refreshNotes(); }} />}
     </section>
   );
 };

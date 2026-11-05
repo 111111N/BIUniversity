@@ -4,8 +4,9 @@ import { BACKUP_DATABASES, BACKUP_LIMITS, type RawBackupDatabase } from "../doma
 import { backupFixture, backupTime, rawBackupDatabase } from "../testSupport/localBackup";
 import { createLocalBackupService, type BackupDependencies } from "./localBackupService";
 import { createBackupInspectionService } from "./localBackupInspectionService";
-import { coreBackupFixture, scheduleConflictBackupFixture, materialBackupFixture, materialIndexBackupFixture, learningBackupFixture, learningFileBackupFixture, journalBackupFixture, plannerBackupFixture, notificationBackupFixture, notificationTargetBackupFixture, settingsBackupFixture, messagingBackupFixture, messagingReplyBackupFixture, messageFileBackupFixture, replaceMessageFileBlob } from "../testSupport/localBackupDocuments";
+import { coreBackupFixture, studentImportBackupFixture, studentOperationBackupFixture, scheduleConflictBackupFixture, materialBackupFixture, materialIndexBackupFixture, learningBackupFixture, learningFileBackupFixture, journalBackupFixture, plannerBackupFixture, notificationBackupFixture, notificationTargetBackupFixture, settingsBackupFixture, messagingBackupFixture, messagingReplyBackupFixture, messageFileBackupFixture, replaceMessageFileBlob } from "../testSupport/localBackupDocuments";
 import { prepareBackupInspectionReport } from "./localBackupInspectionReport";
+import { getBackupDifferenceKey } from "../domain/backupComparison";
 
 const command = { actorId: "configurator-demo", actorRevision: 1 };
 const setup = () => {
@@ -25,6 +26,199 @@ beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => undefined
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("read-only backup inspection", () => {
+  it("retains journal records with the same lesson ID in separate historical areas", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const lesson = fixture.schedule.drafts[0].lessons[0];
+    fixture.schedule.drafts = []; fixture.schedule.journal = [{ ...lesson, journalState: "cancelled" }, { ...lesson, subjectId: "subject-2", groupId: "group-2", journalState: "cancelled" }]; fixture.save();
+    const source = JSON.stringify(fixture.archive); fixture.schedule.journal[1].room = "PRIVATE ROOM";
+    state.values.set("bi-university-managed-schedule-v1", JSON.stringify(fixture.schedule)); const before = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "journal.json") });
+    expect(inspection.scheduleComparison?.journal?.counts).toMatchObject({ same: 1, different: 1 });
+    expect(inspection.scheduleComparison?.journal?.differences[0]).toMatchObject({ id: "managed:lesson-1", fields: ["room"], reference: { storage: "localStorage-journal-record", key: "bi-university-managed-schedule-v1", collection: "schedule-journal", id: "managed:lesson-1", subjectId: "subject-2", groupId: "group-2" } });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.scheduleComparison.journal).toEqual(inspection.scheduleComparison?.journal); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(before); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
+  it("compares saved schedule modes without leaking teacher names or rooms", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const source = JSON.stringify(fixture.archive);
+    Object.assign(fixture.schedule.drafts[0].lessons[0], { room: "PRIVATE ROOM", teacherName: "PRIVATE TEACHER" });
+    state.values.set("bi-university-managed-schedule-v1", JSON.stringify(fixture.schedule)); const before = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "schedule.json") });
+    expect(inspection.scheduleComparison?.drafts.differences[0]).toMatchObject({ id: "managed:lesson-1", fields: ["teacherName", "room"], reference: { storage: "localStorage-record", key: "bi-university-managed-schedule-v1", collection: "schedule-drafts", id: "managed:lesson-1" } });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.scheduleComparison).toEqual(inspection.scheduleComparison); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(before); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
+  it("retains week metadata differences when the saved lesson cards match", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const source = JSON.stringify(fixture.archive);
+    fixture.schedule.revision++; fixture.schedule.drafts[0].updatedBy = "PRIVATE ACTOR";
+    state.values.set("bi-university-managed-schedule-v1", JSON.stringify(fixture.schedule));
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "week.json") });
+    expect(inspection.scheduleComparison?.drafts.counts.same).toBe(1);
+    expect(inspection.comparison.differences).toContainEqual(expect.objectContaining({ kind: "different", reference: { storage: "localStorage", key: "bi-university-managed-schedule-v1" } }));
+    expect(JSON.stringify(inspection)).not.toContain("PRIVATE");
+  });
+  it("keeps the same attempt ID in different parent answers distinct throughout the full report", async () => {
+    const state = setup(); const fixture = learningBackupFixture(); const second = structuredClone(fixture.submissions[0]); second.id = "answer-2";
+    fixture.submissions.push(second); fixture.save(); const source = JSON.stringify(fixture.archive);
+    second.text = "PRIVATE CHANGED ATTEMPT"; second.attempts![0].text = second.text;
+    state.values.set("bi-university-demo-submissions", JSON.stringify(fixture.submissions)); const before = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "attempts.json") });
+    expect(inspection.learningComparison?.attempts?.counts).toMatchObject({ same: 1, different: 1 });
+    expect(inspection.learningComparison?.attempts?.differences).toEqual([expect.objectContaining({ id: "attempt-1", fields: ["text"], reference: { storage: "localStorage-child-record", key: "bi-university-demo-submissions", collection: "submission-attempts", parentId: "answer-2", id: "attempt-1" } })]);
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.learningComparison.attempts).toEqual(inspection.learningComparison?.attempts); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(before); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
+  it("retains missing-history findings without turning attempts into apparent deletions", async () => {
+    const state = setup(); const fixture = learningBackupFixture(); const source = JSON.stringify(fixture.archive);
+    fixture.submissions[0].attempts = undefined; state.values.set("bi-university-demo-submissions", JSON.stringify(fixture.submissions));
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "legacy.json") });
+    expect(inspection.learningComparison?.submissions.counts.comparedDocuments).toBe(1);
+    expect(inspection.learningComparison?.attempts?.counts).toMatchObject({ uncheckedDocuments: 1, new: 0, currentOnly: 0 });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.learningComparison.attempts.uncompared).toEqual([{ key: "bi-university-demo-submissions", source: "browser", reason: "missing-history" }]);
+    expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+  });
+  it("compares stored assignments and full answer histories without leaking work contents", async () => {
+    const state = setup(); const fixture = learningBackupFixture(); const source = JSON.stringify(fixture.archive);
+    Object.assign(fixture.assignments[0], { title: "PRIVATE CHANGED TITLE", deadline: "2026-11-05T18:00Z" });
+    fixture.submissions[0].studentName = "PRIVATE UPDATED NAME"; fixture.submissions[0].text = "PRIVATE CHANGED ANSWER";
+    fixture.submissions[0].attempts![0].text = fixture.submissions[0].text;
+    state.values.set("bi-university-demo-assignments", JSON.stringify(fixture.assignments)); state.values.set("bi-university-demo-submissions", JSON.stringify(fixture.submissions));
+    const current = [...state.values]; const inspection = await state.service.inspect({ ...command, file: new File([source], "learning.json") });
+    expect(inspection.learningComparison?.assignments.differences[0]).toMatchObject({ id: "task-1", fields: ["title", "deadline"], reference: { storage: "localStorage-record", key: "bi-university-demo-assignments", collection: "assignments", id: "task-1" } });
+    expect(inspection.learningComparison?.submissions.differences[0].fields).toEqual(["studentName", "text", "attempts"]);
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.learningComparison).toEqual(inspection.learningComparison); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(current); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
+  it("does not turn contradictory live answers into archive-only entries", async () => {
+    const state = setup(); const fixture = learningBackupFixture(); fixture.submissions[0].text = "PRIVATE CONFLICT";
+    state.values.set("bi-university-demo-submissions", JSON.stringify(fixture.submissions));
+    const inspection = await state.service.inspect({ ...command, file: new File([JSON.stringify(fixture.archive)], "answers.json") });
+    expect(inspection.learningComparison?.submissions.counts).toMatchObject({ comparedDocuments: 0, uncheckedDocuments: 1, new: 0, currentOnly: 0 });
+    expect(inspection.learningComparison?.submissions.uncompared).toEqual([{ key: "bi-university-demo-submissions", source: "browser", reason: "invalid-document" }]);
+    expect(JSON.stringify(inspection)).not.toContain("PRIVATE");
+  });
+  it("retains archived consistency findings while marking the source unavailable for record comparison", async () => {
+    const state = setup(); const fixture = learningBackupFixture(); fixture.submissions[0].text = "PRIVATE CONFLICT"; fixture.save();
+    const inspection = await state.service.inspect({ ...command, file: new File([JSON.stringify(fixture.archive)], "conflicts.json") });
+    expect(inspection.documents.issues).toContainEqual(expect.objectContaining({ code: "latest-attempt-mismatch", kind: "submissions" }));
+    expect(inspection.learningComparison?.submissions.uncompared).toEqual([{ key: "bi-university-demo-submissions", source: "archive", reason: "invalid-document" }]);
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.learningComparison.submissions.counts.uncheckedDocuments).toBe(1); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+  });
+  it("compares account cards without leaking identities, addresses or record numbers into the full report", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const source = JSON.stringify(fixture.archive);
+    Object.assign(fixture.accounts.accounts[2], { name: "PRIVATE NAME", login: "private.student", email: "private@example.invalid", status: "blocked", studentRecord: { number: "202630012", year: 2026, campus: 3, sequence: 12, issuedAt: "2026-11-02T00:00Z" } });
+    state.values.set("bi-university-accounts-v1", JSON.stringify(fixture.accounts)); const current = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "accounts.json") });
+    expect(inspection.accountComparison?.counts).toMatchObject({ same: 2, different: 1, uncheckedDocuments: 0 });
+    expect(inspection.accountComparison?.differences[0]).toMatchObject({ id: "student-1", fields: ["name", "login", "status", "email", "studentRecord"], reference: { storage: "localStorage-record", key: "bi-university-accounts-v1", collection: "accounts", id: "student-1" } });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.accountComparison).toEqual(inspection.accountComparison);
+    for (const privateValue of ["PRIVATE", "private.student", "private@example.invalid", "202630012"]) expect(JSON.stringify(saved)).not.toContain(privateValue);
+    expect([...state.values]).toEqual(current); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
+  it("retains account-document history and counter differences when account cards match", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const source = JSON.stringify(fixture.archive);
+    fixture.accounts.revision++; fixture.accounts.studentNumberCounters = { "2026:3": 20 };
+    fixture.accounts.history.push({ id: "audit-1", actorId: "configurator-demo", accountId: "student-1", occurredAt: "2026-11-02T00:00Z", action: "details-changed", previousRole: "student", nextRole: "student", changes: [{ field: "name", before: "PRIVATE BEFORE", after: "PRIVATE AFTER" }] });
+    state.values.set("bi-university-accounts-v1", JSON.stringify(fixture.accounts));
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "history.json") });
+    expect(inspection.accountComparison?.counts.same).toBe(3); expect(inspection.accountComparison?.differences).toEqual([]);
+    expect(inspection.comparison.differences).toContainEqual(expect.objectContaining({ kind: "different", reference: { storage: "localStorage", key: "bi-university-accounts-v1" } }));
+    expect(JSON.stringify(inspection)).not.toContain("PRIVATE");
+  });
+  it("compares group and subject cards in the same snapshots and exports metadata without private values", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const source = JSON.stringify(fixture.archive);
+    fixture.groups.groups[0].name = "PRIVATE GROUP"; fixture.groups.groups[0].course = 2;
+    fixture.subjects.subjects[0].name = "PRIVATE SUBJECT"; fixture.subjects.subjects[0].color = "purple";
+    state.values.set("bi-university-group-catalog-v1", JSON.stringify(fixture.groups)); state.values.set("bi-university-subject-catalog-v1", JSON.stringify(fixture.subjects));
+    const before = [...state.values]; const inspection = await state.service.inspect({ ...command, file: new File([source], "catalogs.json") });
+    expect(inspection.catalogComparison?.groups.differences[0]).toMatchObject({ id: "group-1", fields: ["name", "course"], reference: { storage: "localStorage-record", key: "bi-university-group-catalog-v1", collection: "groups", id: "group-1" } });
+    expect(inspection.catalogComparison?.subjects.differences[0].fields).toEqual(["name", "color"]);
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.catalogComparison).toEqual(inspection.catalogComparison); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(before); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
+  it("does not hide document history differences behind equal catalog cards", async () => {
+    const state = setup(); const fixture = coreBackupFixture(); const source = JSON.stringify(fixture.archive);
+    fixture.groups.revision++; fixture.groups.history.push({ id: "change-1", groupId: "group-1", actorId: "PRIVATE ACTOR", occurredAt: "2026-11-05T00:00Z", action: "created" });
+    state.values.set("bi-university-group-catalog-v1", JSON.stringify(fixture.groups));
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "history.json") });
+    expect(inspection.catalogComparison?.groups.counts.same).toBe(1); expect(inspection.catalogComparison?.groups.differences).toEqual([]);
+    expect(inspection.comparison.differences).toContainEqual(expect.objectContaining({ kind: "different", reference: { storage: "localStorage", key: "bi-university-group-catalog-v1" } }));
+    expect(JSON.stringify(inspection)).not.toContain("PRIVATE");
+  });
+  it("compares planner entities inside documents and exports field names without task values", async () => {
+    const state = setup(); const fixture = plannerBackupFixture();
+    state.values.set(fixture.plannerKey, JSON.stringify([{ ...fixture.notes[0], title: "PRIVATE UPDATED TITLE", completed: true }, { ...fixture.notes[0], id: "only-browser" }]));
+    const original = JSON.stringify(fixture.archive), browser = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([original], "planner.json") });
+    expect(inspection.plannerComparison?.counts).toMatchObject({ documents: 1, different: 1, currentOnly: 1, same: 0, uncheckedDocuments: 0 });
+    expect(inspection.plannerComparison?.differences).toContainEqual(expect.objectContaining({ id: "note-1", fields: ["title", "completed"], reference: { storage: "localStorage-record", key: fixture.plannerKey, collection: "planner", id: "note-1" } }));
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.plannerComparison).toEqual(inspection.plannerComparison); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(browser); expect(JSON.stringify(fixture.archive)).toBe(original);
+  });
+  it("does not present a damaged live planner as an empty list in the inspection or full report", async () => {
+    const state = setup(); const fixture = plannerBackupFixture(); state.values.set(fixture.plannerKey, "PRIVATE{broken");
+    const inspection = await state.service.inspect({ ...command, file: new File([JSON.stringify(fixture.archive)], "planner.json") });
+    expect(inspection.plannerComparison?.counts).toMatchObject({ comparedDocuments: 0, uncheckedDocuments: 1, new: 0 });
+    expect(inspection.plannerComparison?.uncompared).toEqual([{ key: fixture.plannerKey, source: "browser", reason: "invalid-document" }]);
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.plannerComparison.uncompared).toHaveLength(1); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+  });
+  it("keeps typed addresses for identical-looking IDs throughout inspection and full report export", async () => {
+    const state = setup(); const database = rawBackupDatabase(BACKUP_DATABASES[2].name, "files");
+    database.stores[0].records = [{ key: 1, value: "PRIVATE archive number" }, { key: '["number",1]', value: "PRIVATE archive string" }];
+    state.databases.set(database.name, database); const archive = await state.exportFile(); const archiveText = await archive.text();
+    database.stores[0].records = [{ key: 1, value: "PRIVATE browser number" }, { key: '["number",1]', value: "PRIVATE browser string" }];
+    const before = JSON.stringify(database); const values = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: archive });
+    const conflicts = inspection.comparison.differences.filter((difference) => difference.kind === "different");
+    expect(conflicts).toHaveLength(2); expect(conflicts[0].id).toBe(conflicts[1].id);
+    expect(new Set(conflicts.map(getBackupDifferenceKey)).size).toBe(2);
+    expect(conflicts.map((difference) => difference.reference)).toEqual([
+      { storage: "indexedDB", database: database.name, store: "files", key: { type: "number", value: 1 } },
+      { storage: "indexedDB", database: database.name, store: "files", key: { type: "string", value: '["number",1]' } },
+    ]);
+    const report = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(report.comparison.differences).toEqual(conflicts); expect(JSON.stringify(report)).not.toContain("PRIVATE");
+    expect(JSON.stringify(database)).toBe(before); expect([...state.values]).toEqual(values); expect(await archive.text()).toBe(archiveText);
+  });
+  it("addresses database and store schema differences separately from live records", async () => {
+    const state = setup(); const archive = await state.exportFile(); const database = rawBackupDatabase(BACKUP_DATABASES[2].name, "files");
+    database.stores[0].records = [{ key: "only-browser", value: "PRIVATE" }]; state.databases.set(database.name, database);
+    const inspection = await state.service.inspect({ ...command, file: archive });
+    expect(inspection.comparison.differences.map((difference) => difference.reference)).toEqual([
+      { storage: "schema", database: database.name }, { storage: "schema", database: database.name, store: "files" },
+      { storage: "indexedDB", database: database.name, store: "files", key: { type: "string", value: "only-browser" } },
+    ]);
+  });
+  it("exports an import creation-audit conflict without exposing imported names, logins or record numbers", async () => {
+    const state = setup(); const fixture = studentImportBackupFixture(); fixture.audit.actorId = "different-author"; fixture.save();
+    const before = JSON.stringify(fixture.archive); const live = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([before], "import-audit.json", { type: "application/json" }) });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.documents.issues).toEqual([expect.objectContaining({ kind: "accounts", level: "error", code: "student-import-audit-conflict" })]);
+    expect(saved.documents.counts).toMatchObject({ valid: 4, invalid: 0, errors: 1 });
+    expect(JSON.stringify(saved)).not.toContain("PRIVATE"); expect(JSON.stringify(saved)).not.toContain("imported.student");
+    expect(JSON.stringify(saved)).not.toContain(fixture.receipt.created[0].studentNumber);
+    expect([...state.values]).toEqual(live); expect(JSON.stringify(fixture.archive)).toBe(before);
+  });
+  it("preserves a legacy bulk-operation audit conflict in the full report without exposing snapshots or audit values", async () => {
+    const state = setup(); const fixture = studentOperationBackupFixture();
+    fixture.audit.changes![0].after = "PRIVATE AUDIT VALUE"; fixture.save();
+    const before = JSON.stringify(fixture.archive); const live = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([before], "bulk-audit.json", { type: "application/json" }) });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.documents.issues).toEqual([expect.objectContaining({ kind: "accounts", level: "error", code: "student-operation-audit-conflict" })]);
+    expect(saved.documents.counts).toMatchObject({ valid: 4, invalid: 0, errors: 1 });
+    expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(live); expect(JSON.stringify(fixture.archive)).toBe(before);
+  });
   it("includes contradictory student-number history in the full report without exposing either personal number", async () => {
     const state = setup(); const fixture = coreBackupFixture();
     fixture.accounts.accounts[2].studentRecord = { number: "202630012", year: 2026, campus: 3, sequence: 12, issuedAt: "2026-01-01T09:00:00.000Z" };
@@ -315,8 +509,8 @@ describe("read-only backup inspection", () => {
     const before = [...state.values]; const records = [...database.stores[0].records];
     const report = await state.service.inspect({ ...command, file: archive });
     expect(report.comparison).toMatchObject({ same: 3, new: 2, different: 2, currentOnly: 2, schema: 0 });
-    expect(report.comparison.differences).toContainEqual({ kind: "different", area: "Файлы заданий и ответов · files", id: "changed" });
-    expect(report.comparison.differences).toContainEqual({ kind: "current-only", area: "Локальные данные", id: "bi-university-new" });
+    expect(report.comparison.differences).toContainEqual({ kind: "different", area: "Файлы заданий и ответов · files", id: "changed", reference: { storage: "indexedDB", database: "bi-university-learning-files", store: "files", key: { type: "string", value: "changed" } } });
+    expect(report.comparison.differences).toContainEqual({ kind: "current-only", area: "Локальные данные", id: "bi-university-new", reference: { storage: "localStorage", key: "bi-university-new" } });
     expect(report.sha256).toBe(createHash("sha256").update(new Uint8Array(await archive.arrayBuffer())).digest("hex"));
     expect(report.actor).toEqual({ id: command.actorId, revision: command.actorRevision });
     expect([...state.values]).toEqual(before); expect(database.stores[0].records).toEqual(records);

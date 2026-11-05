@@ -16,6 +16,9 @@ import { inspectArchivedGroupStates } from "./backupGroupStates";
 import { inspectArchivedScheduleConflicts } from "./backupScheduleConflicts";
 import { inspectArchivedStudentNumbers } from "./backupStudentNumbers";
 import { inspectArchivedStudentNumberHistory } from "./backupStudentNumberHistory";
+import { inspectArchivedStudentOperations } from "./backupStudentOperations";
+import { indexArchivedAccountHistory } from "./backupAccountHistory";
+import { inspectArchivedStudentImports } from "./backupStudentImports";
 
 export const BACKUP_CORE_DOCUMENTS = {
   accounts: { key: "bi-university-accounts-v1", prefix: "bi-university-accounts-", label: "Учётные записи" },
@@ -104,12 +107,19 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const assignments = await read("assignments", decodeBackupAssignments, false);
   const submissions = await read("submissions", decodeBackupSubmissions, false);
   if (accounts) {
+    const history = await indexArchivedAccountHistory(accounts.history, signal);
     const studentNumbers = await inspectArchivedStudentNumbers(accounts, signal);
     if (studentNumbers.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${studentNumbers.summary}`;
     for (const finding of studentNumbers.issues) issue(finding);
-    const numberHistory = await inspectArchivedStudentNumberHistory(accounts, signal);
+    const numberHistory = await inspectArchivedStudentNumberHistory(accounts, signal, history);
     if (numberHistory.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${numberHistory.summary}`;
     for (const finding of numberHistory.issues) issue(finding);
+    const operations = await inspectArchivedStudentOperations(accounts, signal, history);
+    if (operations.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${operations.summary}`;
+    for (const finding of operations.issues) issue(finding);
+    const imports = await inspectArchivedStudentImports(accounts, signal, history);
+    if (imports.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${imports.summary}`;
+    for (const finding of imports.issues) issue(finding);
   }
   const groupStates = await inspectArchivedGroupStates(groups, accounts, schedule, archive.completedAt, signal);
   const groupCheck = result.checks.find((check) => check.kind === "groups");

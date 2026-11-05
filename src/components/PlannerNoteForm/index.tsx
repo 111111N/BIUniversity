@@ -1,8 +1,9 @@
 import { useId, useRef, useState } from "react";
-import { addDays, differenceInCalendarDays, differenceInMinutes, startOfDay } from "date-fns";
+import { differenceInMinutes, startOfDay } from "date-fns";
 import type { PlannerNote } from "../../data/plannerStore";
 import { formatPlannerTime } from "../../domain/planner";
 import { samePlannerNote } from "../../domain/plannerDraft";
+import { shiftPlannerDates } from "../../domain/plannerMove";
 import { toLocalDateKey } from "../../domain/schedule";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import { changesPlannerTask } from "../../domain/unsavedNavigation";
@@ -36,11 +37,13 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
   const requestClose = () => { if (dirty) setConfirmDiscard(true); else onClose(); };
   const changeDay = (date?: Date) => {
     if (!date) return;
-    const offset = differenceInCalendarDays(date, day);
-    setPlannedDay(startOfDay(date));
-    if (startAt) setStartAt(addDays(startAt, offset));
-    if (endAt) setEndAt(addDays(endAt, offset));
-    setValidation("");
+    try {
+      const shifted = shiftPlannerDates({ day, startAt, endAt }, date);
+      setPlannedDay(shifted.day); setStartAt(shifted.startAt); setEndAt(shifted.endAt); setValidation("");
+    } catch (error) {
+      console.error("Не удалось изменить день задачи:", error);
+      setValidation(error instanceof Error ? error.message : "Не удалось изменить день задачи.");
+    }
   };
   const submit = () => {
     if (!title.trim() && !text.trim()) { setValidation("Добавьте название или описание задачи."); titleRef.current?.focus(); return; }

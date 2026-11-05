@@ -1,6 +1,11 @@
 import { BACKUP_LIMITS, isPortalStorageKey } from "../domain/localBackup";
 import type { BackupInspection } from "./localBackupInspectionService";
 import { assertAdministrativeBackupAccess, type BackupCommand } from "./localBackupService";
+import { assertCompletePlannerComparison } from "../domain/backupPlannerComparison";
+import { assertCompleteCatalogComparison } from "../domain/backupCatalogComparison";
+import { assertCompleteAccountComparison } from "../domain/backupAccountComparison";
+import { assertCompleteLearningComparison } from "../domain/backupLearningComparison";
+import { assertCompleteScheduleComparison } from "../domain/backupScheduleComparison";
 
 type ReportCommand = Pick<BackupCommand, "actorId" | "actorRevision"> & { inspection: BackupInspection };
 
@@ -32,11 +37,16 @@ export const prepareBackupInspectionReport = (
     if ((Object.keys(differences) as (keyof typeof differences)[]).some((kind) => differences[kind] !== report.comparison[kind])) {
       throw new Error("В результате сравнения отсутствует часть различий. Проверьте архив заново; неполный отчёт не скачан.");
     }
+    if (report.plannerComparison) assertCompletePlannerComparison(report.plannerComparison);
+    if (report.catalogComparison) assertCompleteCatalogComparison(report.catalogComparison);
+    if (report.accountComparison) assertCompleteAccountComparison(report.accountComparison);
+    if (report.learningComparison) assertCompleteLearningComparison(report.learningComparison);
+    if (report.scheduleComparison) assertCompleteScheduleComparison(report.scheduleComparison);
     const body = {
       format: "bi-university-backup-inspection", version: 1, scope: "administrative",
       actor: report.actor, inspectedAt: report.inspectedAt,
       archive: { filename: report.filename, sha256: report.sha256, source: report.source, completedAt: report.completedAt, totals: report.totals },
-      warnings: report.warnings, documents: report.documents, comparison: report.comparison,
+      warnings: report.warnings, documents: report.documents, comparison: report.comparison, plannerComparison: report.plannerComparison, catalogComparison: report.catalogComparison, accountComparison: report.accountComparison, learningComparison: report.learningComparison, scheduleComparison: report.scheduleComparison,
     };
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json;charset=utf-8" });
     if (blob.size > BACKUP_LIMITS.archiveBytes) throw new Error("Отчёт превышает лимит 128 МиБ. Частичный файл не скачан.");

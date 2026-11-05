@@ -6,7 +6,7 @@ export const BACKUP_PLANNER_DOCUMENTS = { planners: { key: PLANNER_STORAGE_KEY, 
 export const isBackupPlannerKey = (key: string) => key.startsWith(PLANNER_STORAGE_KEY);
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const date = (value: unknown): value is string => typeof value === "string" && Number.isFinite(Date.parse(value));
-const decodeNotes = (raw: string): Record<string, unknown>[] => {
+export const decodePlannerBackupNotes = (raw: string): Record<string, unknown>[] => {
   const rows: unknown = JSON.parse(raw);
   if (!Array.isArray(rows) || !rows.every((row: unknown) => isRecord(row) && typeof row.id === "string" && Boolean(row.id.trim())
     && typeof row.title === "string" && date(row.createdAt)
@@ -39,7 +39,7 @@ export const inspectBackupPlanners = async (entries: AdministrativeBackup["local
     if (!accountIds) issues.push({ kind: "planners", level: "review", code: "unchecked-planner-owner", referenceId: entry.key, message: "Владелец планировщика не проверен: учётные записи отсутствуют или не читаются в архиве. Учётки браузера не подставлялись." });
     else if (!accountIds.has(owner)) issues.push({ kind: "planners", level: "error", code: "missing-planner-owner", referenceId: entry.key, message: "В архиве нет учётной записи владельца этого планировщика. Задачи не переданы другому пользователю." });
     try {
-      const notes = decodeNotes(entry.raw); records += notes.length;
+      const notes = decodePlannerBackupNotes(entry.raw); records += notes.length;
       for (const note of notes) {
         if (date(note.startAt) && date(note.endAt) && Date.parse(note.endAt) <= Date.parse(note.startAt)) issues.push({
           kind: "planners", level: "error", code: "invalid-planner-interval", referenceId: entry.key, recordId: note.id as string,
