@@ -84,3 +84,15 @@
 - [Счётчики номеров зачёток в архиве, 3 ноября](2026-11-03-backup-student-counters-review.txt).
 - [Явная выдача зачётки и сохранённый номер, 3 ноября](2026-11-03-backup-student-number-history-review.txt).
 - [Проверка выпуска портала, 5 ноября](2026-11-05-portal-release-review.txt).
+- [Массовые операции студентов и связанный аудит, 5 ноября](2026-11-05-backup-student-operations-review.txt).
+- [Аудит импорта и общий индекс истории, 5 ноября](2026-11-05-backup-import-audit-review.txt).
+- [Перенос задач планировщика и отмена, 5 ноября](2026-11-05-planner-task-move-review.txt).
+- [Точные адреса различий и правило выбора версии, 5 ноября](2026-11-05-backup-difference-addresses-review.txt).
+- [Сравнение задач планировщика внутри документов по ID, 5 ноября](2026-11-05-backup-planner-record-comparison-review.txt).
+- [Сравнение карточек групп и дисциплин и общий механизм, 5 ноября](2026-11-05-backup-catalog-card-comparison-review.txt).
+- [Сравнение карточек учёток без раскрытия личных значений, 5 ноября](2026-11-05-backup-account-card-comparison-review.txt).
+- [Сравнение заданий и ответов с проверкой согласованности попыток, 5 ноября](2026-11-05-backup-learning-record-comparison-review.txt).
+- [Сравнение попыток по ID внутри ответа, 5 ноября](2026-11-05-backup-scoped-attempt-comparison-review.txt).
+- [Раздельное сравнение пар черновиков и публикации, 5 ноября](2026-11-05-backup-schedule-lesson-comparison-review.txt).
+- [Сравнение связей расписания с журналом в учебной области, 5 ноября](2026-11-05-backup-schedule-journal-scope-review.txt).
+- [Проверка выпуска планировщика и сравнения архивов, 5 ноября](2026-11-05-planner-backup-release-review.txt).
