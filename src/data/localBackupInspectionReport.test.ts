@@ -10,7 +10,7 @@ const report = (): BackupInspection => ({
   completedAt: "2026-10-28T10:00:00.000Z", inspectedAt: "2026-10-29T10:00:00.000Z", sha256: "a".repeat(64),
   totals: { storageEntries: 4, databaseRecords: 2, files: 2, binaryBytes: 10 },
   warnings: ["Проверки учебных связей частичные"],
-  documents: { checks: [], counts: { valid: 4, invalid: 0, absent: 0, unchecked: 7, errors: 230, reviews: 1 },
+  documents: { checks: [], uncheckedKeys: Array.from({ length: 7 }, (_, index) => `bi-university-unknown:${index}`), counts: { valid: 4, invalid: 0, absent: 0, unchecked: 7, errors: 230, reviews: 1 },
     issues: [
       ...Array.from({ length: 230 }, (_, index) => ({ level: "error" as const, kind: "accounts" as const, code: "missing-group", referenceId: `group-${index}`, message: "Группа отсутствует" })),
       { level: "review", kind: "accounts", code: "unchecked-access", message: "Нужна проверка доступа" },
@@ -76,5 +76,26 @@ describe("complete backup inspection report", () => {
   it("cannot be mistaken for a restorable administrative backup", async () => {
     const file = prepareBackupInspectionReport(command(), vi.fn());
     await expect(validateAdministrativeBackup(JSON.parse(await file.blob.text()))).rejects.toThrow("это не административная резервная копия");
+  });
+  it("exports all unreviewed keys beyond the visible page without copying their values", async () => {
+    const inspection = report();
+    inspection.documents.uncheckedKeys = Array.from({ length: 205 }, (_, index) => `bi-university-unknown:${index}`);
+    inspection.documents.counts.unchecked = 205;
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.documents.uncheckedKeys).toEqual(inspection.documents.uncheckedKeys);
+    expect(saved.documents.uncheckedKeys.at(-1)).toBe("bi-university-unknown:204");
+    expect(saved).not.toHaveProperty("localStorage");
+  });
+  it.each(["missing", "partial", "duplicate", "outside-namespace"])("rejects an incomplete unreviewed-key inventory: %s", (state) => {
+    const inspection = report();
+    if (state === "missing") delete inspection.documents.uncheckedKeys;
+    if (state === "partial") inspection.documents.uncheckedKeys!.pop();
+    if (state === "duplicate") inspection.documents.uncheckedKeys![0] = inspection.documents.uncheckedKeys![1];
+    if (state === "outside-namespace") inspection.documents.uncheckedKeys![0] = "unrelated-key";
+    expect(() => prepareBackupInspectionReport(command(inspection), vi.fn())).toThrow("полный перечень непроверенных ключей");
+  });
+  it("keeps count-only reports compatible when no keys are unreviewed", async () => {
+    const inspection = report(); delete inspection.documents.uncheckedKeys; inspection.documents.counts.unchecked = 0;
+    expect(JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text()).documents.counts.unchecked).toBe(0);
   });
 });

@@ -25,6 +25,32 @@ beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => undefined
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("read-only backup inspection", () => {
+  it("includes contradictory student-number history in the full report without exposing either personal number", async () => {
+    const state = setup(); const fixture = coreBackupFixture();
+    fixture.accounts.accounts[2].studentRecord = { number: "202630012", year: 2026, campus: 3, sequence: 12, issuedAt: "2026-01-01T09:00:00.000Z" };
+    fixture.accounts.studentNumberCounters = { "2026:3": 20 };
+    fixture.accounts.history = [{ id: "issue-1", actorId: "configurator-demo", accountId: "student-1", occurredAt: "2026-01-01T09:00:00.000Z", action: "student-number-issued", previousRole: "student", nextRole: "student", changes: [{ field: "studentNumber", before: "", after: "202630013" }] }];
+    fixture.save(); const before = JSON.stringify(fixture.archive); const live = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([before], "issuance-history.json", { type: "application/json" }) });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.documents.issues).toEqual([expect.objectContaining({ kind: "accounts", level: "error", code: "student-number-history-conflict" })]);
+    expect(saved.documents.counts).toMatchObject({ valid: 4, invalid: 0, errors: 1 });
+    expect(JSON.stringify(saved)).not.toContain("202630012"); expect(JSON.stringify(saved)).not.toContain("202630013");
+    expect([...state.values]).toEqual(live); expect(JSON.stringify(fixture.archive)).toBe(before);
+  });
+  it("preserves student-counter findings in the full report without exposing record numbers or modifying sources", async () => {
+    const state = setup(); const fixture = coreBackupFixture();
+    fixture.accounts.accounts[2].studentRecord = { number: "202630012", year: 2026, campus: 3, sequence: 12, issuedAt: "2026-01-01T09:00:00.000Z" };
+    fixture.accounts.studentNumberCounters = { "2026:3": 3 }; fixture.save();
+    const before = JSON.stringify(fixture.archive); const live = [...state.values];
+    const file = new File([before], "student-counters.json", { type: "application/json" });
+    const inspection = await state.service.inspect({ ...command, file });
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.documents.issues).toEqual([expect.objectContaining({ kind: "accounts", level: "review", code: "lagging-student-number-counter", recordId: "2026:3" })]);
+    expect(saved.documents.counts).toMatchObject({ valid: 4, invalid: 0, reviews: 1, errors: 0 });
+    expect(JSON.stringify(saved)).not.toContain("202630012");
+    expect(JSON.stringify(fixture.archive)).toBe(before); expect([...state.values]).toEqual(live);
+  });
   it.each(["код", "\\u0061"])("exports Unicode compound unique-index collisions after 200 without private values or mutations: %s", async (field) => {
     const state = setup(); const fixture = await materialIndexBackupFixture(); const original = fixture.records[0];
     fixture.archive.databases[0].stores[0].indexes[1].keyPath = [`реквизиты.${field}`, "scope"];

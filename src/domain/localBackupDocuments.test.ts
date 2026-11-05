@@ -85,6 +85,34 @@ describe("archived core document checks", () => {
   it("counts all unsupported documents as unreviewed instead of claiming full archive compatibility", async () => {
     const state = coreBackupFixture(); state.archive.localStorage.push({ key: "bi-university-unknown-module", raw: "[]" }, { key: "bi-university-theme", raw: "light" });
     const result = await inspectBackupDocuments(state.archive, "configurator-demo"); expect(result.counts.unchecked).toBe(1); expect(result.counts.valid).toBe(5);
+    expect(result.uncheckedKeys).toEqual(["bi-university-unknown-module"]);
+  });
+  it("preserves every unreviewed key beyond 200 without parsing or exposing its contents", async () => {
+    const state = coreBackupFixture();
+    const entries = Array.from({ length: 205 }, (_, index) => ({ key: `bi-university-future-module:${index}`, raw: "PRIVATE invalid JSON" }));
+    state.archive.localStorage.push(...entries, { key: "bi-university-accounts-v2", raw: "PRIVATE future accounts" });
+    const before = JSON.stringify(state.archive);
+    const result = await inspectBackupDocuments(state.archive, "configurator-demo");
+    expect(result.counts.unchecked).toBe(206);
+    expect(result.uncheckedKeys).toEqual([...entries.map((entry) => entry.key), "bi-university-accounts-v2"]);
+    expect(result.checks[0].status).toBe("valid");
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "unsupported-key", referenceId: "bi-university-accounts-v2" }));
+    expect(JSON.stringify(result)).not.toContain("PRIVATE"); expect(JSON.stringify(state.archive)).toBe(before);
+    expect(forbidden).not.toHaveBeenCalled();
+  });
+  it("does not list keys handled by another known document family as unknown", async () => {
+    const state = coreBackupFixture();
+    state.archive.localStorage.push({ key: "bi-university-theme-v2", raw: "PRIVATE" }, { key: "bi-university-demo-notifications-v99", raw: "PRIVATE" });
+    const result = await inspectBackupDocuments(state.archive, "configurator-demo");
+    expect(result.uncheckedKeys).toEqual([]); expect(result.counts.unchecked).toBe(0);
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "unsupported-setting-key" }));
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "unsupported-notification-key" }));
+  });
+  it("allows cancellation while indexing archived keys before reading their documents", async () => {
+    const controller = new AbortController();
+    const promise = inspectBackupDocuments(coreBackupFixture().archive, "configurator-demo", undefined, controller.signal);
+    controller.abort(); await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+    expect(forbidden).not.toHaveBeenCalled();
   });
   it("retains every distinct finding beyond the old preview limit", async () => {
     const state = coreBackupFixture(); state.accounts.accounts[1].memberships = Array.from({ length: 205 }, (_, index) => ({ subjectId: `missing-${index}`, groupIds: ["group-1"] })); state.save();

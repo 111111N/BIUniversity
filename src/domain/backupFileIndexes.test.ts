@@ -199,6 +199,48 @@ describe("archived file index constraints", () => {
     expect(result.issues).toEqual([expect.objectContaining({ code: "invalid-file-index-schema", recordId: JSON.stringify(["index", "by-value"]) })]);
     expect(result.summary).toContain("сверены текущие ключи: 0; требуют отдельной сверки: 1; конфликтующих записей: 0");
   });
+  it.each([
+    { keyPath: ["value"], multiEntry: true },
+    { keyPath: ["value", "other"], multiEntry: true },
+    { keyPath: [], multiEntry: false },
+  ])("reports invalid nonunique compound schemas even without stored records: %j", async (metadata) => {
+    const result = await inspectArchivedFileIndexes([], [index({ ...metadata, unique: false })]);
+    expect(result.issues).toEqual([expect.objectContaining({ level: "error", code: "invalid-file-index-schema", recordId: JSON.stringify(["index", "by-value"]) })]);
+    expect(result.summary).toContain("Недопустимых схем дополнительных неуникальных индексов: 1");
+    expect(result.summary).not.toContain("Дополнительных уникальных индексов:");
+  });
+  it("keeps repeated values valid for supported nonunique string, compound and multiEntry indexes", async () => {
+    const rows = await records([{ value: ["PRIVATE", "PRIVATE"], other: 1 }, { value: ["PRIVATE"], other: 1 }]);
+    for (const metadata of [{ keyPath: "value", multiEntry: false }, { keyPath: ["value", "other"], multiEntry: false }, { keyPath: "value", multiEntry: true }]) {
+      expect(await inspectArchivedFileIndexes(rows, [index({ ...metadata, unique: false })])).toEqual({ issues: [], summary: "" });
+    }
+  });
+  it("preserves unique-index counts when an invalid nonunique schema is present", async () => {
+    const rows = await records([{ value: "PRIVATE" }, { value: "PRIVATE" }]);
+    const result = await inspectArchivedFileIndexes(rows, [index(), index({ name: "by-many", unique: false, keyPath: ["value"], multiEntry: true })]);
+    expect(result.issues.map((issue) => issue.code)).toEqual(["file-unique-index-conflict", "invalid-file-index-schema"]);
+    expect(result.summary).toContain("Дополнительных уникальных индексов: 1; сверены текущие ключи: 1; требуют отдельной сверки: 0; конфликтующих записей: 1");
+    expect(JSON.stringify(result)).not.toContain("PRIVATE");
+  });
+  it("applies the nonunique schema check to materials, learning files and message attachments", async () => {
+    const bad = index({ unique: false, keyPath: ["type"], multiEntry: true });
+    const materials = await materialIndexBackupFixture(); materials.archive.databases[0].stores[0].indexes[1] = bad;
+    const before = JSON.stringify(materials.archive);
+    const materialReview = await inspectBackupDocuments(materials.archive, "configurator-demo");
+    expect(materialReview.issues.filter((issue) => issue.code === "invalid-file-index-schema")).toEqual([expect.objectContaining({ kind: "materials", level: "error" })]);
+    expect(JSON.stringify(materials.archive)).toBe(before);
+    const learning = await learningFileBackupFixture(); learning.archive.databases[2].stores[0].indexes.push(bad);
+    expect((await inspectArchivedLearningAttachments(learning.assignments, learning.submissions, learning.archive.databases)).issues).toContainEqual(expect.objectContaining({ kind: "assignments", code: "invalid-file-index-schema" }));
+    const messages = await messageFileBackupFixture(); messages.archive.databases[1].stores[0].indexes.push(bad);
+    expect((await inspectBackupMessaging(messages.archive.localStorage, new Set(["student-1", "teacher-1"]), undefined, messages.archive.databases)).issues).toContainEqual(expect.objectContaining({ kind: "messaging", code: "invalid-file-index-schema" }));
+  });
+  it("retains invalid nonunique schemas beyond 200 and allows cancellation without scanning record values", async () => {
+    const indexes = Array.from({ length: 205 }, (_, position) => index({ name: `index-${position}`, keyPath: ["value"], multiEntry: true, unique: false }));
+    const result = await inspectArchivedFileIndexes([], indexes);
+    expect(result.issues).toHaveLength(205); expect(result.issues.at(-1)!.recordId).toBe(JSON.stringify(["index", "index-204"]));
+    const controller = new AbortController(); const pending = inspectArchivedFileIndexes([], indexes, controller.signal);
+    controller.abort(); await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
 
   it("serializes deeply nested array keys once and supports cancellation inside one large multiEntry record", async () => {
     let nested: unknown = "PRIVATE"; for (let depth = 0; depth < 28; depth++) nested = [nested];

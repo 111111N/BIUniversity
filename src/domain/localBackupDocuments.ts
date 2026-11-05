@@ -14,6 +14,8 @@ import { inspectArchivedLearningAttachments } from "./backupLearningAttachments"
 import { BACKUP_MATERIAL_DOCUMENTS, inspectArchivedMaterials } from "./backupMaterials";
 import { inspectArchivedGroupStates } from "./backupGroupStates";
 import { inspectArchivedScheduleConflicts } from "./backupScheduleConflicts";
+import { inspectArchivedStudentNumbers } from "./backupStudentNumbers";
+import { inspectArchivedStudentNumberHistory } from "./backupStudentNumberHistory";
 
 export const BACKUP_CORE_DOCUMENTS = {
   accounts: { key: "bi-university-accounts-v1", prefix: "bi-university-accounts-", label: "Учётные записи" },
@@ -37,6 +39,7 @@ export interface BackupDocumentIssue {
 }
 export interface BackupDocumentReview {
   checks: BackupDocumentCheck[]; issues: BackupDocumentIssue[];
+  uncheckedKeys?: string[];
   counts: { valid: number; invalid: number; absent: number; unchecked: number; errors: number; reviews: number };
 }
 const NO_BASELINE: BackupDocumentBaseline = { groupIds: [], requiredSubjectIds: [] };
@@ -45,7 +48,8 @@ const NO_BASELINE: BackupDocumentBaseline = { groupIds: [], requiredSubjectIds: 
 export async function inspectBackupDocuments(archive: AdministrativeBackup, actorId: string, baseline = NO_BASELINE, signal?: AbortSignal): Promise<BackupDocumentReview> {
   checkBackupAbort(signal);
   const rows = new Map(archive.localStorage.map((entry) => [entry.key, entry.raw]));
-  const result: BackupDocumentReview = { checks: [], issues: [], counts: { valid: 0, invalid: 0, absent: 0, unchecked: 0, errors: 0, reviews: 0 } };
+  const uncheckedKeys: string[] = [];
+  const result: BackupDocumentReview = { checks: [], issues: [], uncheckedKeys, counts: { valid: 0, invalid: 0, absent: 0, unchecked: 0, errors: 0, reviews: 0 } };
   const seen = new Set<string>();
   const issue = (value: BackupDocumentIssue) => {
     const id = JSON.stringify([value.kind, value.code, value.referenceId ?? "", value.recordId ?? ""]);
@@ -76,10 +80,13 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
       issue({ level: "error", kind, code: "invalid-document", message });
     }
   };
-  for (const entry of archive.localStorage) {
+  for (const [index, entry] of archive.localStorage.entries()) {
+    if (index % 128 === 0) { await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); }
     const definition = Object.entries(STATIC_BACKUP_DOCUMENTS).find(([, value]) => entry.key.startsWith(value.prefix));
     if (definition && entry.key !== definition[1].key) issue({ level: "error", kind: definition[0] as BackupDocumentKind, code: "unsupported-key", referenceId: entry.key, message: "Найдена неподдерживаемая версия ключа. Она не заменяет документ версии 1 и не будет пропущена при планировании восстановления." });
-    if (!Object.values(STATIC_BACKUP_DOCUMENTS).some((value) => value.key === entry.key) && !getBackupJournalKind(entry.key) && !isBackupPlannerKey(entry.key) && !isBackupNotificationKey(entry.key) && !isBackupSettingKey(entry.key) && !isBackupMessagingKey(entry.key)) result.counts.unchecked++;
+    if (!Object.values(STATIC_BACKUP_DOCUMENTS).some((value) => value.key === entry.key) && !getBackupJournalKind(entry.key) && !isBackupPlannerKey(entry.key) && !isBackupNotificationKey(entry.key) && !isBackupSettingKey(entry.key) && !isBackupMessagingKey(entry.key)) {
+      result.counts.unchecked++; uncheckedKeys.push(entry.key);
+    }
   }
   const accounts: AccountsDocument | undefined = await read("accounts", decodeAccountsDocument);
   const groups: GroupCatalogDocument | undefined = await read("groups", decodeGroupCatalog);
@@ -96,6 +103,14 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   });
   const assignments = await read("assignments", decodeBackupAssignments, false);
   const submissions = await read("submissions", decodeBackupSubmissions, false);
+  if (accounts) {
+    const studentNumbers = await inspectArchivedStudentNumbers(accounts, signal);
+    if (studentNumbers.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${studentNumbers.summary}`;
+    for (const finding of studentNumbers.issues) issue(finding);
+    const numberHistory = await inspectArchivedStudentNumberHistory(accounts, signal);
+    if (numberHistory.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${numberHistory.summary}`;
+    for (const finding of numberHistory.issues) issue(finding);
+  }
   const groupStates = await inspectArchivedGroupStates(groups, accounts, schedule, archive.completedAt, signal);
   const groupCheck = result.checks.find((check) => check.kind === "groups");
   if (groupCheck) groupCheck.message += ` ${groupStates.summary}`;

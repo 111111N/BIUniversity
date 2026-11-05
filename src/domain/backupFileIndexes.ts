@@ -57,7 +57,7 @@ const arrayKey = (children: IndexKey[]): IndexKey => ["array", children];
 /** Compare current index keys in the archive, without creating indexes or promising future writes. */
 export const inspectArchivedFileIndexes = async (records: readonly RecordEntry[], indexes: readonly BackupStoreMetadata["indexes"][number][], signal?: AbortSignal) => {
   const issues: FileIndexIssue[] = []; const unique = indexes.filter((index) => index.unique);
-  let checked = 0; let unchecked = 0; let count = 0;
+  let checked = 0; let unchecked = 0; let invalidNonunique = 0; let count = 0;
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   const key = async (node: BackupValue | undefined): Promise<IndexKey | undefined> => {
     await step();
@@ -72,14 +72,15 @@ export const inspectArchivedFileIndexes = async (records: readonly RecordEntry[]
     return undefined;
   };
   checkBackupAbort(signal);
-  for (const index of unique) {
+  for (const index of indexes) {
     await step();
     if (Array.isArray(index.keyPath) && (index.multiEntry || !index.keyPath.length)) {
-      unchecked++;
+      if (index.unique) unchecked++; else invalidNonunique++;
       issues.push({ level: "error", code: "invalid-file-index-schema", recordId: JSON.stringify(["index", index.name]),
-        message: "Схема дополнительного уникального индекса недопустима: составной путь не может быть пустым или сочетаться с multiEntry. Индекс не создавался, схема не исправлялась.",
+        message: `Схема дополнительного ${index.unique ? "уникального " : ""}индекса недопустима: составной путь не может быть пустым или сочетаться с multiEntry. Индекс не создавался, схема не исправлялась.`,
       }); continue;
     }
+    if (!index.unique) continue;
     const sourcePaths = typeof index.keyPath === "string" ? [index.keyPath] : index.keyPath;
     let supported = true;
     for (const path of sourcePaths) { if (!await supportedPath(path, step)) { supported = false; break; } }
@@ -117,5 +118,7 @@ export const inspectArchivedFileIndexes = async (records: readonly RecordEntry[]
     checked++;
   }
   checkBackupAbort(signal);
-  return { issues, summary: unique.length ? `Дополнительных уникальных индексов: ${unique.length}; сверены текущие ключи: ${checked}; требуют отдельной сверки: ${unchecked}; конфликтующих записей: ${issues.filter((issue) => issue.code === "file-unique-index-conflict").length}. Проверены строковые и составные пути с буквальными Unicode-идентификаторами и допустимыми Unicode-escape, ключи-массивы и multiEntry. Повторы внутри одного multiEntry-набора не считаются разными записями; каждая конфликтующая запись учитывается один раз на индекс. Имена полей не нормализуются и не декодируются: escape-запись сопоставляется с буквальным именем свойства. Недопустимые или неподдержанные пути и схемы требуют отдельной сверки. Отсутствие текущих коллизий не подтверждает совместимость будущих записей или восстановления.` : "" };
+  const summary = unique.length ? `Дополнительных уникальных индексов: ${unique.length}; сверены текущие ключи: ${checked}; требуют отдельной сверки: ${unchecked}; конфликтующих записей: ${issues.filter((issue) => issue.code === "file-unique-index-conflict").length}. Проверены строковые и составные пути с буквальными Unicode-идентификаторами и допустимыми Unicode-escape, ключи-массивы и multiEntry. Повторы внутри одного multiEntry-набора не считаются разными записями; каждая конфликтующая запись учитывается один раз на индекс. Имена полей не нормализуются и не декодируются: escape-запись сопоставляется с буквальным именем свойства. Недопустимые или неподдержанные пути и схемы требуют отдельной сверки. Отсутствие текущих коллизий не подтверждает совместимость будущих записей или восстановления.` : "";
+  const nonuniqueSummary = invalidNonunique ? `Недопустимых схем дополнительных неуникальных индексов: ${invalidNonunique}. Ограничения составного пути и multiEntry проверяются независимо от уникальности; повторяющиеся значения обычного неуникального индекса не считаются конфликтом.` : "";
+  return { issues, summary: [summary, nonuniqueSummary].filter(Boolean).join(" ") };
 };

@@ -1,4 +1,4 @@
-import { BACKUP_LIMITS } from "../domain/localBackup";
+import { BACKUP_LIMITS, isPortalStorageKey } from "../domain/localBackup";
 import type { BackupInspection } from "./localBackupInspectionService";
 import { assertAdministrativeBackupAccess, type BackupCommand } from "./localBackupService";
 
@@ -15,6 +15,12 @@ export const prepareBackupInspectionReport = (
       throw new Error("Учётная запись изменилась после проверки. Проверьте архив заново перед скачиванием отчёта.");
     }
     const { counts, issues } = report.documents;
+    const uncheckedKeys = report.documents.uncheckedKeys ?? [];
+    if (!Array.isArray(uncheckedKeys) || uncheckedKeys.length !== counts.unchecked
+      || uncheckedKeys.some((key) => typeof key !== "string" || !isPortalStorageKey(key))
+      || new Set(uncheckedKeys).size !== uncheckedKeys.length) {
+      throw new Error("В результате проверки отсутствует полный перечень непроверенных ключей. Проверьте архив заново; неполный отчёт не скачан.");
+    }
     if (counts.errors !== issues.filter((issue) => issue.level === "error").length
       || counts.reviews !== issues.filter((issue) => issue.level === "review").length) {
       throw new Error("В результате проверки отсутствует часть замечаний. Проверьте архив заново; неполный отчёт не скачан.");

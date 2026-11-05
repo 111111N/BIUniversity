@@ -1,5 +1,6 @@
 import type { SavedAssignment, SavedSubmission } from "./assignmentStorage";
 import { checkBackupAbort } from "./localBackup";
+import { inspectArchivedScheduleHref } from "./backupScheduleNotificationTargets";
 
 export interface ArchivedNotificationTargets {
   assignments?: readonly SavedAssignment[];
@@ -68,6 +69,7 @@ export const createArchivedNotificationTargetCheck = async (sources: ArchivedNot
   const assignments = new Map<string, SavedAssignment>(); const submissions = new Map<string, SavedSubmission>();
   const stats = { targets: 0, matched: 0, unresolved: 0, outside: 0 }; let count = 0;
   const areas = { targets: 0, matched: 0, unresolved: 0 };
+  const schedule = { targets: 0, readable: 0, unresolved: 0 };
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   checkBackupAbort(signal);
   for (const assignment of sources.assignments ?? []) { await step(); assignments.set(assignment.id, assignment); }
@@ -84,6 +86,16 @@ export const createArchivedNotificationTargetCheck = async (sources: ArchivedNot
   const inspect = (href: string, finding: Finding) => {
     checkBackupAbort(signal); const target = parseTarget(href);
     if (target === "outside") {
+      const scheduleTarget = inspectArchivedScheduleHref(href);
+      if (scheduleTarget !== "outside") {
+        stats.outside++; schedule.targets++;
+        if (scheduleTarget === "readable") schedule.readable++;
+        else {
+          schedule.unresolved++;
+          finding("review", "ambiguous-notification-schedule-target", "Параметры ссылки расписания нельзя однозначно прочитать: проверьте маршрут, календарную дату, тип поиска, запрос и повторяющиеся параметры. Исходный адрес не раскрыт и не исправлен.");
+        }
+        return;
+      }
       const area = parseAreaTarget(href);
       if (area === "outside") { stats.outside++; return; }
       areas.targets++;
@@ -116,5 +128,6 @@ export const createArchivedNotificationTargetCheck = async (sources: ArchivedNot
     if (matched) stats.matched++; else stats.unresolved++;
   };
   const summary = () => `Целей заданий и ответов: ${stats.targets}; сопоставлено: ${stats.matched}; не подтверждено: ${stats.unresolved}; ссылок вне этой сверки: ${stats.outside}. Учебных областей ссылок журнала: ${areas.targets}; сопоставлено: ${areas.matched}; не подтверждено: ${areas.unresolved}. Сверяются ID цели, задания ответа и учебной области, а не права получателя или доступность на дату уведомления. Наличие области в каталогах не подтверждает содержимое журнала, оценки или материалы. Общие разделы и другие типы целей не подтверждаются этой сверкой. Адреса не открывались и не изменялись.`;
-  return { inspect, summary };
+  const completeSummary = () => `${summary()} Ссылок расписания: ${schedule.targets}; формат читается: ${schedule.readable}; не подтверждён: ${schedule.unresolved}. Проверка параметров не подтверждает наличие занятий, результат поиска или права получателя; текущая дата и данные браузера не подставлялись.`;
+  return { inspect, summary: completeSummary };
 };

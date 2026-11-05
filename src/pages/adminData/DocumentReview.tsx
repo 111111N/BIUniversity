@@ -4,6 +4,7 @@ import Tabs from "../../components/Tabs";
 import SearchField from "../../components/SearchField";
 import { changeDocumentIssueQuery, emptyDocumentIssueQuery, getDocumentIssuePage, type DocumentIssueQuery } from "./documentIssueView";
 import { useReviewPaginationFocus } from "./useReviewPaginationFocus";
+import UncheckedStorageKeys from "./UncheckedStorageKeys";
 import styles from "./index.module.scss";
 
 const status = { valid: "Схема прочитана", invalid: "Не читается", absent: "Нет в архиве" };
@@ -49,5 +50,6 @@ export default function DocumentReview({ review }: { review: BackupDocumentRevie
       {view.pages > 1 && <div className={styles.pagination}><span>Страница {view.page} из {view.pages}</span><div><button type="button" disabled={view.page === 1} onClick={(event) => turnPage(view.page - 1, event.currentTarget)}>Назад</button><button type="button" disabled={view.page === view.pages} onClick={(event) => turnPage(view.page + 1, event.currentTarget)}>Далее</button></div></div>}
     </div></details>}
     <p className={styles.hint}>Другие локальные записи: {review.counts.unchecked}. Их внутренние схемы ещё не проверены. Сверка материалов, учебных файлов и вложений переписки не подтверждает реальные права участников. Отсутствие замечаний здесь не означает, что архив можно восстановить.</p>
+    <UncheckedStorageKeys keys={review.uncheckedKeys} total={review.counts.unchecked} />
   </section>;
 }
