@@ -1,24 +1,17 @@
 import { isUserRole, type CurrentUser } from "./accounts";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import { BACKUP_VISUAL_PREFERENCE_KEYS, getBackupSchedulePreferenceOwner, isSupportedBackupVisualPreferenceValue } from "./backupVisualPreferences";
 
-const THEME = "bi-university-theme";
+const THEME = BACKUP_VISUAL_PREFERENCE_KEYS.theme;
 const ACCOUNT = "bi-university-demo-account";
 const ROLE = "bi-university-demo-role";
-const PLANNER_VIEW = "bi-university-planner-view";
-const SCHEDULE_VIEW = "bi-university-schedule-view";
+const PLANNER_VIEW = BACKUP_VISUAL_PREFERENCE_KEYS.plannerView;
+const SCHEDULE_VIEW = BACKUP_VISUAL_PREFERENCE_KEYS.scheduleView;
 const FIXED_KEYS = [THEME, ACCOUNT, ROLE, PLANNER_VIEW];
 export const BACKUP_SETTINGS_DOCUMENTS = { settings: { key: "bi-university-browser-settings", prefix: "bi-university-", label: "Настройки браузера" } } as const;
 export const isBackupSettingKey = (key: string) => FIXED_KEYS.some((known) => key.startsWith(known)) || key.startsWith(SCHEDULE_VIEW);
 type Account = Pick<CurrentUser, "id" | "role" | "status">;
-
-// Schedule preferences use literal IDs after the role, unlike URI-encoded planner task keys.
-const scheduleOwner = (key: string) => {
-  const suffix = key.slice(SCHEDULE_VIEW.length + 1);
-  const separator = suffix.indexOf(":");
-  const role = suffix.slice(0, separator); const id = suffix.slice(separator + 1);
-  return key.startsWith(`${SCHEDULE_VIEW}:`) && separator > 0 && isUserRole(role) && id.trim() ? id : undefined;
-};
 
 /** Read only archived scalar preferences; never apply themes, select accounts or choose fallbacks. */
 export const inspectBackupSettings = async (entries: AdministrativeBackup["localStorage"], accounts?: readonly Account[], signal?: AbortSignal) => {
@@ -37,15 +30,15 @@ export const inspectBackupSettings = async (entries: AdministrativeBackup["local
     if (!isBackupSettingKey(entry.key)) continue;
     keys++; settings.set(entry.key, entry.raw);
     if (entry.key === THEME || entry.key === ROLE || entry.key === PLANNER_VIEW) {
-      const valid = entry.key === THEME ? ["dark", "light"].includes(entry.raw) : entry.key === ROLE ? isUserRole(entry.raw) : ["board", "list"].includes(entry.raw);
+      const valid = entry.key === ROLE ? isUserRole(entry.raw) : isSupportedBackupVisualPreferenceValue(entry.key, entry.raw);
       if (!valid) { invalid++; finding("error", "invalid-setting-value", entry.key, "Значение настройки не входит в поддерживаемый набор. Исходное значение не включено в отчёт и не заменено значением по умолчанию."); }
     } else if (entry.key === ACCOUNT) {
       if (!entry.raw.trim()) { invalid++; finding("error", "invalid-setting-value", entry.key, "Не сохранён ID выбранной демонстрационной учётки. Другая учётная запись не подставлялась."); }
       else checkOwner(entry.key, entry.raw);
     } else if (entry.key.startsWith(`${SCHEDULE_VIEW}:`)) {
-      const owner = scheduleOwner(entry.key);
+      const owner = getBackupSchedulePreferenceOwner(entry.key)?.id;
       if (owner === undefined) { invalid++; finding("error", "unsupported-setting-key", entry.key, "Ключ вида расписания не содержит поддерживаемый тип и ID учётной записи. Настройка не переименована."); continue; }
-      if (!["grid", "list"].includes(entry.raw)) { invalid++; finding("error", "invalid-setting-value", entry.key, "Не поддерживается сохранённый вид расписания. Значение не изменено."); }
+      if (!isSupportedBackupVisualPreferenceValue(entry.key, entry.raw)) { invalid++; finding("error", "invalid-setting-value", entry.key, "Не поддерживается сохранённый вид расписания. Значение не изменено."); }
       checkOwner(entry.key, owner);
     } else {
       invalid++; finding("error", "unsupported-setting-key", entry.key, "Найден неподдерживаемый ключ семейства настроек. Он не заменяет известную настройку и не переименован.");

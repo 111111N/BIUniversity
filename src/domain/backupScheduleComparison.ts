@@ -52,3 +52,4 @@ export const assertCompleteScheduleComparison = (review: BackupScheduleCompariso
   }
 };
 export const getUncheckedScheduleDocuments = (review: BackupScheduleComparison) => new Set([...review.drafts.uncompared, ...review.published.uncompared, ...(review.journal?.uncompared ?? [])].map((item) => item.key)).size;
+export const getScheduleBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => [drafts, published, journal].find(item => item.collection === collection);

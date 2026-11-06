@@ -18,6 +18,7 @@ const ScheduleCard = ({ item, compact = false, short = false, grid = false, list
   </> : <>
     <span className={styles.top}><time dateTime={`${item.date}T${item.startTime}`}>{item.startTime}–{item.endTime}</time><span className={typeClass}>{scheduleLessonTypeLabels[item.type]}</span></span>
     <strong className={styles.subject}>{item.subject}</strong>
+    {grid && <span className={styles.compactMeta}>{item.startTime} · {item.location}</span>}
     <span className={styles.info}><span>{item.location}</span>{item.group && <span>{item.group}</span>}</span>
     {item.teacher && <span className={styles.teacher}>{item.teacher}</span>}
     <span className={styles.footer}>{!grid && <span className={styles.openLabel}>{readOnly ? "Сведения о паре" : "Подробнее"}</span>}<ArrowCircle /></span>

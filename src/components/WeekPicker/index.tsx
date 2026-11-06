@@ -23,6 +23,8 @@ const formatDateRange = (startDate: Date, endDate: Date): string => {
   const endDay = format(endDate, 'd', WEEK_OPTIONS);
   const endMonth = format(endDate, 'MMMM', WEEK_OPTIONS);
   const year = format(endDate, 'yyyy', WEEK_OPTIONS);
+  const startYear = format(startDate, 'yyyy', WEEK_OPTIONS);
+  if (startYear !== year) return `${startDay} ${startMonth} ${startYear} г. - ${endDay} ${endMonth} ${year} г.`;
 
   if (startMonth === endMonth) {
     return `${startDay} - ${endDay} ${endMonth} ${year} г.`;
@@ -89,21 +91,21 @@ const weeks: WeekOption[] = useMemo(() => {
 }, [currentDate]);
 
 
-  const minWeek = weeks[0]?.value;
-  const maxWeek = weeks[weeks.length - 1]?.value;
+  const selectedWeek = startOfWeek(currentDate, WEEK_OPTIONS);
+  const options = weeks.some((week) => week.value.getTime() === selectedWeek.getTime())
+    ? weeks : [{ value: selectedWeek, label: formatDateRange(selectedWeek, endOfWeek(selectedWeek, WEEK_OPTIONS)) }, ...weeks];
   const goToCurrentWeek = () => {
   setCurrentDate(today);
   onWeekChange?.(today);
   };
   const changeWeek = (offset: number) => {
     const next = addWeeks(currentDate, offset);
-    const bounded = minWeek && isBefore(next, minWeek) ? minWeek : maxWeek && isAfter(next, maxWeek) ? maxWeek : next;
-    setCurrentDate(bounded);
-    onWeekChange?.(bounded);
+    setCurrentDate(next);
+    onWeekChange?.(next);
   };
 
   const handleChange = (value: string) => {
-    const selected = weeks.find((week) => String(week.value.getTime()) === value);
+    const selected = options.find((week) => String(week.value.getTime()) === value);
     if (!selected) return;
     setCurrentDate(selected.value);
     onWeekChange?.(selected.value);
@@ -117,16 +119,16 @@ const weeks: WeekOption[] = useMemo(() => {
             variant="main"
             label="Учебная неделя"
             hideLabel
-            value={String(startOfWeek(currentDate, WEEK_OPTIONS).getTime())}
+            value={String(selectedWeek.getTime())}
             onChange={handleChange}
-            options={weeks.map((week) => ({ value: String(week.value.getTime()), label: week.label }))}
+            options={options.map((week) => ({ value: String(week.value.getTime()), label: week.label }))}
           />
         </div>
 
         <button
           className={styles.weekPickerArrow}
           onClick={() => changeWeek(-1)}
-          disabled={minWeek && isBefore(addWeeks(currentDate, -1), minWeek)}
+          type="button"
           aria-label="Предыдущая неделя"
         >
           <ArrowCircle direction="left" />
@@ -134,6 +136,7 @@ const weeks: WeekOption[] = useMemo(() => {
 
         <button
           className={styles.weekPickerCurrentButton}
+          type="button"
           onClick={goToCurrentWeek}
         >
           Текущая неделя
@@ -142,7 +145,7 @@ const weeks: WeekOption[] = useMemo(() => {
         <button
           className={styles.weekPickerArrow}
           onClick={() => changeWeek(1)}
-          disabled={maxWeek && isAfter(addWeeks(currentDate, 1), maxWeek)}
+          type="button"
           aria-label="Следующая неделя"
         >
           <ArrowCircle />

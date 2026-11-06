@@ -8,7 +8,15 @@ interface Props<Field extends string> {
   title: string; recordName: string; documentName: string; documentsCountLabel: string;
   description: string; noChanges: string; unavailable: string; listLabel: string; skippedLabel: string;
 }
-const REASONS: Record<BackupUncomparedDocument["reason"], string> = { "unsupported-key": "Формат или версия ключа не поддерживаются либо неоднозначны. Документ не объединён с другим.", "duplicate-key": "Ключ документа повторяется в источнике. Версия не выбрана.", "invalid-document": "Документ повреждён, содержит противоречия или неоднозначные ID. Он не считается пустым; записи не отброшены.", "missing-history": "История попыток отсутствует или пуста. Полнота не подтверждена; попытки не создавались. Этот источник не считается пустой историей." };
+const REASONS: Record<BackupUncomparedDocument["reason"], string> = {
+  "unsupported-key": "Формат или версия ключа не поддерживаются либо неоднозначны. Документ не объединён с другим.",
+  "duplicate-key": "Ключ документа повторяется в источнике. Версия не выбрана.",
+  "invalid-document": "Документ повреждён, содержит противоречия или неоднозначные ID. Он не считается пустым; записи не отброшены.",
+  "missing-history": "История попыток отсутствует или пуста. Полнота не подтверждена; попытки не создавались. Этот источник не считается пустой историей.",
+  "missing-education-history": "В старом документе не сохранён источник событий обучения. Его полнота не подтверждена; события не созданы из текущего состояния учётки. Документ не считается пустой историей обучения.",
+  "unresolved-journal-area": "Учебная область истории не подтверждена справочниками каждого источника или различается между архивом и браузером. Ключ не разделялся на предполагаемые ID; события не объединены.",
+  "unresolved-notification-source": "Постоянный ID или явный получатель уведомления не подтверждены. Учётки проверяются отдельно в архиве и браузере; роль не заменяет ID, записи и получатели не подставляются.",
+};
 const SOURCE_LABELS = { archive: "Архив", browser: "Этот браузер" };
 
 export default function RecordComparisonReview<Field extends string>({ review, fieldLabels, title, recordName, documentName, documentsCountLabel, description, noChanges, unavailable, listLabel, skippedLabel }: Props<Field>) {

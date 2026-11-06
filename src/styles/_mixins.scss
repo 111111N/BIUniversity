@@ -3,11 +3,11 @@
   background-color: $background;
   border-radius: $border-radius;
   padding: $padding;
-  border: 3px solid $color-border;
+  border: 1px solid $color-border;
 
   :root[data-theme="light"] & {
     background-color: $color-dark-secondary;
-    box-shadow: 0 8px 24px theme-alpha($color-shadow, .32);
+    box-shadow: 0 8px 24px theme-alpha($color-shadow, .16);
   }
 }
 @mixin scroll-bar(
@@ -92,6 +92,7 @@
 
 @mixin input($padding-inline:10px,$padding-block:10px){
   @include border();
+  min-height: 46px;
   width: 100%; 
   box-sizing: border-box;
   padding-block: $padding-block;

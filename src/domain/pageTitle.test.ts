@@ -24,4 +24,8 @@ describe("portal page titles", () => {
     expect(getPortalPageTitle("/admin/data", "configurator")).toBe("Резервная копия · BIUniversity");
     expect(getPortalPageTitle("/", "configurator")).toBe("Настройка расписания · BIUniversity");
   });
+  it.each(["teacher", "student", "configurator"] as const)("names assessment lists and statement links for %s", (role) => {
+    expect(getPortalPageTitle("/assessments", role)).toBe("Аттестации · BIUniversity");
+    expect(getPortalPageTitle("/assessments/assessment-1/", role)).toBe("Аттестации · BIUniversity");
+  });
 });

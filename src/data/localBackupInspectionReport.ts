@@ -6,6 +6,10 @@ import { assertCompleteCatalogComparison } from "../domain/backupCatalogComparis
 import { assertCompleteAccountComparison } from "../domain/backupAccountComparison";
 import { assertCompleteLearningComparison } from "../domain/backupLearningComparison";
 import { assertCompleteScheduleComparison } from "../domain/backupScheduleComparison";
+import { assertCompleteJournalComparison } from "../domain/backupJournalComparison";
+import { assessBackupRestoreAdmission } from "../domain/backupRestoreAdmission";
+import { assertCompleteNotificationComparison } from "../domain/backupNotificationComparison";
+import { assertBackupFileDifferenceDetails } from "../domain/backupFileDifference";
 
 type ReportCommand = Pick<BackupCommand, "actorId" | "actorRevision"> & { inspection: BackupInspection };
 
@@ -32,6 +36,7 @@ export const prepareBackupInspectionReport = (
     }
     const differences = { new: 0, different: 0, currentOnly: 0, schema: 0 };
     for (const difference of report.comparison.differences) {
+      assertBackupFileDifferenceDetails(difference);
       differences[difference.kind === "current-only" ? "currentOnly" : difference.kind]++;
     }
     if ((Object.keys(differences) as (keyof typeof differences)[]).some((kind) => differences[kind] !== report.comparison[kind])) {
@@ -42,11 +47,15 @@ export const prepareBackupInspectionReport = (
     if (report.accountComparison) assertCompleteAccountComparison(report.accountComparison);
     if (report.learningComparison) assertCompleteLearningComparison(report.learningComparison);
     if (report.scheduleComparison) assertCompleteScheduleComparison(report.scheduleComparison);
+    if (report.journalComparison) assertCompleteJournalComparison(report.journalComparison);
+    if (report.notificationComparison) assertCompleteNotificationComparison(report.notificationComparison);
     const body = {
       format: "bi-university-backup-inspection", version: 1, scope: "administrative",
       actor: report.actor, inspectedAt: report.inspectedAt,
       archive: { filename: report.filename, sha256: report.sha256, source: report.source, completedAt: report.completedAt, totals: report.totals },
-      warnings: report.warnings, documents: report.documents, comparison: report.comparison, plannerComparison: report.plannerComparison, catalogComparison: report.catalogComparison, accountComparison: report.accountComparison, learningComparison: report.learningComparison, scheduleComparison: report.scheduleComparison,
+      warnings: report.warnings, documents: report.documents, comparison: report.comparison, plannerComparison: report.plannerComparison, catalogComparison: report.catalogComparison, accountComparison: report.accountComparison, learningComparison: report.learningComparison, scheduleComparison: report.scheduleComparison, journalComparison: report.journalComparison,
+      restoreAdmission: assessBackupRestoreAdmission(report.documents),
+      notificationComparison: report.notificationComparison,
     };
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json;charset=utf-8" });
     if (blob.size > BACKUP_LIMITS.archiveBytes) throw new Error("Отчёт превышает лимит 128 МиБ. Частичный файл не скачан.");

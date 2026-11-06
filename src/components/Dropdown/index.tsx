@@ -26,7 +26,7 @@ export const createDropdownStyles = <IsMulti extends boolean = false,>(variant: 
   return {
     control: (base, state) => ({
       ...base,
-      minHeight: main ? 46 : state.selectProps.isSearchable ? 44 : "var(--dropdown-control-height, 36px)",
+      minHeight: 46,
       padding: main ? "2px 8px" : "0 6px",
       borderWidth,
       borderTopWidth: main ? 0 : borderWidth,

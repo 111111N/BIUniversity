@@ -7,7 +7,8 @@ export const getPortalPageTitle = (pathname: string, role: UserRole) => {
   if (path.startsWith("/journal/")) {
     const subject = getAcademicSubjectDefinition(path.split("/")[2]);
     title = subject ? `${subject.name} — Журнал` : "Журнал";
-  } else if (path.startsWith("/students/")) title = "Профиль студента";
+  } else if (path === "/assessments" || path.startsWith("/assessments/")) title = "Аттестации";
+  else if (path.startsWith("/students/")) title = "Профиль студента";
   else if (path.startsWith("/teachers/")) title = "Профиль преподавателя";
   else {
     const pages: Record<string, string> = { "/": role === "configurator" ? "Настройка расписания" : "Главная", "/admin/schedule": "Настройка расписания", "/admin/accounts": "Учётные записи", "/admin/checks": "Проверка данных", "/schedule": "Расписание", "/planner": "Планировщик", "/journal": "Журнал", "/stats": "Статистика", "/messages": "Сообщения", "/notifications": "Уведомления", "/cabinet": role === "student" ? "Мой профиль" : "Кабинет преподавателя" };

@@ -11,11 +11,19 @@ const render = (props: Partial<ComponentProps<typeof PlannerMoveDialog>> = {}) =
 describe("planner move preview availability", () => {
   it("shows both dates without pretending a same-day choice is a change", () => {
     const html = render();
-    expect(html).toContain("Подготовка"); expect(html).toContain("Было"); expect(html).toContain("Будет");
+    expect(html).toContain("Подготовка"); expect(html).toContain("Исходный день"); expect(html).toContain("Новый день");
+    expect(html).toContain("Начало:"); expect(html).toContain("Окончание:");
+    expect(html).toContain("2 ноября 2026"); expect(html).toContain("3 ноября 2026");
+    expect(html).toContain("После переноса его можно отменить");
     expect(html).toContain("Начало и окончание сдвигаются вместе");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
     expect(html).toContain('aria-label="Новый день задачи:');
     expect(html).not.toContain('aria-label="Очистить дату"');
+  });
+  it("labels a deadline on another day without implying a start time", () => {
+    const html = render({ note: { ...note, startAt: undefined, endAt: new Date(2026, 10, 4, 11) } });
+    expect(html).toContain("Крайний срок:"); expect(html).toContain("4 ноября 2026");
+    expect(html).not.toContain("Начало:");
   });
   it("allows closing and rereading after a storage error without claiming deletion", () => {
     const html = render({ error: "Не удалось прочитать задачи." });

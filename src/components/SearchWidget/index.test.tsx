@@ -16,7 +16,13 @@ describe("home schedule search labels", () => {
     expect(markup).toContain('enterKeyHint="search"');
     expect(markup).toMatch(new RegExp(`aria-pressed="true"[^>]*>${selected}</button>`));
     expect(markup).toContain('aria-label="Найти расписание"');
+    expect(markup).toContain("Без запроса откроется полное расписание");
     expect(markup).not.toContain("Введите название");
     expect(markup).not.toContain("Введите номер");
+  });
+
+  it("names the empty-query action", () => {
+    const markup = renderToStaticMarkup(<Search searchMode="group" setSearchMode={() => {}} query=" " setQuery={() => {}} onSearch={() => {}} />);
+    expect(markup).toContain('aria-label="Открыть расписание"');
   });
 });

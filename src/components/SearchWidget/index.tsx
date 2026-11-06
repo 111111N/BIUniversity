@@ -13,6 +13,7 @@ interface SearchProps {
 const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQuery, onSearch }) => {
   
   const searchLabel = searchMode === "group" ? "Группа" : "Аудитория";
+  const searchAction = query.trim() ? "Найти расписание" : "Открыть расписание";
 
   return (
     <div className={styles.dashboardCard}>
@@ -35,7 +36,9 @@ const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQu
         </button>
       </div>
 
+      <p className={styles.hint}>Введите группу или аудиторию. Без запроса откроется полное расписание.</p>
       <SearchInput
+        buttonLabel={searchAction}
         query={query}
         setQuery={setQuery}
         label={searchLabel}

@@ -10,11 +10,12 @@ interface CalendarProps {
   selectedDate?: Date;
   onSelectDate?(date: Date): void;
   getDaySummary?(date: Date): { lessons: number | null; tasks: number | null };
+  summaryLinks?: boolean;
 }
 
 const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary }: CalendarProps) => {
+const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary, summaryLinks = false }: CalendarProps) => {
   const today = new Date();
   const selectedKey = toLocalDateKey(selectedDate ?? today);
   const [firstMonth, setFirstMonth] = useState(() => new Date((selectedDate ?? today).getFullYear(), (selectedDate ?? today).getMonth(), 1));
@@ -104,7 +105,7 @@ const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary }: Cal
         </div>
       </div>)}
     </div>
-    {onSelectDate && <div className={styles.daySummary} aria-live="polite" aria-atomic="true"><span>{(selectedDate ?? today).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</span><strong>{`Занятия: ${selectedSummary.lessons ?? "недоступны"}, задачи: ${selectedSummary.tasks ?? "недоступны"}`}</strong><p>Выберите день, чтобы увидеть его занятия и задачи в обзоре.</p></div>}
+    {onSelectDate && <div className={styles.daySummary} aria-live="polite" aria-atomic="true"><span>{(selectedDate ?? today).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</span><strong>{`Занятия: ${selectedSummary.lessons ?? "недоступны"}, задачи: ${selectedSummary.tasks ?? "недоступны"}`}</strong>{summaryLinks ? <p>Обзор выбранного дня обновлён. <a href="#home-schedule">К занятиям</a> · <a href="#home-tasks">К задачам</a></p> : <p>Выберите день, чтобы увидеть его занятия и задачи в обзоре.</p>}</div>}
   </div>;
 };
 

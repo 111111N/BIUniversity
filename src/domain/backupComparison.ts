@@ -1,15 +1,16 @@
 import type { BackupValue } from "./localBackup";
 import { canonicalBackupValue } from "./localBackupValidation";
+import type { BackupFileDifferenceDetails } from "./backupFileDifference";
 
 export type BackupDifferenceKind = "new" | "different" | "current-only" | "schema";
 export type BackupDifferenceReference =
   | { storage: "localStorage"; key: string }
-  | { storage: "localStorage-record"; key: string; collection: "planner" | "groups" | "subjects" | "accounts" | "assignments" | "submissions" | "schedule-drafts" | "schedule-published"; id: string }
+  | { storage: "localStorage-record"; key: string; collection: "planner" | "groups" | "subjects" | "group-history" | "subject-history" | "accounts" | "account-history" | "education-events" | "journal-history" | "notifications" | "assignments" | "submissions" | "schedule-drafts" | "schedule-published"; id: string }
   | { storage: "localStorage-child-record"; key: string; collection: "submission-attempts"; parentId: string; id: string }
   | { storage: "localStorage-journal-record"; key: string; collection: "schedule-journal"; subjectId: string; groupId: string; id: string }
   | { storage: "indexedDB"; database: string; store: string; key: BackupValue }
   | { storage: "schema"; database: string; store?: string };
-export interface BackupDifference { kind: BackupDifferenceKind; area: string; id: string; reference?: BackupDifferenceReference }
+export interface BackupDifference { kind: BackupDifferenceKind; area: string; id: string; reference?: BackupDifferenceReference; fileDifference?: BackupFileDifferenceDetails }
 
 // Display labels and stringified keys are not unique storage addresses.
 export const getBackupDifferenceKey = (difference: BackupDifference) => {

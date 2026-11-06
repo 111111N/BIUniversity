@@ -9,6 +9,7 @@ import { backupInspectionService, type BackupInspection } from "../../data/local
 import { prepareBackupInspectionReport } from "../../data/localBackupInspectionReport";
 import Tabs from "../../components/Tabs";
 import styles from "./index.module.scss";
+import ConflictPreviewProvider from "./ConflictPreviewProvider";
 
 export default function AdminDataPage() {
   const { currentUser, accounts, accountError } = useRole();
@@ -80,6 +81,6 @@ export default function AdminDataPage() {
   return <div className={`pageContainer ${styles.page}`}>
     <Tabs ariaLabel="Действия с резервной копией" value={view} items={[{ value: "export", label: "Скачать" }, { value: "inspect", label: "Проверить файл" }]} onChange={(next) => { if (next === view) return; cancel(); setView(next); }} />
     <div hidden={view !== "export"} role="tabpanel" aria-label="Скачать резервную копию"><BackupPanel busy={busy} progress={progress} error={error} result={result} unavailable={unavailable} onExport={() => void exportData()} onCancel={cancel} /></div>
-    <div hidden={view !== "inspect"} role="tabpanel" aria-label="Проверить файл"><InspectionPanel file={file} busy={busy} progress={progress} error={error} result={currentInspection} unavailable={unavailable} reportMessage={reportMessage} reportError={reportError} onReport={downloadReport} onFile={(next) => { setFile(next); setInspection(null); setError(""); setReportMessage(""); setReportError(""); }} onInspect={() => void inspect()} onCancel={cancel} /></div>
+    <div hidden={view !== "inspect"} role="tabpanel" aria-label="Проверить файл"><ConflictPreviewProvider inspection={currentInspection} active={view === "inspect"}><InspectionPanel file={file} busy={busy} progress={progress} error={error} result={currentInspection} unavailable={unavailable} reportMessage={reportMessage} reportError={reportError} onReport={downloadReport} onFile={(next) => { setFile(next); setInspection(null); setError(""); setReportMessage(""); setReportError(""); }} onInspect={() => void inspect()} onCancel={cancel} /></ConflictPreviewProvider></div>
   </div>;
 }

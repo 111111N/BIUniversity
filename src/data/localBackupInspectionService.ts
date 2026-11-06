@@ -8,6 +8,11 @@ import { compareBackupCatalogRecords, type BackupCatalogComparison } from "../do
 import { compareBackupAccountRecords, type BackupAccountComparison } from "../domain/backupAccountComparison";
 import { compareBackupLearningRecords, type BackupLearningComparison } from "../domain/backupLearningComparison";
 import { compareBackupScheduleRecords, type BackupScheduleComparison } from "../domain/backupScheduleComparison";
+import { compareBackupJournalRecords, type BackupJournalComparison } from "../domain/backupJournalComparison";
+import { bindBackupInspectionPreview, releaseBackupInspectionPreview } from "./localBackupConflictPreviewService";
+import { compareBackupNotificationRecords, type BackupNotificationComparison } from "../domain/backupNotificationComparison";
+import { compareBackupFileDifference, type BackupFileDifferenceDetails } from "../domain/backupFileDifference";
+import { createBackupMaterialAreaComparison } from "../domain/backupMaterialAreaComparison";
 export type { BackupDifference, BackupDifferenceKind } from "../domain/backupComparison";
 
 export interface BackupInspection {
@@ -20,6 +25,8 @@ export interface BackupInspection {
   accountComparison?: BackupAccountComparison;
   learningComparison?: BackupLearningComparison;
   scheduleComparison?: BackupScheduleComparison;
+  journalComparison?: BackupJournalComparison;
+  notificationComparison?: BackupNotificationComparison;
 }
 export interface BackupInspectionCommand extends BackupCommand { file: File }
 const areaNames: Record<string, string> = {
@@ -28,8 +35,11 @@ const areaNames: Record<string, string> = {
 const schemaKey = (store: BackupStoreMetadata) => JSON.stringify({ keyPath: store.keyPath, autoIncrement: store.autoIncrement, indexes: [...store.indexes].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0).map((index) => [index.name, index.keyPath, index.unique, index.multiEntry]) });
 const recordLabel = (key: AdministrativeBackup["databases"][number]["stores"][number]["records"][number]["key"]) => key.type === "string" ? key.value : canonicalBackupValue(key);
 
-export const createBackupInspectionService = (dependencies: BackupDependencies) => ({
+export const createBackupInspectionService = (dependencies: BackupDependencies) => {
+  let previous: BackupInspection | null = null, generation = 0;
+  return {
   async inspect(command: BackupInspectionCommand): Promise<BackupInspection> {
+    const currentGeneration = ++generation; releaseBackupInspectionPreview(previous); previous = null;
     try {
       checkBackupAbort(command.signal); dependencies.authorize(command);
       if (!command.file.size || command.file.size > BACKUP_LIMITS.archiveBytes) throw new Error("Выберите непустой архив JSON размером не более 128 МиБ.");
@@ -54,9 +64,9 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
         }
       }
       const comparison: BackupInspection["comparison"] = { same: 0, new: 0, different: 0, currentOnly: 0, schema: 0, differences: [] };
-      const difference = (kind: BackupDifferenceKind, area: string, id: string, reference: BackupDifferenceReference) => {
+      const difference = (kind: BackupDifferenceKind, area: string, id: string, reference: BackupDifferenceReference, fileDifference?: BackupFileDifferenceDetails) => {
         if (kind === "current-only") comparison.currentOnly++; else comparison[kind]++;
-        comparison.differences.push({ kind, area, id, reference });
+        comparison.differences.push({ kind, area, id, reference, ...(fileDifference ? { fileDifference } : {}) });
       };
       command.onProgress?.("Сравниваем сохранённые записи…");
       const before = capturePortalStorage(dependencies.storage); const current = new Map(before.map((entry) => [entry.key, entry.raw]));
@@ -65,6 +75,8 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       const accountComparison = await compareBackupAccountRecords(archive.localStorage, before, command.signal);
       const learningComparison = await compareBackupLearningRecords(archive.localStorage, before, command.signal);
       const scheduleComparison = await compareBackupScheduleRecords(archive.localStorage, before, command.signal);
+      const journalComparison = await compareBackupJournalRecords(archive.localStorage, before, command.signal);
+      const notificationComparison = await compareBackupNotificationRecords(archive.localStorage, before, command.signal);
       dependencies.authorize(command);
       for (const entry of archive.localStorage) {
         if (!current.has(entry.key)) difference("new", "Локальные данные", entry.key, { storage: "localStorage", key: entry.key });
@@ -74,6 +86,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       }
       for (const key of current.keys()) difference("current-only", "Локальные данные", key, { storage: "localStorage", key });
       const available = await dependencies.listDatabases(); const budget = createBackupBudget();
+      let materialAreas: Awaited<ReturnType<typeof createBackupMaterialAreaComparison>> | undefined;
       for (const source of BACKUP_DATABASES) {
         checkBackupAbort(command.signal);
         command.onProgress?.(`Сравниваем вложения: ${BACKUP_DATABASES.indexOf(source) + 1} из ${BACKUP_DATABASES.length}…`);
@@ -96,7 +109,17 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
             else {
               const value = await encodeBackupValue(record.value, budget, command.signal);
               if (canonicalBackupValue(value) === canonicalBackupValue(original.value)) comparison.same++;
-              else difference("different", area, recordLabel(key), reference);
+              else {
+                const fileDifference = await compareBackupFileDifference(
+                  { database: source.name, version: archived.version, store: archivedStore!, key: original.key, value: original.value },
+                  { database: source.name, version: live.version, store, key, value }, command.signal,
+                );
+                if (fileDifference && source.name === "bi-university-cabinet" && store.name === "teacher-files") {
+                  materialAreas ??= await createBackupMaterialAreaComparison(archive.localStorage, before, command.signal);
+                  fileDifference.materialArea = await materialAreas.compare(original.value, value, fileDifference.issues.filter(issue => issue.reason !== "unknown-fields").map(issue => issue.source));
+                }
+                difference("different", area, recordLabel(key), reference, fileDifference);
+              }
             }
           }
           for (const record of archiveRecords.values()) difference("new", area, recordLabel(record.key), { storage: "indexedDB", database: source.name, store: store.name, key: record.key });
@@ -109,11 +132,16 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       }
       const latest = await dependencies.listDatabases(); checkBackupAbort(command.signal); dependencies.authorize(command);
       if (JSON.stringify(before) !== JSON.stringify(capturePortalStorage(dependencies.storage)) || BACKUP_DATABASES.some(({ name }) => available.find((item) => item.name === name)?.version !== latest.find((item) => item.name === name)?.version)) throw new Error("Текущие данные изменились во время сравнения. Завершите редактирование в других вкладках и повторите проверку.");
-      return { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison };
+      const inspection: BackupInspection = { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison, journalComparison, notificationComparison };
+      if (currentGeneration !== generation) throw new DOMException("Проверка заменена новым файлом.", "AbortError");
+      bindBackupInspectionPreview(inspection, command.file, before);
+      previous = inspection;
+      return inspection;
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Не удалось проверить резервную копию портала:", error);
       throw error;
     }
   },
-});
+  };
+};
 export const backupInspectionService = { inspect: (command: BackupInspectionCommand) => createBackupInspectionService(createBrowserBackupDependencies()).inspect(command) };

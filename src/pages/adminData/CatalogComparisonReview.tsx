@@ -1,17 +1,22 @@
-import type { BackupCatalogComparison, GroupComparedField, SubjectComparedField } from "../../domain/backupCatalogComparison";
+import { getUncheckedCatalogDocuments, type BackupCatalogComparison, type GroupComparedField, type SubjectComparedField, type GroupHistoryComparedField, type SubjectHistoryComparedField } from "../../domain/backupCatalogComparison";
 import RecordComparisonReview from "./RecordComparisonReview";
 import styles from "./index.module.scss";
 
 const GROUP_FIELDS: Record<GroupComparedField, string> = { name: "название", course: "курс", campus: "корпус", admissionYear: "год набора", status: "состояние", previousNames: "прежние названия", revision: "ревизия карточки", createdAt: "дата создания", createdBy: "автор создания", updatedAt: "дата изменения", source: "происхождение", other: "дополнительные поля" };
 const SUBJECT_FIELDS: Record<SubjectComparedField, string> = { name: "название", shortName: "сокращение", semester: "семестр", color: "цвет", other: "дополнительные поля" };
+const GROUP_HISTORY_FIELDS: Record<GroupHistoryComparedField, string> = { groupId: "ID группы", actorId: "ID автора", occurredAt: "дата события", action: "действие", before: "прежние реквизиты", after: "новые реквизиты", other: "дополнительные поля" };
+const SUBJECT_HISTORY_FIELDS: Record<SubjectHistoryComparedField, string> = { subjectId: "ID дисциплины", actorId: "ID автора", occurredAt: "дата события", action: "действие", other: "дополнительные поля" };
 
 export default function CatalogComparisonReview({ review }: { review: BackupCatalogComparison }) {
   const documents = review.groups.counts.documents + review.subjects.counts.documents;
-  const unchecked = review.groups.counts.uncheckedDocuments + review.subjects.counts.uncheckedDocuments;
+  const unchecked = getUncheckedCatalogDocuments(review);
   if (!documents) return null;
   return <details className={styles.details}><summary>Карточки групп и дисциплин по ID · каталогов {documents}{unchecked ? ` · не сравнено ${unchecked}` : ""}</summary><div className={styles.catalogComparisonBody}>
-    <p className={styles.hint}>Здесь сравниваются сохранённые карточки. История, ревизии самих каталогов и остальные свойства документов остаются в общем сравнении выше. Совпадение карточек не означает совпадение этих документов целиком. Встроенные примеры не подставляются.</p>
+    <p className={styles.hint}>Карточки и события истории сравниваются отдельно по ID. Ревизии самих каталогов и остальные свойства документов остаются в общем сравнении выше. Совпадение карточек не означает совпадение этих документов целиком. Встроенные примеры не подставляются.</p>
     <RecordComparisonReview<GroupComparedField> review={review.groups} fieldLabels={GROUP_FIELDS} title="Группы по ID" recordName="Группы" documentName="Каталоги" documentsCountLabel="каталогов" description="Подсчитаны карточки групп; история каталога сюда не входит." noChanges="В сравнимых каталогах различий карточек групп не найдено." unavailable="Нет каталогов групп, которые удалось сравнить." listLabel="Различия карточек групп" skippedLabel="Несравнённые каталоги групп" />
     <RecordComparisonReview<SubjectComparedField> review={review.subjects} fieldLabels={SUBJECT_FIELDS} title="Дисциплины по ID" recordName="Дисциплины" documentName="Каталоги" documentsCountLabel="каталогов" description="Подсчитаны карточки дисциплин; история каталога сюда не входит." noChanges="В сравнимых каталогах различий карточек дисциплин не найдено." unavailable="Нет каталогов дисциплин, которые удалось сравнить." listLabel="Различия карточек дисциплин" skippedLabel="Несравнённые каталоги дисциплин" />
+    {review.groupHistory && <RecordComparisonReview<GroupHistoryComparedField> review={review.groupHistory} fieldLabels={GROUP_HISTORY_FIELDS} title="История групп по ID событий" recordName="События" documentName="Источники истории" documentsCountLabel="каталогов" description="Названия, прежние и новые реквизиты и авторы не включаются в отчёт. Порядок массива и совпадение событий не подтверждают исторический состав группы или права." noChanges="Различий событий истории групп не найдено." unavailable="Нет сравнимых источников истории групп." listLabel="Различия событий истории групп" skippedLabel="Несравнённые источники истории групп" />}
+    {review.subjectHistory && <RecordComparisonReview<SubjectHistoryComparedField> review={review.subjectHistory} fieldLabels={SUBJECT_HISTORY_FIELDS} title="История дисциплин по ID событий" recordName="События" documentName="Источники истории" documentsCountLabel="каталогов" description="Сравниваются сохранённые события создания дисциплин без включения их значений. События не достраиваются из карточек." noChanges="Различий событий истории дисциплин не найдено." unavailable="Нет сравнимых источников истории дисциплин." listLabel="Различия событий истории дисциплин" skippedLabel="Несравнённые источники истории дисциплин" />}
+    {(!review.groupHistory || !review.subjectHistory) && <p className={styles.hint}>В этом результате история каталогов сравнена только целиком с документами. Для детализации повторите проверку архива.</p>}
   </div></details>;
 }

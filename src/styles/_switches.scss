@@ -70,7 +70,7 @@
 
 @mixin active-counter($navigation: false) {
   background: $color-accent-background-hover;
-  color: $color-link;
+  color: $color-accent-primary;
   @if $navigation {
     background: theme-alpha($color-on-accent, .18);
     color: $color-on-accent;

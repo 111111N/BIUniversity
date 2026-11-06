@@ -11,6 +11,10 @@
 .day span { text-transform: none; }
 .section { min-width: 0; margin: 0; padding: 20px 0 4px; border: 0; border-top: 1px solid $color-border; }
 .section legend { padding: 0 8px 0 0; color: $color-text-light; font-size: 16px; font-weight: 600; }
+.additional { margin-top: 12px; border-top: 1px solid $color-border; }
+.additional > summary { min-height: 44px; padding: 12px 0; color: $color-text-light; font-size: 15px; font-weight: 600; cursor: pointer; }
+.additional > summary span { display: block; margin-top: 4px; color: $color-text-secondary; font-size: 12px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.additional > .field { margin-top: 12px; }
 .field { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin-bottom: 16px; color: $color-text-secondary; font-size: 14px; font-weight: 500; line-height: 1.4; }
 .field input, .field textarea { @include input(12px, 10px); box-sizing: border-box; min-height: 44px; border-width: 1px; font: inherit; font-size: 16px; font-weight: 400; line-height: 1.5; }
 .field textarea { min-height: 104px; resize: vertical; }
@@ -23,20 +27,20 @@
 .error { margin: 12px 0 0; padding: 12px; border: 1px solid theme-alpha($color-error, .4); border-radius: 8px; color: $color-error; font-size: 14px; line-height: 1.6; }
 .externalNotice { margin: 0 0 16px; padding: 12px; border: 1px solid $color-border; border-radius: 8px; background: $color-ghost; color: $color-text-secondary; font-size: 14px; line-height: 1.6; }
 .timeHint { margin: 0 0 16px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
-.footer { position: sticky; bottom: -24px; z-index: 5; display: grid; gap: 12px; margin-top: 12px; padding: 16px 0 0; border-top: 1px solid $color-border; background: $color-dark-primary; }
+.footer { display: grid; gap: 12px; margin-top: 12px; padding: 16px 0 0; border-top: 1px solid $color-border; background: $color-dark-primary; }
 :root[data-theme="light"] .footer { background: $color-dark-secondary; }
 .saveHint { color: $color-text-secondary; font-size: 12px; line-height: 1.5; }
 .actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding-bottom: 16px; }
 .actions button { min-height: 44px; padding: 10px 14px; border-width: 1px; font-size: 14px; font-weight: 500; }
 .actions .save { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
 .actions .save:hover { border-color: $color-accent-hover; background: $color-accent-hover; }
-.form :is(input, textarea, button):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; }
+.form :is(input, textarea, button, summary):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; }
 @media(max-width: 620px) {
   .form { padding: 20px 16px; }
   .header h2 { font-size: 23px; }
   .columns { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .metadata { gap: 16px; }
-  .footer { bottom: -20px; }
+  .footer { margin-top: 8px; }
   .actions { display: grid; grid-template-columns: auto minmax(0, 1fr); }
   .actions button { padding-inline: 10px; }
 }

@@ -55,3 +55,4 @@ export const assertCompleteLearningComparison = (review: BackupLearningCompariso
 };
 
 export const getUncheckedLearningDocuments = (review: BackupLearningComparison) => new Set([...review.assignments.uncompared, ...review.submissions.uncompared, ...(review.attempts?.uncompared ?? [])].map((item) => item.key)).size;
+export const getLearningBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => [assignments, submissions, attempts].find(item => item.collection === collection);

@@ -6,10 +6,13 @@ import { validateAdministrativeBackup } from "../domain/localBackupValidation";
 import { compareBackupPlannerRecords } from "../domain/backupPlannerComparison";
 import { getPlannerStorageKey } from "../domain/plannerStorage";
 import { compareBackupCatalogRecords } from "../domain/backupCatalogComparison";
-import { coreBackupFixture, learningBackupFixture } from "../testSupport/localBackupDocuments";
+import { coreBackupFixture, learningBackupFixture, journalBackupFixture, studentOperationBackupFixture } from "../testSupport/localBackupDocuments";
 import { compareBackupAccountRecords } from "../domain/backupAccountComparison";
 import { compareBackupLearningRecords } from "../domain/backupLearningComparison";
 import { compareBackupScheduleRecords } from "../domain/backupScheduleComparison";
+import { compareBackupJournalRecords } from "../domain/backupJournalComparison";
+import { compareBackupNotificationRecords } from "../domain/backupNotificationComparison";
+import { notificationBackupFixture } from "../testSupport/localBackupDocuments";
 
 const report = (): BackupInspection => ({
   actor: { id: "configurator-demo", revision: 3 }, filename: "original.json",
@@ -33,6 +36,101 @@ beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => undefined
 afterEach(() => vi.restoreAllMocks());
 
 describe("complete backup inspection report", () => {
+  it("exports all file-difference annotations beyond one page without file values", async () => {
+    const inspection = report();
+    inspection.comparison = { same: 0, new: 0, currentOnly: 0, schema: 0, different: 231, differences: Array.from({ length: 231 }, (_, index) => ({ kind: "different", area: "Материалы", id: `file-${index}`, reference: { storage: "indexedDB", database: "bi-university-cabinet", store: "teacher-files", key: { type: "string", value: `file-${index}` } }, fileDifference: { version: 1, status: "compared", fields: ["description", "content"], issues: [], ownership: "unverified" } })) };
+    for (const difference of inspection.comparison.differences) difference.fileDifference!.materialArea = { version: 1, archive: { status: "matched", kind: "subject" }, browser: { status: "unavailable-catalog", kind: "subject" }, relation: "unresolved" };
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.comparison.differences).toHaveLength(231); expect(saved.comparison.differences.at(-1).fileDifference.fields).toEqual(["description", "content"]); expect(saved.comparison.differences.at(-1).fileDifference.materialArea.relation).toBe("unresolved"); expect(JSON.stringify(saved)).not.toContain("base64");
+  });
+  it.each(["extra-payload", "false-ownership", "missing-fields", "wrong-storage", "area-identity", "area-on-learning"])("rejects incomplete or leaking file annotations: %s", mode => {
+    const inspection = report();
+    inspection.comparison = { same: 0, new: 0, currentOnly: 0, schema: 0, different: 1, differences: [{ kind: "different", area: "Материалы", id: "file-1", reference: { storage: "indexedDB", database: "bi-university-cabinet", store: "teacher-files", key: { type: "string", value: "file-1" } }, fileDifference: { version: 1, status: "compared", fields: ["content"], issues: [], ownership: "unverified" } }] };
+    const difference = inspection.comparison.differences[0];
+    if (mode === "extra-payload") Object.assign(difference.fileDifference!, { blob: "PRIVATE CONTENT" });
+    if (mode === "false-ownership") Object.assign(difference.fileDifference!, { ownership: "confirmed" });
+    if (mode === "missing-fields") difference.fileDifference!.fields = [];
+    if (mode === "wrong-storage") difference.reference = { storage: "localStorage", key: "file-1" };
+    if (mode.startsWith("area-")) difference.fileDifference!.materialArea = { version: 1, archive: { status: "matched", kind: "user" }, browser: { status: "matched", kind: "user" }, relation: "same" };
+    if (mode === "area-identity") Object.assign(difference.fileDifference!.materialArea!, { identity: "PRIVATE PERSON" });
+    if (mode === "area-on-learning") difference.reference = { storage: "indexedDB", database: "bi-university-learning-files", store: "files", key: { type: "string", value: "file-1" } };
+    expect(() => prepareBackupInspectionReport(command(inspection), vi.fn())).toThrow("неполный отчёт");
+  });
+  it("does not accept a file annotation inserted into a local-record comparison", async () => {
+    const inspection = report(); inspection.plannerComparison = await compareBackupPlannerRecords([{ key: getPlannerStorageKey("student-1"), raw: '[{"id":"note-1","title":"PRIVATE NOTE","createdAt":"2026-10-28T10:00:00Z"}]' }], []);
+    Object.assign(inspection.plannerComparison.differences[0], { fileDifference: { payload: "PRIVATE BYTES" } });
+    expect(() => prepareBackupInspectionReport(command(inspection), vi.fn())).toThrow("неполный отчёт");
+  });
+  it("exports every notification difference beyond one page without its title, body or link", async () => {
+    const fixture = notificationBackupFixture(), first = fixture.notifications[0];
+    fixture.notifications.splice(0, 1, ...Array.from({ length: 231 }, (_, index) => ({ ...first, id: `notice-${String(index).padStart(3, "0")}` }))); fixture.save();
+    const inspection = report(); inspection.notificationComparison = await compareBackupNotificationRecords(fixture.archive.localStorage, []);
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.notificationComparison.differences).toHaveLength(231); expect(saved.notificationComparison.differences.at(-1).id).toBe("notice-230");
+    expect(JSON.stringify(saved)).not.toContain("PRIVATE"); expect(JSON.stringify(saved)).not.toContain("schedule?date");
+  });
+  it.each(["partial-list", "wrong-address", "unknown-field", "missing-uncompared", "wrong-reason"])("rejects an incomplete notification comparison before export: %s", async mode => {
+    const fixture = notificationBackupFixture(), inspection = report();
+    if (mode === "missing-uncompared" || mode === "wrong-reason") fixture.archive.localStorage = fixture.archive.localStorage.filter(entry => entry.key !== "bi-university-accounts-v1");
+    inspection.notificationComparison = await compareBackupNotificationRecords(fixture.archive.localStorage, []);
+    if (mode === "partial-list") inspection.notificationComparison.differences.pop();
+    if (mode === "wrong-address") Object.assign(inspection.notificationComparison.differences[0].reference!, { collection: "planner" });
+    if (mode === "unknown-field") Object.assign(inspection.notificationComparison.differences[0], { kind: "different", fields: ["PRIVATE FIELD"] });
+    if (mode === "missing-uncompared") inspection.notificationComparison.uncompared = [];
+    if (mode === "wrong-reason") Object.assign(inspection.notificationComparison.uncompared[0], { reason: "unresolved-journal-area" });
+    expect(() => prepareBackupInspectionReport(command(inspection), vi.fn())).toThrow("неполный отчёт");
+  });
+  it("exports the whole-archive policy and every blocking reason without record values", async () => {
+    const inspection = report();
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.restoreAdmission).toMatchObject({ policy: "whole-archive", scope: "archived-document-checks", status: "blocked", counts: { error: 230, unconfirmed: 1, unchecked: 7 } });
+    expect(saved.restoreAdmission.blockers.some((item: { referenceId?: string }) => item.referenceId === "group-229")).toBe(true);
+    expect(saved.restoreAdmission.blockers.some((item: { key?: string }) => item.key === "bi-university-unknown:6")).toBe(true);
+    expect(saved.restoreAdmission.remainingChecks).toHaveLength(3); expect(saved.restoreAdmission).not.toHaveProperty("canRestore");
+  });
+  it.each(["catalog-part", "catalog-version", "education-part", "education-version", "journal-list", "journal-address"])("rejects incomplete extended histories before export: %s", async mode => {
+    const fixture = studentOperationBackupFixture(undefined, { effectiveDate: "2026-10-28", basis: "PRIVATE BASIS" }); const journals = journalBackupFixture(); const inspection = report();
+    inspection.catalogComparison = await compareBackupCatalogRecords(fixture.archive.localStorage, []);
+    inspection.accountComparison = await compareBackupAccountRecords(fixture.archive.localStorage, []);
+    inspection.journalComparison = await compareBackupJournalRecords(journals.archive.localStorage, []);
+    if (mode === "catalog-part") delete inspection.catalogComparison.subjectHistory;
+    if (mode === "catalog-version") delete inspection.catalogComparison.historyComparisonVersion;
+    if (mode === "education-part") delete inspection.accountComparison.education;
+    if (mode === "education-version") Object.assign(inspection.accountComparison, { educationComparisonVersion: 2 });
+    if (mode === "journal-list") inspection.journalComparison.differences.pop();
+    if (mode === "journal-address") Object.assign(inspection.journalComparison.differences[0].reference!, { collection: "group-history" });
+    expect(() => prepareBackupInspectionReport(command(inspection), vi.fn())).toThrow("неполный отчёт");
+  });
+  it("exports every journal event beyond the visible page without values", async () => {
+    const fixture = journalBackupFixture(); const first = fixture.changes[0]; fixture.changes.splice(0, 1, ...Array.from({ length: 230 }, (_, i) => ({ ...first, id: `change-${String(i).padStart(3, "0")}` }))); fixture.save();
+    const inspection = report(); inspection.journalComparison = await compareBackupJournalRecords(fixture.archive.localStorage, []);
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.journalComparison.differences).toHaveLength(230); expect(saved.journalComparison.differences.at(-1).id).toBe("change-229"); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+  });
+  it.each(["missing-detail", "unknown-version", "missing-version", "partial-list", "card-address", "unknown-field"])("rejects incomplete account audit detail: %s", async (kind) => {
+    const fixture = coreBackupFixture(); fixture.accounts.history = [{ id: "audit-1", actorId: "configurator-demo", accountId: "student-1", occurredAt: "2026-10-28T09:00:00Z", action: "created", previousRole: null, nextRole: "student" }]; fixture.save();
+    const inspection = report(); inspection.accountComparison = await compareBackupAccountRecords(fixture.archive.localStorage, []); const review = inspection.accountComparison;
+    if (kind === "missing-detail") delete review.history;
+    if (kind === "unknown-version") Object.assign(review, { historyComparisonVersion: 2 });
+    if (kind === "missing-version") delete review.historyComparisonVersion;
+    if (kind === "partial-list") review.history!.differences.pop();
+    if (kind === "card-address") Object.assign(review.history!.differences[0].reference!, { collection: "accounts" });
+    if (kind === "unknown-field") Object.assign(review.history!.differences[0], { kind: "different", fields: ["PRIVATE FIELD"] });
+    expect(() => prepareBackupInspectionReport(command(inspection), vi.fn())).toThrow("неполный отчёт");
+  });
+  it("exports every audit event beyond the first page with no stored values", async () => {
+    const fixture = coreBackupFixture(); fixture.accounts.history = Array.from({ length: 230 }, (_, index) => ({ id: `audit-${String(index).padStart(3, "0")}`, actorId: "configurator-demo", accountId: "student-1", occurredAt: "2026-10-28T09:00:00Z", action: "details-changed", previousRole: "student", nextRole: "student", changes: [{ field: "name", before: "PRIVATE BEFORE", after: "PRIVATE AFTER" }] })); fixture.save();
+    const inspection = report(); inspection.accountComparison = await compareBackupAccountRecords(fixture.archive.localStorage, []);
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.accountComparison.historyComparisonVersion).toBe(1); expect(saved.accountComparison.history.differences).toHaveLength(230);
+    expect(saved.accountComparison.history.differences.at(-1).id).toBe("audit-229"); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+  });
+  it("keeps old account comparison reports readable without audit details", async () => {
+    const fixture = coreBackupFixture(); const inspection = report(); inspection.accountComparison = await compareBackupAccountRecords(fixture.archive.localStorage, []);
+    delete inspection.accountComparison.history; delete inspection.accountComparison.historyComparisonVersion;
+    const saved = JSON.parse(await prepareBackupInspectionReport(command(inspection), vi.fn()).blob.text());
+    expect(saved.accountComparison).toHaveProperty("counts"); expect(saved.accountComparison).not.toHaveProperty("history");
+  });
   it.each(["missing-detail", "unknown-version", "unversioned-detail", "blank-subject", "blank-group", "flat-address", "partial-list"])("rejects incomplete scoped journal comparison: %s", async (kind) => {
     const fixture = coreBackupFixture(); const lesson = fixture.schedule.drafts[0].lessons[0];
     fixture.schedule.drafts = []; fixture.schedule.journal = [{ ...lesson, journalState: "cancelled" }]; fixture.save();

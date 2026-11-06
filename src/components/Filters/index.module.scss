@@ -12,10 +12,8 @@
 .close:hover { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
 .inputRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; min-width: 0; }
 .query { position: relative; min-width: 0; }
-.queryIcon { position: absolute; bottom: 15px; left: 14px; z-index: 1; color: $color-text-secondary; pointer-events: none; }
 .inputRow label { color: $color-text-secondary; font-size: 13px; font-weight: 500; line-height: 1.4; }
-.inputRow input { box-sizing: border-box; height: 48px; min-height: 48px; padding-left: 42px; border-width: 1px; border-radius: 8px; background: $color-dark-primary; color: $color-text-light; font-size: 15px; }
-:root[data-theme="light"] .inputRow input { background: $color-dark-primary; }
+.inputRow input { box-sizing: border-box; height: 48px; min-height: 48px; border-radius: 8px; font-size: 15px; }
 .inputRow input::placeholder { color: $color-text-secondary; opacity: 1; }
 .searchButton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; min-height: 48px; padding: 10px 18px; border: 1px solid $color-accent-primary; border-radius: 8px; background: $gradient-color-logo; color: $color-on-accent; font-size: 14px; font-weight: 600; }
 .searchButton:hover:not(:disabled) { background: $color-accent-hover; border-color: $color-accent-hover; color: $color-on-accent; }
@@ -36,10 +34,10 @@
 @media(max-width: 650px) {
   .panel { padding: 12px; gap: 16px; }
   .form { gap: 14px; }
-  .header { gap: 6px; align-items: start; }
-  .types { flex: 1; gap: 2px; padding: 3px; }
-  .types > button { flex: 1 1 auto; padding-inline: 7px; font-size: 12px; }
-  .close { width: 40px; height: 44px; }
+  .header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; }
+  .types { display: flex; flex-wrap: wrap; grid-column: 1 / -1; grid-row: 2; min-width: 0; gap: 2px; padding: 3px; }
+  .types > button { flex: 1 1 auto; min-width: 0; padding-inline: 9px; font-size: 14px; overflow-wrap: anywhere; }
+  .close { grid-column: 2; grid-row: 1; justify-self: end; width: 44px; height: 44px; }
   .inputRow { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .searchButton { min-height: 44px; }
   .results ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }

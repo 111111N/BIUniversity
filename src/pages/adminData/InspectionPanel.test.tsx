@@ -9,6 +9,9 @@ import { compareBackupAccountRecords } from "../../domain/backupAccountCompariso
 import { compareBackupLearningRecords } from "../../domain/backupLearningComparison";
 import { learningBackupFixture } from "../../testSupport/localBackupDocuments";
 import { compareBackupScheduleRecords } from "../../domain/backupScheduleComparison";
+import { compareBackupJournalRecords } from "../../domain/backupJournalComparison";
+import { compareBackupNotificationRecords } from "../../domain/backupNotificationComparison";
+import { notificationBackupFixture } from "../../testSupport/localBackupDocuments";
 
 const noop = () => undefined;
 const result: BackupInspection = {
@@ -20,6 +23,40 @@ const result: BackupInspection = {
 };
 const render = (patch = {}) => renderToStaticMarkup(<InspectionPanel file={null} busy={false} progress="" error="" result={null} unavailable={false} reportMessage="" reportError="" onFile={noop} onInspect={noop} onCancel={noop} onReport={noop} {...patch} />);
 describe("backup file preview", () => {
+  it("announces unresolved material areas separately from successfully classified metadata", () => {
+    const comparison: BackupInspection["comparison"] = { same: 0, new: 0, currentOnly: 0, schema: 0, different: 1, differences: [{ kind: "different", area: "Материалы", id: "file-1", reference: { storage: "indexedDB", database: "bi-university-cabinet", store: "teacher-files", key: { type: "string", value: "file-1" } }, fileDifference: { version: 1, status: "compared", fields: ["description"], issues: [], ownership: "unverified", materialArea: { version: 1, archive: { status: "matched", kind: "user" }, browser: { status: "unavailable-catalog", kind: "user" }, relation: "unresolved" } } }] };
+    const html = render({ result: { ...result, comparison } });
+    expect(html).toContain("Области материалов не сопоставлены: 1"); expect(html).toContain("Области материала · не подтверждены"); expect(html).toContain("Не прочитан справочник учётных записей этого источника");
+    expect(html).not.toContain("Файлы с неполным разбором различий: 1");
+  });
+  it("announces incomplete file annotations in the main status without claiming restored ownership", () => {
+    const comparison: BackupInspection["comparison"] = { same: 0, new: 0, currentOnly: 0, schema: 0, different: 1, differences: [{ kind: "different", area: "Материалы", id: "file-1", reference: { storage: "indexedDB", database: "bi-university-cabinet", store: "teacher-files", key: { type: "string", value: "file-1" } }, fileDifference: { version: 1, status: "partial", fields: ["description"], issues: [{ source: "browser", reason: "unknown-fields" }], ownership: "unverified" } }] };
+    const html = render({ result: { ...result, comparison } });
+    expect(html).toContain("Файлы с неполным разбором различий: 1"); expect(html).toContain("Разбор различий файла неполный"); expect(html).toContain("Принадлежность и права на файл не подтверждены");
+  });
+  it("announces unconfirmed notification recipients in the main status without exposing contents", async () => {
+    const fixture = notificationBackupFixture(), entries = fixture.archive.localStorage.filter(entry => entry.key !== "bi-university-accounts-v1");
+    const notificationComparison = await compareBackupNotificationRecords(entries, []);
+    const html = render({ result: { ...result, notificationComparison } });
+    expect(html).toContain("Списки уведомлений не сравнены: 1"); expect(html).toContain("Уведомления по ID"); expect(html).toContain("Постоянный ID или явный получатель уведомления не подтверждены"); expect(html).not.toContain("PRIVATE");
+  });
+  it("announces unresolved journal-history sources in its main status", async () => {
+    const journalComparison = await compareBackupJournalRecords([{ key: "bi-university-journal-history-v1:subject-1:group-1", raw: "[]" }], []);
+    const html = render({ result: { ...result, journalComparison } });
+    expect(html).toContain("Источники истории журналов не сравнены: 1"); expect(html).toContain("Учебная область истории не подтверждена");
+  });
+  it("announces unreadable audit sources even when their account cards can be compared", async () => {
+    const fixture = learningBackupFixture(); fixture.accounts.history = [{ id: "", actorId: "configurator-demo", accountId: "student-1", occurredAt: "2026-10-28T09:00:00Z", action: "created", previousRole: null, nextRole: "student" }]; fixture.save();
+    const accountComparison = await compareBackupAccountRecords([], fixture.archive.localStorage);
+    expect(accountComparison.counts.uncheckedDocuments).toBe(0); expect(accountComparison.history?.counts.uncheckedDocuments).toBe(1);
+    const html = render({ result: { ...result, accountComparison } });
+    expect(html).toContain("Документы учёток не сравнены: 1"); expect(html).toContain("Нет источников истории учёток, которые удалось сравнить");
+  });
+  it("counts an unreadable account document once for cards and history", async () => {
+    const accountComparison = await compareBackupAccountRecords([], [{ key: "bi-university-accounts-v1", raw: "PRIVATE{broken" }]);
+    const html = render({ result: { ...result, accountComparison } });
+    expect(html).toContain("Документы учёток не сравнены: 1"); expect(html).not.toContain("Документы учёток не сравнены: 2"); expect(html).not.toContain("PRIVATE");
+  });
   it("counts an invalid schedule document once across both modes in the main status", async () => {
     const scheduleComparison = await compareBackupScheduleRecords([], [{ key: "bi-university-managed-schedule-v1", raw: "PRIVATE{broken" }]);
     const html = render({ result: { ...result, scheduleComparison } });

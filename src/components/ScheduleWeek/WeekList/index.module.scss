@@ -2,6 +2,9 @@
 @use "../../../styles/switches" as switches;
 
 .list { min-width: 0; }
+.slotToggle { @include switches.button; margin-bottom: 12px; }
+.slotToggle[aria-pressed="true"] { border-color: theme-alpha($color-text-secondary, .5); background: $color-ghost; }
+.freeDay { margin: 0; padding: 12px 16px; color: $color-text-secondary; font-size: 13px; }
 .jumpNav { margin-bottom: 16px; }
 .jumpNav > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .jumpNav button { @include switches.button; position: relative; text-transform: capitalize; padding-inline: 12px; gap: 6px; }

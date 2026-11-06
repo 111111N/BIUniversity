@@ -5,6 +5,19 @@ import { coreBackupFixture } from "../../testSupport/localBackupDocuments";
 import CatalogComparisonReview from "./CatalogComparisonReview";
 
 describe("catalog card comparison disclosure", () => {
+  it("shows histories separately and preserves collapsed details without leaking values", async () => {
+    const fixture = coreBackupFixture(); fixture.groups.history = [{ id: "group-event", groupId: "group-1", actorId: "configurator-demo", occurredAt: "2026-10-28T09:00:00Z", action: "created" }]; fixture.subjects.history = [{ id: "subject-event", subjectId: "subject-1", actorId: "configurator-demo", occurredAt: "2026-10-28T09:00:00Z", action: "created" }]; fixture.save();
+    const original = structuredClone(fixture.archive.localStorage); fixture.groups.history[0].actorId = "PRIVATE AUTHOR"; fixture.subjects.history[0].occurredAt = "2026-10-29T09:00:00Z"; fixture.save();
+    const html = renderToStaticMarkup(<CatalogComparisonReview review={await compareBackupCatalogRecords(original, fixture.archive.localStorage)} />);
+    expect(html).toContain("История групп по ID событий"); expect(html).toContain("История дисциплин по ID событий"); expect(html).toContain("Изменены поля: ID автора."); expect(html).toContain("Изменены поля: дата события.");
+    expect(html).not.toContain("PRIVATE"); expect(html).not.toMatch(/<details[^>]*\bopen=/);
+  });
+  it("explains missing details in legacy results", async () => {
+    const fixture = coreBackupFixture(); const review = await compareBackupCatalogRecords(fixture.archive.localStorage, []);
+    delete review.historyComparisonVersion; delete review.groupHistory; delete review.subjectHistory;
+    const html = renderToStaticMarkup(<CatalogComparisonReview review={review} />);
+    expect(html).toContain("Для детализации повторите проверку архива"); expect(html).not.toContain("История групп по ID событий");
+  });
   it("keeps detailed functions collapsed and identifies changed fields without exposing values", async () => {
     const fixture = coreBackupFixture(); const original = structuredClone(fixture.archive.localStorage);
     fixture.groups.groups[0].name = "PRIVATE GROUP"; fixture.groups.groups[0].campus = 2;

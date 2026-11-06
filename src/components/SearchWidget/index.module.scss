@@ -62,9 +62,20 @@
 }
 .searchLabel { display: block; margin-bottom: 8px; color: $color-text-secondary; font-size: 13px; line-height: 1.5; }
 
+.hint { margin: 0 0 12px; color: $color-text-secondary; font-size: .8rem; line-height: 1.45; }
 .searchButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 46px;
   padding: 8px 12px;
   flex-shrink: 0;
+}
+@media (max-width: 620px) {
+  .searchButton span { display: none; }
+  .toggleButton { font-size: .8rem; padding-inline: 6px; }
 }
 
 :root[data-theme="light"] .dashboardCard { background: transparent; }

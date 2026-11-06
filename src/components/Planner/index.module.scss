@@ -9,6 +9,9 @@
 .plannerToolbar { display: grid; gap: 18px; margin-bottom: 24px; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-dark-secondary; }
 .toolbarTop { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
 .toolbarActions { display: flex; align-items: center; flex-shrink: 0; gap: 12px; margin-left: auto; }
+.filterGroups { display: flex; align-items: end; flex-wrap: wrap; gap: 12px 20px; min-width: 0; }
+.filterGroup { display: grid; gap: 5px; min-width: 0; }
+.filterGroup > span { color: $color-text-secondary; font-size: 12px; }
 .filters { @include switches.group(false, "> span"); }
 .filters .filterActive { @include switches.selected(false); }
 .viewSwitch { @include switches.group(true); flex-shrink: 0; }
@@ -34,23 +37,25 @@
 .actionNotice { position: fixed; z-index: 800; right: 24px; bottom: 24px; width: min(560px, calc(100vw - 48px)); box-sizing: border-box; box-shadow: 0 8px 32px $color-shadow; }
 .actionNotice > span { flex-basis: 0; }
 .actionNotice .dismissNotice { flex: 0 0 44px; width: 44px; padding: 0; border: 0; background: transparent; font-size: 24px; }
+.boardHint { margin: -12px 0 12px; color: $color-text-secondary; font-size: 12px; }
 .weekGrid { display: grid; grid-template-columns: repeat(7, minmax(280px, 1fr)); align-items: start; gap: 12px; min-width: 0; overflow-x: auto; padding: 4px 4px 16px; margin-inline: -4px; cursor: grab; @include scroll-bar(6px); }
 .dayColumn { min-width: 0; min-height: 220px; padding: 14px 12px; box-sizing: border-box; border: 1px solid transparent; border-radius: 12px; background: $color-ghost; }
-.dayColumn.selectedDay { border-color: theme-alpha($color-text-secondary, .45); }
+.dayColumn.selectedDay { border-color: theme-alpha($color-accent-primary, .65); background: $color-accent-background-hover; box-shadow: inset 4px 0 $color-accent-primary; }
 .dayHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px solid $color-border; }
 .dayIdentity { display: grid; min-width: 0; gap: 8px; }
 .weekday { display: flex; align-items: center; gap: 8px; color: $color-text-secondary; font-size: 13px; text-transform: capitalize; }
 .weekday small { @include switches.counter; }
 .dayDate { display: flex; align-items: center; gap: 8px; }
 .dayDate > span { color: $color-text-secondary; font-size: 12px; }
+.dayDate .selectedLabel { color: $color-accent-hover; font-weight: 700; }
 .dayNumber { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .today { background: $color-accent-primary; color: $color-on-accent; }
 .addButton { display: grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; height: 44px; padding: 0; border: 1px solid transparent; background: transparent; color: $color-text-secondary; }
 .addButton:hover { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
 .notesList { display: grid; gap: 12px; }
 .emptyState, .addAnother { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 6px; border: 1px solid transparent; background: transparent; color: $color-text-secondary; font-size: 13px; font-weight: 500; line-height: 1.5; }
-.emptyState span { width: 100%; color: $color-accent-hover; }
-.emptyState:hover, .addAnother:hover { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
+.emptyState { margin: 0; cursor: default; }
+.addAnother:hover { border-color: $color-border; background: $color-ghost; color: $color-text-light; }
 .addAnother { margin-top: 12px; }
 .completedGroup { min-width: 0; border-top: 1px solid $color-border; }
 .completedGroup summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding-inline: 4px; color: $color-text-secondary; font-size: 13px; cursor: pointer; list-style: none; }
@@ -78,9 +83,9 @@
     background: color-mix(in srgb, var(--ui-chart-blue) 3%, #{$color-dark-secondary});
   }
   .dayColumn.selectedDay {
-    border-color: theme-alpha($color-accent-primary, .35);
-    background: color-mix(in srgb, #{$color-accent-primary} 3%, #{$color-dark-secondary});
-    box-shadow: 0 3px 14px theme-alpha($color-accent-primary, .06);
+    border-color: theme-alpha($color-accent-primary, .65);
+    background: color-mix(in srgb, #{$color-accent-primary} 7%, #{$color-dark-secondary});
+    box-shadow: inset 4px 0 $color-accent-primary, 0 3px 14px theme-alpha($color-accent-primary, .06);
   }
   .dayHeader { border-bottom-color: theme-alpha($color-text-secondary, .14); }
   .weekday { color: $color-text-light; font-weight: 500; }
@@ -89,23 +94,24 @@
   .addButton { background: $color-dark-secondary; border-color: $color-border; color: $color-text-secondary; }
   .addButton:hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
   .emptyState, .addAnother { border-color: theme-alpha($color-text-secondary, .22); border-style: dashed; background: $color-dark-secondary; }
-  .emptyState:hover, .addAnother:hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
+  .addAnother:hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
   .emptyWeek { background: $color-dark-secondary; }
 }
 @media(max-width: 720px) {
   .plannerToolbar { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 12px; }
   .toolbarTop, .tools { display: contents; }
-  .filters { grid-column: 1 / -1; grid-row: 1; flex-wrap: nowrap; min-width: 0; max-width: 100%; overflow-x: auto; padding-bottom: 4px; @include scroll-bar(3px); }
-  .filters > button { flex-shrink: 0; }
-  .toolbarActions { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; width: 100%; margin: 0; }
+  .filterGroups { grid-column: 1 / -1; grid-row: 2; display: grid; gap: 12px; }
+  .filters { flex-wrap: wrap; }
+  .toolbarActions { grid-column: 1 / -1; grid-row: 1; justify-content: space-between; width: 100%; margin: 0; }
   .createButton { padding-inline: 12px; }
   .search { grid-column: 1 / -1; grid-row: 3; }
   .weekSummary { grid-column: 1 / -1; grid-row: 4; min-height: 0; gap: 6px; font-size: 12px; }
   .viewSwitch { gap: 0; }
   .viewSwitch > button { padding-inline: 10px; font-size: 13px; }
   .filterResult { grid-column: 1 / -1; }
-  .weekGrid { grid-template-columns: repeat(7, minmax(280px, calc(100% - 24px))); }
+  .weekGrid:not(.listView) { grid-template-columns: repeat(7, minmax(280px, calc(100% - 24px))); }
   .actionNotice { right: 16px; bottom: 82px; width: calc(100vw - 32px); }
   .listView .dayColumn { padding: 12px; }
+  .boardHint { margin-top: -12px; }
 }
 @media(prefers-reduced-motion: reduce) { .planner * { scroll-behavior: auto; } }

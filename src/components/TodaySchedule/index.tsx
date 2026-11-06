@@ -24,6 +24,7 @@ export default function TodaySchedule({ date, unavailableReason, onRetry }: Prop
   }, []);
   const selectedDate = date ?? now;
   const key = toLocalDateKey(selectedDate);
+  const dateLabel = selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   const isToday = key === toLocalDateKey(now);
   const schedule = scheduleError ? [] : getPersonalSchedule(getDemoWeekSchedule(selectedDate, scheduleSource), currentUser).filter((lesson) => lesson.date === key);
   let nextDate: Date | undefined;
@@ -37,12 +38,12 @@ export default function TodaySchedule({ date, unavailableReason, onRetry }: Prop
 
   return <section className={styles.container} aria-label="Расписание на день">
     <div className={styles.header}>
-      <h2 ref={headingRef} tabIndex={-1}>{isToday ? "Сегодня, " : ""}{selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</h2>
+      <h2 ref={headingRef} tabIndex={-1}>{isToday ? "Сегодня, " : ""}{dateLabel}</h2>
       <Link to={`/schedule?date=${key}`}>Расписание<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></Link>
     </div>
     <p className={styles.caption}>{selectedDate.toLocaleDateString("ru-RU", { weekday: "long" })} · демонстрационное расписание</p>
     <div className={styles.body}>
-      {scheduleError ? <div className={styles.error} role="alert"><p>{scheduleError}</p>{onRetry && <button type="button" onClick={(event) => retryWithFocusRecovery(event.currentTarget, headingRef.current, onRetry)}>Повторить загрузку</button>}</div> : schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : nextDate && <div className={styles.nextDay}><span>Следующий учебный день</span><Link to={`/schedule?date=${toLocalDateKey(nextDate)}`}>{nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}<ArrowCircle /></Link></div>}
+      {scheduleError ? <div className={styles.error} role="alert"><p>{scheduleError}</p>{onRetry && <button type="button" onClick={(event) => retryWithFocusRecovery(event.currentTarget, headingRef.current, onRetry)}>Повторить загрузку</button>}</div> : schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : <div className={styles.empty}><p>На {dateLabel} занятий нет.</p><div className={styles.nextDay}><span>{nextDate ? "Следующий учебный день" : "Посмотрите другие дни"}</span><Link to={`/schedule?date=${nextDate ? toLocalDateKey(nextDate) : key}`}>{nextDate ? nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : "Полное расписание"}<ArrowCircle /></Link></div></div>}
     </div>
   </section>;
 }

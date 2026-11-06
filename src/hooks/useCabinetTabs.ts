@@ -4,7 +4,7 @@ const useCabinetTabs = (student = false) => {
   const [params, setParams] = useSearchParams();
   const items = [
     { value: "overview", label: "Обзор" },
-    ...(student ? [{ value: "group", label: "Моя группа" }] : []),
+    ...(student ? [{ value: "record-book", label: "Зачётка" }, { value: "group", label: "Моя группа" }] : []),
     { value: "study-plan", label: "Учебный план" },
     { value: "files", label: "Мои файлы" },
     { value: "settings", label: "Настройки" },

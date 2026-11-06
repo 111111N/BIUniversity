@@ -1,6 +1,6 @@
 @use "../../styles/variables" as *;
 
-.container { display: flex; flex-direction: column; min-width: 0; height: 300px; box-sizing: border-box; }
+.container { display: flex; flex-direction: column; min-width: 0; box-sizing: border-box; }
 .header { display: flex; flex-wrap: wrap; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px; }
 .header h2 { margin: 0; font-size: 1.1rem; color: $color-text-light; }
 .header h2[tabindex="-1"] { scroll-margin-top: 84px; }
@@ -10,7 +10,10 @@
 .header a:focus-visible, .nextDay a:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; border-radius: 6px; }
 .caption { flex-shrink: 0; color: $color-text-secondary; font-size: .8rem; margin: 8px 0 16px; }
 .caption::first-letter { text-transform: uppercase; }
-.body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.body { display: flex; flex-direction: column; min-height: 0; }
+.body > div { max-height: none; overflow: visible; height: auto; box-shadow: none; }
+.body > div:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+.empty p { margin: 0 0 14px; color: $color-text-light; font-size: .85rem; }
 .error { display: grid; justify-items: start; gap: 12px; margin: 0; color: $color-text-light; font-size: 13px; line-height: 1.6; overflow-y: auto; }
 .error p { margin: 0; }
 .error button { min-height: 44px; padding: 8px 12px; border-width: 1px; font: inherit; color: $color-text-light; }

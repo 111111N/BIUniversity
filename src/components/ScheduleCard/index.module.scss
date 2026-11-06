@@ -36,6 +36,7 @@
 .grid .top time { font-size: 12px; line-height: 1.25; white-space: nowrap; }
 .grid .type { padding: 1px 4px; font-size: 11px; line-height: 1.2; }
 .grid .subject { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex-shrink: 0; font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+.compactMeta { display: none; color: var(--schedule-card-muted); font-size: 11px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grid .info { flex-wrap: nowrap; flex-shrink: 0; gap: 4px 6px; }
 .grid .info > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grid .info, .grid .teacher { font-size: 12px; line-height: 1.2; }
@@ -46,10 +47,12 @@
 .grid.compact { gap: 3px; padding: 5px; }
 .grid.compact .type, .grid.compact .info, .grid.compact .footer { display: none; }
 .grid.compact .subject { font-size: 13px; line-height: 1.3; }
+.grid.compact .compactMeta { display: block; }
 .grid.compact .teacher { padding-right: 0; white-space: normal; }
 .grid.short { padding: 0 4px; gap: 0; }
 .grid.short .top, .grid.short .info, .grid.short .footer { display: none; }
 .grid.short .subject { padding: 0; font-size: 12px; line-height: 1.2; -webkit-line-clamp: 1; }
+.grid.short .compactMeta { display: none; }
 @container (max-height: 72px) { .info, .type { display: none; } .subject { -webkit-line-clamp: 1 !important; } .footer { display: none; } .compact .top { display: none; } }
 @container (max-height: 52px) { .top { display: none; } .grid .teacher { padding-right: 0; white-space: nowrap; } }
 @container (max-height: 30px) { .teacher { display: none; } .subject { font-size: 12px; padding-right: 0; } }

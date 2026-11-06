@@ -44,7 +44,7 @@ const decodeJournalRows = (raw: string): unknown[] => {
   return rows;
 };
 
-const decodeHistoryRows = (raw: string): unknown[] => {
+export const decodeBackupJournalHistory = (raw: string): JournalChange[] => {
   const rows: unknown = JSON.parse(raw);
   if (!Array.isArray(rows) || !rows.every((row: unknown) => isRecord(row) && nonempty(row.id)
     && typeof row.changedAt === "string" && Number.isFinite(Date.parse(row.changedAt))
@@ -54,7 +54,7 @@ const decodeHistoryRows = (raw: string): unknown[] => {
     && cell(row.previousValue) && cell(row.nextValue) && validActor(row.actor))) {
     throw new Error("Не читается схема истории журнала: проверьте ID, даты, автора и поля изменений. Повреждённые события не отбрасывались.");
   }
-  return rows;
+  return rows as JournalChange[];
 };
 
 /** Inspect every saved list as-is; never consult accounts, create demos or migrate lesson keys. */
@@ -103,7 +103,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
     }
     let rows: unknown[];
     try {
-      rows = kind === "journals" ? decodeJournalRows(entry.raw) : decodeHistoryRows(entry.raw);
+      rows = kind === "journals" ? decodeJournalRows(entry.raw) : decodeBackupJournalHistory(entry.raw);
       const ids = rows.map((row) => (row as { id: string }).id);
       if (new Set(ids).size !== ids.length) throw new Error("В списке журнала или истории повторяются ID записей. Дубликаты не объединялись и не удалялись.");
       current.records += rows.length;

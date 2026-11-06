@@ -36,6 +36,7 @@ describe("schedule card", () => {
     const item = { ...getDemoWeekSchedule(new Date(2026, 9, 5))[0], subject: "Очень длинное название дисциплины", endTime: "08:45" };
     const html = renderToStaticMarkup(<ScheduleCard item={item} grid short compact readOnly style={{ height: 16.5, top: 0, width: "calc(50% - 6px)" }} onOpen={() => {}} />);
     expect(html).toMatch(/<button[^>]+aria-label="[^"]*Очень длинное название дисциплины[^"]*08:30–08:45[^"]*Волкова Е\.В\.[^"]*Открыть сведения о паре/);
+    expect(html).toContain("08:30 · Ауд. 101");
     expect(html).toContain("height:16.5px"); expect(html).toContain("width:calc(50% - 6px)");
     expect(html).not.toContain("<article"); expect(html).not.toContain("Открыть журнал");
   });

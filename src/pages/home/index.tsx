@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Calendar from "../../components/CalendarWidget";
 import ArrowCircle from "../../components/ArrowCircle";
@@ -27,6 +27,8 @@ export default function Home() {
   const dateParam = params.get("date");
   const selectedDate = useMemo(() => parseCalendarDate(dateParam), [dateParam]);
   const activeDate = selectedDate ?? now;
+  const activeKey = toLocalDateKey(activeDate);
+  const todayKey = toLocalDateKey(now);
   const { notes, setNotes, error: plannerError } = usePlannerNotes();
   const [taskDraft, setTaskDraft] = useState<PlannerNote | null>(null);
   const [savedTask, setSavedTask] = useState<PlannerNote | null>(null);
@@ -36,91 +38,112 @@ export default function Home() {
     setTaskDraft(null);
     setSavedTask(task);
   };
-  const getDaySummary = (date: Date) => ({
-    lessons: dashboard.errors.schedule ? null : getPersonalSchedule(getDemoWeekSchedule(date, dashboard.scheduleSource), currentUser).filter((lesson) => lesson.date === toLocalDateKey(date)).length,
-    tasks: plannerError ? null : getPlannerDayNotes(notes, date).length,
-  });
-
+  const selectDate = (date: Date) => {
+    setSavedTask(null);
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (toLocalDateKey(date) === todayKey) next.delete("date");
+      else next.set("date", toLocalDateKey(date));
+      return next;
+    }, { replace: true });
+  };
   const dashboard = useMemo(
     () => getTeacherDashboard({ memberships: currentUser.memberships, now, teacher: currentUser }),
     [currentUser, now],
   );
+  const getDaySummary = (date: Date) => ({
+    lessons: dashboard.errors.schedule ? null : getPersonalSchedule(getDemoWeekSchedule(date, dashboard.scheduleSource), currentUser).filter((lesson) => lesson.date === toLocalDateKey(date)).length,
+    tasks: plannerError ? null : getPlannerDayNotes(notes, date).length,
+  });
   const focusError = Boolean(dashboard.errors.assignments || dashboard.errors.journal);
+  const dateLabel = activeDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div className="pageContainer">
+      <header className={styles.pageHeader}>
+        <div><h1>Главная</h1><p>Обзор на {dateLabel}</p></div>
+        {activeKey !== todayKey && <button type="button" onClick={() => selectDate(now)}>Вернуться к сегодня</button>}
+      </header>
       <div className={styles.dashboardGrid}>
-        <div className={styles.leftColumn}>
+        <section className={`${styles.dashboardCard} ${styles.calendarCard}`} aria-labelledby="home-calendar-title">
+          <h2 id="home-calendar-title" className={styles.cardTitle}>Календарь</h2>
+          <Calendar selectedDate={activeDate} onSelectDate={selectDate} getDaySummary={getDaySummary} summaryLinks />
+        </section>
+
+        <section className={`${styles.dashboardCard} ${styles.focusCard}`} aria-labelledby="home-focus-title">
+          <div className={styles.focusHeader}>
+            <div><span>Фокус на сегодня</span><h2 id="home-focus-title" ref={focusHeadingRef} tabIndex={-1} className={styles.cardTitle}>Что требует внимания</h2></div>
+            <strong aria-label={focusError ? "Количество недоступно: показаны доступные данные" : `Задач, требующих внимания: ${dashboard.focus.length}`}>{focusError ? "—" : dashboard.focus.length}</strong>
+          </div>
+          <DashboardReadError messages={[dashboard.errors.assignments, dashboard.errors.journal]} onRetry={refresh} recoveryTarget={focusHeadingRef} />
+          {focusError && <p className={styles.partialData}>Показаны доступные данные. Повторите загрузку, чтобы проверить остальные.</p>}
+          {dashboard.focus.length ? (
+            <div className={styles.focusList}>
+              {dashboard.focus.map((item) => (
+                <Link to={item.href} key={item.title}>
+                  <i aria-hidden="true" className={item.level === "urgent" ? styles.urgent : item.level === "warning" ? styles.warning : undefined} />
+                  <div><strong>{item.title}</strong>{item.level !== "normal" && <em>{item.level === "urgent" ? "Срочно" : "Нужно заполнить"}</em>}<span>{item.description}</span></div>
+                  <b>{item.action}<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></b>
+                </Link>
+              ))}
+            </div>
+          ) : !focusError ? (
+            <div className={styles.emptyState}>
+              <strong>Всё под контролем</strong>
+              <span>Непроверенных работ и незаполненных журналов сейчас нет.</span>
+            </div>
+          ) : null}
+        </section>
+
+        <div id="home-schedule" className={`${styles.dashboardCard} ${styles.scheduleCard}`}>
+          <TodaySchedule date={activeDate} unavailableReason={dashboard.errors.schedule} onRetry={refresh} />
+        </div>
+
+        <div id="home-tasks" className={styles.dashboardCard}>
+          <PlannerAgenda date={activeDate} notes={notes} error={plannerError} onCreateTask={() => setTaskDraft(createPlannerNote(activeDate))} />
+          {savedTask && <div className={styles.taskNotice} role="status"><span>Добавлено на {getPlannerNoteDate(savedTask).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}: <strong>{savedTask.title}</strong></span><Link to={getPlannerHref(getPlannerNoteDate(savedTask), savedTask.id)}>Открыть<ArrowCircle /></Link><button type="button" aria-label="Скрыть сообщение" onClick={() => setSavedTask(null)}>×</button></div>}
+        </div>
+
+        <section className={`${styles.dashboardCard} ${styles.statsCard}`} aria-labelledby="home-stats-title">
+          <h2 id="home-stats-title" className={styles.cardTitle}>Показатели на сегодня · {now.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</h2>
+          <p className={styles.statsPeriod}>Пары — за сегодня; показатели журналов — накопительные по доступным группам и дисциплинам.</p>
+          <div className={styles.flexParams}>
+            <div className={styles.paramBox}>
+              <div className={styles.summaryValue}>{dashboard.todayLessons === null ? "—" : dashboard.todayLessons ? `${dashboard.conductedLessons} / ${dashboard.todayLessons}` : "Нет пар"}</div>
+              <div className={styles.summaryLabel}>Проведено пар сегодня</div>
+              {dashboard.todayLessons === null && <span className={styles.unavailable}>Данные расписания недоступны. Повторите загрузку.</span>}
+            </div>
+            <div className={styles.paramBox}>
+              <div className={styles.summaryValue}>{dashboard.attendanceMarked === null ? "—" : `${dashboard.attendanceMarked} / ${dashboard.journalCells}`}</div>
+              <div className={styles.summaryLabel}>Заполнено отметок · по доступным журналам</div>
+              {dashboard.attendanceMarked === null && <span className={styles.unavailable}>Данные журнала недоступны. Повторите загрузку.</span>}
+            </div>
+            <div className={styles.paramBox}>
+              <div className={styles.summaryValue}>{dashboard.gradesCount === null ? "—" : `${dashboard.gradesCount} / ${dashboard.gradeCells}`}</div>
+              <div className={styles.summaryLabel}>Оценки · практики и лабораторные · по доступным журналам</div>
+              {dashboard.gradesCount === null && <span className={styles.unavailable}>Данные журнала недоступны. Повторите загрузку.</span>}
+            </div>
+          </div>
+          {(dashboard.todayLessons === null || dashboard.attendanceMarked === null || dashboard.gradesCount === null) && <button className={styles.retryButton} type="button" onClick={refresh}>Повторить загрузку показателей</button>}
+        </section>
+
+        <section className={`${styles.dashboardCard} ${styles.searchCard}`} aria-labelledby="home-search-title">
+          <h2 id="home-search-title" className={styles.cardTitle}>Поиск расписания</h2>
           <Search
             searchMode={searchMode}
             setSearchMode={setSearchMode}
             query={query}
             setQuery={setQuery}
             onSearch={() => {
-              const params = new URLSearchParams({ date: toLocalDateKey(activeDate) });
+              const searchParams = new URLSearchParams({ date: activeKey });
               if (query.trim()) {
-                params.set("type", searchMode === "auditorium" ? "auditory" : "group");
-                params.set("query", query.trim());
+                searchParams.set("type", searchMode === "auditorium" ? "auditory" : "group");
+                searchParams.set("query", query.trim());
               }
-              navigate(`/schedule${params.size ? `?${params}` : ""}`);
+              navigate(`/schedule?${searchParams}`);
             }}
           />
-
-          <div className={`${styles.dashboardCard} ${styles.scheduleCard}`}>
-            <TodaySchedule date={activeDate} unavailableReason={dashboard.errors.schedule} onRetry={refresh} />
-          </div>
-
-          <div className={styles.dashboardCard}>
-            <PlannerAgenda date={activeDate} notes={notes} error={plannerError} onCreateTask={() => setTaskDraft(createPlannerNote(activeDate))} />
-            {savedTask && <div className={styles.taskNotice} role="status"><span>Добавлено на {getPlannerNoteDate(savedTask).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}: <strong>{savedTask.title}</strong></span><Link to={getPlannerHref(getPlannerNoteDate(savedTask), savedTask.id)}>Открыть<ArrowCircle /></Link><button type="button" aria-label="Скрыть сообщение" onClick={() => setSavedTask(null)}>×</button></div>}
-          </div>
-
-          <div className={`${styles.dashboardCard} ${styles.flexParams}`}>
-            <div className={styles.paramBox}>
-              <div className={styles.summaryValue}>{dashboard.todayLessons === null ? "—" : dashboard.todayLessons ? `${dashboard.conductedLessons} / ${dashboard.todayLessons}` : "Нет пар"}</div>
-              <div className={styles.summaryLabel}>Проведено пар сегодня</div>
-            </div>
-            <div className={styles.paramBox}>
-              <div className={styles.summaryValue}>{dashboard.attendanceMarked === null ? "—" : `${dashboard.attendanceMarked} / ${dashboard.journalCells}`}</div>
-              <div className={styles.summaryLabel}>Заполнено отметок</div>
-            </div>
-            <div className={styles.paramBox}>
-              <div className={styles.summaryValue}>{dashboard.gradesCount === null ? "—" : `${dashboard.gradesCount} / ${dashboard.gradeCells}`}</div>
-              <div className={styles.summaryLabel}>Оценки · практики и лабораторные</div>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.rightColumn}>
-          <div className={`${styles.dashboardCard} ${styles.focusCard}`}>
-            <div className={styles.focusHeader}>
-              <div><span>Фокус на сегодня</span><h2 ref={focusHeadingRef} tabIndex={-1} className={styles.cardTitle}>Что требует внимания</h2></div>
-              <strong>{focusError ? "—" : dashboard.focus.length}</strong>
-            </div>
-            <DashboardReadError messages={[dashboard.errors.assignments, dashboard.errors.journal]} onRetry={refresh} recoveryTarget={focusHeadingRef} />
-            {dashboard.focus.length ? (
-              <div className={styles.focusList}>
-                {dashboard.focus.map((item) => (
-                  <Link to={item.href} key={item.title}>
-                    <i className={item.level === "urgent" ? styles.urgent : item.level === "warning" ? styles.warning : undefined} />
-                    <div><strong>{item.title}</strong><span>{item.description}</span></div>
-                    <b>{item.action}<ArrowCircle hoverBackground="transparent" hoverColor="inherit" /></b>
-                  </Link>
-                ))}
-              </div>
-            ) : !focusError ? (
-              <div className={styles.emptyState}>
-                <strong>Всё под контролем</strong>
-                <span>Непроверенных работ и незаполненных журналов сейчас нет.</span>
-              </div>
-            ) : null}
-          </div>
-
-          <div className={`${styles.dashboardCard} ${styles.calendarCard}`}>
-            <h2 className={styles.cardTitle}>Календарь</h2>
-            <Calendar selectedDate={activeDate} onSelectDate={(date) => setParams((current) => { const next = new URLSearchParams(current); if (toLocalDateKey(date) === toLocalDateKey(now)) next.delete("date"); else next.set("date", toLocalDateKey(date)); return next; }, { replace: true })} getDaySummary={getDaySummary} />
-          </div>
-        </div>
+        </section>
       </div>
       {taskDraft && <PlannerNoteForm note={taskDraft} error={plannerError} onSave={saveTask} onClose={() => setTaskDraft(null)} />}
     </div>

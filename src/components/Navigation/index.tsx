@@ -12,6 +12,7 @@ import {
   MessagesIcon,
   NotificationsIcon,
   GroupsIcon,
+  AssessmentsIcon,
 } from "./icons";
 import RoleSwitcher from "../RoleSwitcher";
 import Modal from "../Modal";
@@ -70,6 +71,7 @@ export default function Nav() {
     { to: "/schedule", label: "Расписание", Icon: ScheduleIcon },
     { to: "/planner", label: "Планировщик", Icon: PlannerIcon },
     { to: "/journal", activePath: "/journal", label: "Журнал", Icon: JournalIcon },
+    { to: "/assessments", activePath: "/assessments", label: "Аттестации", Icon: AssessmentsIcon },
     { to: "/stats", label: "Статистика", Icon: StatsIcon },
     { to: "/messages", label: "Сообщения", Icon: MessagesIcon },
   ];
@@ -77,6 +79,7 @@ export default function Nav() {
     { to: "/", label: "Главная", Icon: HomeIcon },
     { to: "/schedule", label: "Расписание", Icon: ScheduleIcon },
     { to: "/journal", activePath: "/journal", label: "Журнал", Icon: JournalIcon },
+    { to: "/assessments", activePath: "/assessments", label: "Аттестации", Icon: AssessmentsIcon },
     { to: "/messages", label: "Сообщения", Icon: MessagesIcon },
   ];
   const configuratorItems = [
@@ -85,11 +88,12 @@ export default function Nav() {
     { to: "/admin/students", activePath: "/admin/students", label: "Студенты", Icon: CabinetIcon },
     { to: "/admin/teachers", label: "Преподаватели", Icon: CabinetIcon },
     { to: "/admin/subjects", label: "Дисциплины", Icon: JournalIcon },
+    { to: "/assessments", activePath: "/assessments", label: "Аттестации", Icon: AssessmentsIcon },
     { to: "/admin/accounts", activePath: "/admin/accounts", label: "Учётные записи", Icon: CabinetIcon },
     { to: "/admin/checks", label: "Проверка данных", Icon: StatsIcon },
   ];
   const navItems = isConfigurator ? configuratorItems : role === "student" ? studentItems : teacherItems;
-  const mobileItems = isConfigurator ? configuratorItems.filter((item) => !["/admin/accounts", "/admin/teachers", "/admin/checks"].includes(item.to)) : studentItems;
+  const mobileItems = isConfigurator ? configuratorItems.filter((item) => !["/admin/accounts", "/admin/teachers", "/admin/checks", "/assessments"].includes(item.to)) : studentItems.filter((item) => item.to !== "/assessments");
   const extraItems = navItems.filter((item) => !mobileItems.some((mobile) => mobile.to === item.to));
   const cabinetItem = { to: "/cabinet", label: role === "student" ? "Профиль" : "Кабинет", Icon: CabinetIcon };
   const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || (isConfigurator && location.pathname === "/admin/data") || extraItems.some((item) => location.pathname === item.to || ("activePath" in item && typeof item.activePath === "string" && location.pathname.startsWith(item.activePath)));

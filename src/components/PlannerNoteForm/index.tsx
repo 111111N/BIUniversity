@@ -25,7 +25,9 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
   const [plannedDay, setPlannedDay] = useState(() => startOfDay(note.startAt ?? note.createdAt));
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [validation, setValidation] = useState("");
+  const [additionalOpen, setAdditionalOpen] = useState(Boolean(note.text || note.startAt || note.endAt || note.priority !== "medium" || note.category !== "study"));
   const titleRef = useRef<HTMLInputElement>(null);
+  const additionalRef = useRef<HTMLDetailsElement>(null);
   const initialNote = useRef(note).current;
   const changedElsewhere = currentNote && !samePlannerNote(initialNote, currentNote);
   const deletedElsewhere = Boolean(initialNote.id) && currentNote === null;
@@ -35,6 +37,7 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
   const durationLabel = duration > 0 ? [Math.floor(duration / 60) ? `${Math.floor(duration / 60)} ч` : "", duration % 60 ? `${duration % 60} мин` : ""].filter(Boolean).join(" ") : "";
   useUnsavedChangesWarning(dirty, changesPlannerTask);
   const requestClose = () => { if (dirty) setConfirmDiscard(true); else onClose(); };
+  const revealAdditionalError = () => { setAdditionalOpen(true); additionalRef.current?.setAttribute("open", ""); };
   const changeDay = (date?: Date) => {
     if (!date) return;
     try {
@@ -47,8 +50,8 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
   };
   const submit = () => {
     if (!title.trim() && !text.trim()) { setValidation("Добавьте название или описание задачи."); titleRef.current?.focus(); return; }
-    if (startAt && endAt && endAt <= startAt) { setValidation("Время окончания должно быть позже времени начала."); return; }
-    if (!startAt && endAt && endAt < startOfDay(plannedDay)) { setValidation("Срок окончания не может быть раньше выбранного дня задачи."); return; }
+    if (startAt && endAt && endAt <= startAt) { revealAdditionalError(); setValidation("Время окончания должно быть позже времени начала."); return; }
+    if (!startAt && endAt && endAt < startOfDay(plannedDay)) { revealAdditionalError(); setValidation("Срок окончания не может быть раньше выбранного дня задачи."); return; }
     setValidation("");
     const samePlannedDay = toLocalDateKey(day) === toLocalDateKey(initialNote.startAt ?? initialNote.createdAt);
     const createdAt = startAt || (!initialNote.startAt && samePlannedDay) ? initialNote.createdAt : plannedDay;
@@ -63,14 +66,18 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
       <p className={styles.day}>{day.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}<span>{startAt || endAt ? `${formatPlannerTime({ ...note, startAt, endAt })}${durationLabel ? ` · ${durationLabel}` : ""}` : "Без времени"}</span></p>
       <fieldset className={styles.section}><legend>Задача</legend>
       <label className={styles.field}>Название<input ref={titleRef} value={title} placeholder="Например, подготовить материалы к паре" onChange={(event) => { setTitle(event.target.value); setValidation(""); }} /></label>
-      <label className={styles.field}>Описание<textarea value={text} placeholder="Детали, ссылки и заметки" onChange={(event) => setText(event.target.value)} /></label>
-      </fieldset>
-      <fieldset className={styles.section}><legend>Когда</legend>
       <div className={styles.field}><span>День задачи</span><DateTimePicker value={day} showTime={false} allowClear={false} onChange={changeDay} ariaLabel="День задачи" /></div>
+      </fieldset>
+      <details className={styles.additional} ref={additionalRef} open={additionalOpen} onToggle={(event) => setAdditionalOpen(event.currentTarget.open)}>
+      <summary>Дополнительные параметры <span>{[text.trim() ? "есть описание" : "", formatPlannerTime({ ...note, startAt, endAt }), category === "study" ? "Учебная" : "Личная", `Приоритет: ${priority === "high" ? "высокий" : priority === "low" ? "низкий" : "обычный"}`].filter(Boolean).join(" · ")}</span></summary>
+      <label className={styles.field}>Описание<textarea value={text} placeholder="Детали, ссылки и заметки" onChange={(event) => setText(event.target.value)} /></label>
+      <fieldset className={styles.section}><legend>Время</legend>
+      <p className={styles.timeHint}>День задачи определяет, где она показана. Начало и окончание задают интервал; окончание без начала — крайний срок.</p>
       <div className={styles.columns}><div className={styles.field}><span>Начало · необязательно</span><DateTimePicker value={startAt} initialDate={plannedDay} onChange={(date) => { if (date) setPlannedDay(startOfDay(date)); setStartAt(date); setValidation(""); }} placeholder="Без времени" ariaLabel="Начало задачи" /></div><div className={styles.field}><span>Окончание · необязательно</span><DateTimePicker value={endAt} initialDate={startAt ?? plannedDay} onChange={(date) => { setEndAt(date); setValidation(""); }} placeholder="Не задано" ariaLabel="Окончание задачи" /></div></div>
       {!startAt && endAt && <p className={styles.timeHint}>Задача останется в выбранном дне. «Окончание» — её крайний срок, даже если он позже этого дня.</p>}
       </fieldset>
       <fieldset className={styles.section}><legend>Параметры</legend><div className={`${styles.columns} ${styles.metadata}`}><Dropdown label="Категория" value={category} onChange={(value) => setCategory(value as PlannerNote["category"])} options={[{ value: "study", label: "Учебная" }, { value: "personal", label: "Личная" }]} /><Dropdown label="Приоритет" value={priority} onChange={(value) => setPriority(value as PlannerNote["priority"])} options={[{ value: "low", label: "Низкий" }, { value: "medium", label: "Обычный" }, { value: "high", label: "Высокий" }]} /></div></fieldset>
+      </details>
       {(validation || error) && <p className={styles.error} role="alert">{validation || error}</p>}
       <footer className={styles.footer}><span className={styles.saveHint}>{dirty ? "Есть несохранённые изменения" : "Ctrl / ⌘ + Enter — сохранить"}</span><div className={styles.actions}><button type="button" onClick={requestClose}>Отмена</button><button type="submit" className={styles.save}>{note.id ? "Сохранить изменения" : "Добавить задачу"}</button></div></footer>
     </form>

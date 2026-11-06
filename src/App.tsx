@@ -39,6 +39,7 @@ const AdminStudents = lazy(() => import("./pages/adminStudents"));
 const AdminTeachers = lazy(() => import("./pages/adminTeachers"));
 const AdminChecks = lazy(() => import("./pages/adminChecks"));
 const AdminData = lazy(() => import("./pages/adminData"));
+const Assessments = lazy(() => import("./pages/assessments"));
 const academicRoles = ["teacher", "student"] as const;
 
 const LayoutWithNav = () => {
@@ -79,6 +80,8 @@ const LayoutWithNav = () => {
                     <Route path="/admin/teachers" element={<RoleRoute allow="configurator"><AdminTeachers /></RoleRoute>} />
                     <Route path="/admin/checks" element={<RoleRoute allow="configurator"><AdminChecks /></RoleRoute>} />
                     <Route path="/admin/data" element={<RoleRoute allow="configurator"><AdminData /></RoleRoute>} />
+                    <Route path="/assessments" element={<Assessments />} />
+                    <Route path="/assessments/:assessmentId" element={<Assessments />} />
                     <Route path="/cabinet" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentCabinet /> : <Cabinet />}</RoleRoute>} />
                     <Route path="/journal/:subjectId/:groupId" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <Journal />}</RoleRoute>} />
                     <Route path="/journal/:subjectId" element={<RoleRoute allow={academicRoles}>{role === "student" ? <StudentJournal /> : <JournalCatalog />}</RoleRoute>} />

@@ -12,6 +12,7 @@ import { getStudentProfile } from "../../data/studentProfiles";
 import { useDashboardUpdate } from "../../data/studentDashboard";
 import styles from "../cabinet/index.module.scss";
 import { getStudentGroupId } from "../../domain/accounts";
+import StudentRecordBook from "../../components/StudentRecordBook";
 
 const StudentCabinet = () => {
   const { currentUser } = useRole();
@@ -22,7 +23,7 @@ const StudentCabinet = () => {
   const { items, activeTab, setActiveTab } = useCabinetTabs(true);
   return <div className={`pageContainer ${styles.page}`}>
     <Tabs className={styles.cabinetTabs} ariaLabel="Разделы профиля" value={activeTab} onChange={setActiveTab} items={items} />
-    {activeTab === "study-plan" ? <StudyPlan /> : activeTab === "group" ? <MyGroup /> : activeTab === "files" ? <FileStorage /> : activeTab === "settings" ? <CabinetSettings /> : <>
+    {activeTab === "record-book" ? <StudentRecordBook /> : activeTab === "study-plan" ? <StudyPlan /> : activeTab === "group" ? <MyGroup /> : activeTab === "files" ? <FileStorage /> : activeTab === "settings" ? <CabinetSettings /> : <>
       <div className={styles.dashboardGrid}>
         <section className={styles.profileCard}>
           <div className={styles.avatar} aria-hidden="true">{student?.initials ?? currentUser.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("")}</div>
@@ -38,6 +39,7 @@ const StudentCabinet = () => {
           </div>
         </section>
       </div>
+      <Link className={styles.filesShortcut} to="/cabinet?tab=record-book">Зачётная книжка <span aria-hidden="true">→</span></Link>
       <Link className={styles.filesShortcut} to="/cabinet?tab=files">Мои файлы <span aria-hidden="true">→</span></Link>
     </>}
   </div>;

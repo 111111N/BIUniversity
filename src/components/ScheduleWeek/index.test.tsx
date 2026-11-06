@@ -21,6 +21,8 @@ describe("weekly schedule", () => {
   it("explains an empty week without a blank time grid", () => {
     const html = render([]);
     expect(html).toContain("На этой неделе занятий нет");
+    expect(html).toContain("Выберите другую неделю.");
+    expect(html).not.toContain("измените поиск");
     expect(html).not.toContain("Недельное расписание. Стрелки");
   });
   it("does not render lessons from outside the selected week", () => {
@@ -58,9 +60,16 @@ describe("weekly schedule", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Печать \/ PDF/);
     expect(html).toMatch(/<section[^>]*tabindex="-1"[^>]*aria-label="Расписание выбранной недели"/);
   });
+  it("starts the week list with lesson rows and a compact summary of free days", () => {
+    const html = render([getDemoWeekSchedule(week)[0]]);
+    expect(html).toContain("Показать все пары");
+    expect(html).toContain("Свободный день — занятий нет");
+    expect(html).not.toContain("Нет занятий</span>");
+  });
   it("distinguishes a readable empty search from a week without personal lessons", () => {
     const filtered = render([], { filtered: true });
     expect(filtered).toContain("По этому запросу занятий нет"); expect(filtered).not.toContain("На этой неделе занятий нет");
+    expect(filtered).toContain("Выберите другую неделю или измените поиск.");
     expect(filtered).not.toContain("Повторить загрузку"); expect(filtered).not.toMatch(/<button[^>]*disabled=""[^>]*>Печать \/ PDF/);
     expect(render([])).toContain("На этой неделе занятий нет");
   });

@@ -11,7 +11,7 @@ const optionalText = (row: Record<string, unknown>, keys: string[]) => keys.ever
 const hasRecipient = (row: Record<string, unknown>) => row.recipientUserId !== undefined ? nonempty(row.recipientUserId)
   : row.userId !== undefined ? nonempty(row.userId) : row.recipientRole === "teacher" || row.recipientRole === "student";
 
-const decodeNotifications = (raw: string) => {
+export const decodeBackupNotifications = (raw: string) => {
   const parsed: unknown = JSON.parse(raw);
   const current = isRecord(parsed) && parsed.version === 2;
   const rows: unknown = Array.isArray(parsed) ? parsed : isRecord(parsed) && [undefined, 1, 2].includes(parsed.version as number | undefined) ? parsed.items : undefined;
@@ -59,7 +59,7 @@ export const inspectBackupNotifications = async (entries: AdministrativeBackup["
       continue;
     }
     let rows: Record<string, unknown>[];
-    try { rows = decodeNotifications(entry.raw); }
+    try { rows = decodeBackupNotifications(entry.raw); }
     catch (error) {
       invalid++;
       issues.push({ kind: "notifications", level: "error", code: "invalid-notification-document", referenceId: entry.key,

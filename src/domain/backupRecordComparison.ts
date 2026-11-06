@@ -3,9 +3,9 @@ import { canonicalBackupValue } from "./localBackupValidation";
 import { getBackupDifferenceKey, type BackupDifference, type BackupDifferenceReference } from "./backupComparison";
 
 export interface BackupRecordDifference<Field extends string> extends BackupDifference { fields: (Field | "other")[] }
-export interface BackupUncomparedDocument { key: string; source: "archive" | "browser"; reason: "unsupported-key" | "duplicate-key" | "invalid-document" | "missing-history" }
+export interface BackupUncomparedDocument { key: string; source: "archive" | "browser"; reason: "unsupported-key" | "duplicate-key" | "invalid-document" | "missing-history" | "missing-education-history" | "unresolved-journal-area" | "unresolved-notification-source" }
 export class BackupRecordDecodeError extends Error {
-  constructor(public readonly reason: "missing-history") { super("История отсутствует или пуста; её полнота не подтверждена."); }
+  constructor(public readonly reason: "missing-history" | "missing-education-history" | "unresolved-journal-area" | "unresolved-notification-source") { super("Источник записей или его связи не подтверждены."); }
 }
 export interface BackupRecordComparison<Field extends string> {
   counts: { documents: number; comparedDocuments: number; uncheckedDocuments: number; same: number; new: number; different: number; currentOnly: number };
@@ -16,7 +16,7 @@ interface BackupRecordDefinitionBase<Field extends string> {
   label: string; fields: readonly Field[];
   matchesKey(key: string): boolean;
   supportsKey(key: string): boolean;
-  decode(raw: string): readonly object[];
+  decode(raw: string, key: string, source: BackupUncomparedDocument["source"]): readonly object[];
   errors?: Partial<typeof DEFAULT_ERRORS>;
 }
 export type BackupRecordDefinition<Field extends string> = BackupRecordDefinitionBase<Field> & (
@@ -30,6 +30,7 @@ const DEFAULT_ERRORS = {
   output: "Результат сравнения записей превышает лимит 16 МиБ. Частичный результат не создан.",
   incomplete: "В результате сравнения записей отсутствует часть данных. Проверьте архив заново; неполный отчёт не скачан.",
 };
+const DECODE_REASONS: Partial<Record<BackupRecordDefinition<string>["collection"], BackupUncomparedDocument["reason"]>> = { "submission-attempts": "missing-history", "education-events": "missing-education-history", "journal-history": "unresolved-journal-area", notifications: "unresolved-notification-source" };
 export type BackupRecordEntries = readonly AdministrativeBackup["localStorage"][number][];
 type EncodedObject = Extract<BackupValue, { type: "object" }>;
 interface ComparedRecord { id: string; parentId?: string; scope?: { subjectId: string; groupId: string }; value: EncodedObject }
@@ -72,8 +73,8 @@ export const compareBackupRecords = async <Field extends string>(archived: Backu
     if (raws.length !== 1) return reject("duplicate-key");
     if (!definition.supportsKey(key)) return reject("unsupported-key");
     let rows: readonly object[];
-    try { rows = definition.decode(raws[0]); }
-    catch (error) { return reject(error instanceof BackupRecordDecodeError && definition.collection === "submission-attempts" ? error.reason : "invalid-document"); }
+    try { rows = definition.decode(raws[0], key, source); }
+    catch (error) { return reject(error instanceof BackupRecordDecodeError && DECODE_REASONS[definition.collection] === error.reason ? error.reason : "invalid-document"); }
     if (!Array.isArray(rows)) return reject("invalid-document");
     for (const row of rows) {
       await checkpoint(); const budget = budgets[source];
@@ -141,12 +142,12 @@ export const assertCompleteBackupRecordComparison = <Field extends string>(revie
     && review.differences.filter((item) => item.kind === "different").length === counts.different
     && review.differences.filter((item) => item.kind === "current-only").length === counts.currentOnly
     && review.differences.length === counts.new + counts.different + counts.currentOnly
-    && review.differences.every((item) => validReference(item)
+    && review.differences.every((item) => item.fileDifference === undefined && validReference(item)
       && Array.isArray(item.fields) && new Set(item.fields).size === item.fields.length
       && item.fields.every((field) => field === "other" || (definition.fields as readonly string[]).includes(field))
       && (item.kind === "different" ? item.fields.length > 0 : item.fields.length === 0))
     && new Set(review.differences.map((item) => getBackupDifferenceKey({ ...item, kind: "different" }))).size === review.differences.length
-    && review.uncompared.every((item) => definition.matchesKey(item.key) && ["archive", "browser"].includes(item.source) && (["unsupported-key", "duplicate-key", "invalid-document"].includes(item.reason) || (definition.collection === "submission-attempts" && item.reason === "missing-history")))
+    && review.uncompared.every((item) => definition.matchesKey(item.key) && ["archive", "browser"].includes(item.source) && (["unsupported-key", "duplicate-key", "invalid-document"].includes(item.reason) || DECODE_REASONS[definition.collection] === item.reason))
     && new Set(review.uncompared.map((item) => JSON.stringify([item.key, item.source]))).size === review.uncompared.length;
   if (!valid) fail();
 };

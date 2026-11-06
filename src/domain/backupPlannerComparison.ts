@@ -21,3 +21,4 @@ const definition: BackupRecordDefinition<PlannerComparedField> = {
 
 export const compareBackupPlannerRecords = (archive: BackupRecordEntries, browser: BackupRecordEntries, signal?: AbortSignal): Promise<BackupPlannerComparison> => compareBackupRecords(archive, browser, definition, signal);
 export const assertCompletePlannerComparison = (review: BackupPlannerComparison) => assertCompleteBackupRecordComparison(review, definition);
+export const getPlannerBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => collection === definition.collection ? definition : undefined;

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BACKUP_DATABASES, BACKUP_LIMITS, type RawBackupDatabase } from "../domain/localBackup";
+import { BACKUP_DATABASES, BACKUP_LIMITS, createBackupBudget, encodeBackupValue, type RawBackupDatabase } from "../domain/localBackup";
 import { backupFixture, backupTime, rawBackupDatabase } from "../testSupport/localBackup";
 import { createLocalBackupService, type BackupDependencies } from "./localBackupService";
 import { createBackupInspectionService } from "./localBackupInspectionService";
@@ -26,6 +26,101 @@ beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => undefined
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("read-only backup inspection", () => {
+  it("classifies changed material metadata without extra reads, private values or source writes", async () => {
+    const state = setup(), fixture = await materialBackupFixture(), database = fixture.archive.databases[0];
+    const current = { ...fixture.material, description: "PRIVATE NEW DESCRIPTION" };
+    state.databases.set(database.name, { ...database, stores: [{ ...database.stores[0], records: [{ key: current.id, value: current }] }] });
+    for (const entry of fixture.archive.localStorage) state.values.set(entry.key, entry.raw);
+    const before = JSON.stringify([...state.values]);
+    const inspection = await state.service.inspect({ ...command, file: new File([JSON.stringify(fixture.archive)], "materials.json") });
+    const difference = inspection.comparison.differences.find(item => item.reference?.storage === "indexedDB" && item.id === current.id)!;
+    expect(difference.fileDifference).toEqual({ version: 1, status: "compared", fields: ["description"], issues: [], ownership: "unverified", materialArea: { version: 1, archive: { status: "matched", kind: "user" }, browser: { status: "matched", kind: "user" }, relation: "same" } });
+    const saved = await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text();
+    expect(saved).not.toContain("PRIVATE"); expect(saved).not.toContain("base64"); expect(state.readDatabase).toHaveBeenCalledTimes(1); expect(JSON.stringify([...state.values])).toBe(before);
+  });
+  it("marks a changed file in an unsupported store as unexamined", async () => {
+    const state = setup(), fixture = await materialBackupFixture(), database = fixture.archive.databases[0];
+    const indexes = [...database.stores[0].indexes, { name: "PRIVATE INDEX", keyPath: "description", unique: false, multiEntry: false }];
+    state.databases.set(database.name, { ...database, stores: [{ ...database.stores[0], indexes, records: [{ key: fixture.material.id, value: { ...fixture.material, description: "PRIVATE CHANGE" } }] }] });
+    const inspection = await state.service.inspect({ ...command, file: new File([JSON.stringify(fixture.archive)], "materials.json") });
+    const difference = inspection.comparison.differences.find(item => item.kind === "different" && item.reference?.storage === "indexedDB")!;
+    expect(difference.fileDifference).toMatchObject({ status: "uncompared", fields: [], issues: [{ source: "browser", reason: "unsupported-store" }] });
+    expect(JSON.stringify(inspection)).not.toContain("PRIVATE");
+  });
+  it.each(["missing-person", "legacy"])("keeps unconfirmed material areas explicit without assigning a person: %s", async mode => {
+    const state = setup(), fixture = await materialBackupFixture(), database = fixture.archive.databases[0];
+    if (mode === "legacy") {
+      fixture.material.scope = "cabinet";
+      database.stores[0].records[0].value = await encodeBackupValue(fixture.material, createBackupBudget());
+    }
+    const archive = JSON.stringify(fixture.archive);
+    if (mode === "missing-person") { fixture.accounts.accounts.splice(1, 1); fixture.save(); }
+    for (const entry of fixture.archive.localStorage) state.values.set(entry.key, entry.raw);
+    state.databases.set(database.name, { ...database, stores: [{ ...database.stores[0], records: [{ key: fixture.material.id, value: { ...fixture.material, description: "PRIVATE NEW" } }] }] });
+    const inspection = await state.service.inspect({ ...command, file: new File([archive], "materials.json") });
+    const difference = inspection.comparison.differences.find(row => row.reference?.storage === "indexedDB" && row.id === fixture.material.id)!;
+    expect(difference.fileDifference?.materialArea).toMatchObject({ browser: { status: mode === "legacy" ? "legacy" : "unresolved-reference" }, relation: "unresolved" });
+    const report = await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text();
+    expect(report).not.toContain("PRIVATE"); expect(difference.fileDifference?.ownership).toBe("unverified");
+  });
+  it("compares independently resolved group pairs when material scope text is identical", async () => {
+    const state = setup(), fixture = await materialBackupFixture(), database = fixture.archive.databases[0];
+    fixture.subjects.subjects[0].id = "a"; fixture.groups.groups[0].id = "b:c"; fixture.save();
+    fixture.material.scope = "group:a:b:c"; database.stores[0].records[0].value = await encodeBackupValue(fixture.material, createBackupBudget());
+    const archive = JSON.stringify(fixture.archive);
+    fixture.subjects.subjects[0].id = "a:b"; fixture.groups.groups[0].id = "c"; fixture.save();
+    for (const entry of fixture.archive.localStorage) state.values.set(entry.key, entry.raw);
+    state.databases.set(database.name, { ...database, stores: [{ ...database.stores[0], records: [{ key: fixture.material.id, value: { ...fixture.material, description: "PRIVATE CHANGE" } }] }] });
+    const inspection = await state.service.inspect({ ...command, file: new File([archive], "materials.json") });
+    const difference = inspection.comparison.differences.find(row => row.reference?.storage === "indexedDB" && row.id === fixture.material.id)!;
+    expect(difference.fileDifference?.materialArea).toEqual({ version: 1, archive: { status: "matched", kind: "group" }, browser: { status: "matched", kind: "group" }, relation: "different" });
+    expect(JSON.stringify(difference.fileDifference?.materialArea)).not.toMatch(/a:b|b:c|PRIVATE/);
+  });
+  it("distinguishes changed learning-file bytes from unchanged File metadata", async () => {
+    const state = setup(), database = rawBackupDatabase("bi-university-learning-files", "files");
+    database.stores[0].records.push({ key: "file-1", value: new File(["ABC"], "PRIVATE FILE.txt", { type: "text/plain", lastModified: 42 }) });
+    state.databases.set(database.name, database); const file = await state.exportFile();
+    database.stores[0].records[0].value = new File(["XYZ"], "PRIVATE FILE.txt", { type: "text/plain", lastModified: 42 });
+    const inspection = await state.service.inspect({ ...command, file });
+    expect(inspection.comparison.differences.find(item => item.reference?.storage === "indexedDB")?.fileDifference).toMatchObject({ status: "compared", fields: ["content"], ownership: "unverified" });
+    expect(JSON.stringify(inspection)).not.toContain("PRIVATE");
+  });
+  it("compares linked education, catalog and journal histories while retaining whole-document differences", async () => {
+    const state = setup(); const fixture = journalBackupFixture();
+    fixture.groups.history = [{ id: "group-event", groupId: "group-1", actorId: "configurator-demo", occurredAt: "2026-10-28T09:00:00Z", action: "created" }];
+    fixture.subjects.history = [{ id: "subject-event", subjectId: "subject-1", actorId: "configurator-demo", occurredAt: "2026-10-28T09:00:00Z", action: "created" }]; fixture.save();
+    const source = JSON.stringify(fixture.archive); fixture.groups.history[0].actorId = "PRIVATE AUTHOR"; fixture.subjects.history[0].occurredAt = "2026-10-29T09:00:00Z"; fixture.changes[0].nextValue = "sick"; fixture.save();
+    for (const entry of fixture.archive.localStorage) state.values.set(entry.key, entry.raw); const before = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "history.json") });
+    expect(inspection.catalogComparison?.groupHistory?.counts.different).toBe(1); expect(inspection.catalogComparison?.subjectHistory?.counts.different).toBe(1);
+    expect(inspection.journalComparison?.differences[0]).toMatchObject({ id: "change-1", fields: ["nextValue"] });
+    expect(inspection.accountComparison?.education?.uncompared[0].reason).toBe("missing-education-history");
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.journalComparison).toEqual(inspection.journalComparison); expect(saved.catalogComparison).toEqual(inspection.catalogComparison); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(before); expect(inspection.comparison.different).toBeGreaterThanOrEqual(3);
+  });
+  it("exports education event differences only after validating their linked operation", async () => {
+    const state = setup(); const fixture = studentOperationBackupFixture(undefined, { effectiveDate: "2026-10-28", basis: "PRIVATE BASIS" }); const source = JSON.stringify(fixture.archive);
+    fixture.accounts.educationEvents![0].basis = "PRIVATE NEW BASIS"; fixture.accounts.studentOperations![0].education!.basis = "PRIVATE NEW BASIS";
+    state.values.set("bi-university-accounts-v1", JSON.stringify(fixture.accounts)); const before = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "education.json") });
+    expect(inspection.accountComparison?.education?.differences[0].fields).toEqual(["basis"]);
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.accountComparison.education).toEqual(inspection.accountComparison?.education); expect(JSON.stringify(saved)).not.toContain("PRIVATE"); expect([...state.values]).toEqual(before);
+  });
+  it("compares audit events independently of unchanged account cards and exports no before/after values", async () => {
+    const state = setup(); const fixture = coreBackupFixture();
+    fixture.accounts.history = [{ id: "audit-1", actorId: "configurator-demo", accountId: "student-1", occurredAt: "2026-10-28T09:00:00Z", action: "details-changed", previousRole: "student", nextRole: "student", changes: [{ field: "name", before: "PRIVATE BEFORE", after: "PRIVATE AFTER" }] }]; fixture.save();
+    const source = JSON.stringify(fixture.archive); fixture.accounts.history[0].changes![0].after = "PRIVATE LATEST";
+    state.values.set("bi-university-accounts-v1", JSON.stringify(fixture.accounts)); const before = [...state.values];
+    const inspection = await state.service.inspect({ ...command, file: new File([source], "audit.json") });
+    expect(inspection.accountComparison?.counts).toMatchObject({ same: 3, different: 0 });
+    expect(inspection.accountComparison?.history?.differences[0]).toMatchObject({ id: "audit-1", fields: ["changes"], reference: { storage: "localStorage-record", key: "bi-university-accounts-v1", collection: "account-history", id: "audit-1" } });
+    expect(inspection.comparison.differences).toContainEqual(expect.objectContaining({ kind: "different", id: "bi-university-accounts-v1" }));
+    const saved = JSON.parse(await prepareBackupInspectionReport({ ...command, inspection }, state.authorize).blob.text());
+    expect(saved.accountComparison.history).toEqual(inspection.accountComparison?.history); expect(JSON.stringify(saved)).not.toContain("PRIVATE");
+    expect([...state.values]).toEqual(before); expect(JSON.stringify(fixture.archive)).toBe(source);
+  });
   it("retains journal records with the same lesson ID in separate historical areas", async () => {
     const state = setup(); const fixture = coreBackupFixture(); const lesson = fixture.schedule.drafts[0].lessons[0];
     fixture.schedule.drafts = []; fixture.schedule.journal = [{ ...lesson, journalState: "cancelled" }, { ...lesson, subjectId: "subject-2", groupId: "group-2", journalState: "cancelled" }]; fixture.save();
@@ -509,7 +604,7 @@ describe("read-only backup inspection", () => {
     const before = [...state.values]; const records = [...database.stores[0].records];
     const report = await state.service.inspect({ ...command, file: archive });
     expect(report.comparison).toMatchObject({ same: 3, new: 2, different: 2, currentOnly: 2, schema: 0 });
-    expect(report.comparison.differences).toContainEqual({ kind: "different", area: "Файлы заданий и ответов · files", id: "changed", reference: { storage: "indexedDB", database: "bi-university-learning-files", store: "files", key: { type: "string", value: "changed" } } });
+    expect(report.comparison.differences).toContainEqual({ kind: "different", area: "Файлы заданий и ответов · files", id: "changed", reference: { storage: "indexedDB", database: "bi-university-learning-files", store: "files", key: { type: "string", value: "changed" } }, fileDifference: { version: 1, status: "compared", fields: ["content"], issues: [], ownership: "unverified" } });
     expect(report.comparison.differences).toContainEqual({ kind: "current-only", area: "Локальные данные", id: "bi-university-new", reference: { storage: "localStorage", key: "bi-university-new" } });
     expect(report.sha256).toBe(createHash("sha256").update(new Uint8Array(await archive.arrayBuffer())).digest("hex"));
     expect(report.actor).toEqual({ id: command.actorId, revision: command.actorRevision });

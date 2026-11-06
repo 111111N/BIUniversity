@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BACKUP_DATABASES, type AdministrativeBackup, type RawBackupDatabase } from "../domain/localBackup";
 import { assertAdministrativeBackupAccess, capturePortalStorage, createLocalBackupService } from "./localBackupService";
 import { ACCOUNTS_STORAGE_KEY, createInitialAccountsDocument } from "./accountStore";
+import { ASSESSMENTS_STORAGE_KEY } from "./assessmentStore";
 
 const command = { actorId: "configurator-demo", actorRevision: 1 };
 const memory = (values: Map<string, string>) => ({ get length() { return values.size; }, key: (index: number) => [...values.keys()][index] ?? null, getItem: (key: string) => values.get(key) ?? null });
@@ -18,6 +19,14 @@ beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => undefined))
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("administrative backup orchestration", () => {
+  it("includes the complete assessment document without rewriting drafts, attempts or results", async () => {
+    const state = setup();
+    const raw = '{"version":1,"revision":42,"assessments":[{"id":"exam-1","attempts":[{"id":"primary"},{"id":"commission"}]}],"history":[]}';
+    state.values.set(ASSESSMENTS_STORAGE_KEY, raw);
+    const archive = JSON.parse(await (await state.service.exportAdministrative(command)).blob.text()) as AdministrativeBackup;
+    expect(archive.localStorage).toContainEqual({ key: ASSESSMENTS_STORAGE_KEY, raw });
+    expect(state.values.get(ASSESSMENTS_STORAGE_KEY)).toBe(raw);
+  });
   it("explicitly excludes temporary drafts without reading sessionStorage", async () => {
     const forbidden = vi.fn(() => { throw new Error("Temporary drafts must not be read for the backup"); });
     vi.stubGlobal("sessionStorage", { getItem: forbidden, key: forbidden, get length() { forbidden(); return 0; } });
