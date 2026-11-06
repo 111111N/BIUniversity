@@ -96,3 +96,12 @@
 - [Раздельное сравнение пар черновиков и публикации, 5 ноября](2026-11-05-backup-schedule-lesson-comparison-review.txt).
 - [Сравнение связей расписания с журналом в учебной области, 5 ноября](2026-11-05-backup-schedule-journal-scope-review.txt).
 - [Проверка выпуска планировщика и сравнения архивов, 5 ноября](2026-11-05-planner-backup-release-review.txt).
+- [Сравнение истории учёток по ID события, 6 ноября](2026-11-06-backup-account-audit-comparison-review.txt).
+- [История справочников, обучения и журналов по ID, 6 ноября](2026-11-06-backup-remaining-histories-review.txt).
+- [Просмотр конфликтов и черновик выбора версий, 6 ноября](2026-11-06-backup-conflict-preview-choice-review.txt).
+- [Общая блокировка архива при неподтверждённых данных, 6 ноября](2026-11-06-backup-whole-archive-admission-review.txt).
+- [Сравнение настроек интерфейса и выбор версии, 6 ноября](2026-11-06-backup-preference-conflicts-review.txt).
+- [Сравнение уведомлений по ID и черновик выбора версии, 6 ноября](2026-11-06-backup-notification-conflicts-review.txt).
+- [Расшифровка различий файлов без раскрытия значений, 6 ноября](2026-11-06-backup-file-differences-review.txt).
+- [Сопоставление областей материалов по справочникам каждого источника, 6 ноября](2026-11-06-backup-material-area-comparison-review.txt).
+- [Первый этап аттестаций, ведомостей, пересдач и комиссий, 6 ноября](2026-11-06-assessment-mvp-review.txt).
