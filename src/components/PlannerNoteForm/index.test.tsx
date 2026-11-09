@@ -18,12 +18,21 @@ describe("planner note form", () => {
     expect(html).toContain("Дополнительные параметры");
     expect(html).toMatch(/<details[^>]*><summary>/);
     expect(html).toContain("окончание без начала — крайний срок");
-    expect(html).toContain("Ctrl / ⌘ + Enter");
+    expect(html).not.toContain("Ctrl / ⌘ + Enter");
+    expect(html).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(html).toMatch(/<h2[^>]*>Новая задача<\/h2>/);
+    expect(html).not.toContain("<legend>Задача</legend>");
+    expect(html).not.toContain("<legend>Время</legend>");
   });
   it("opens existing details and summarizes configured values", () => {
     const html = render({ ...note, id: "task", title: "Подготовка", text: "Черновик", priority: "high", category: "personal", endAt: new Date(2026, 10, 4, 12) });
     expect(html).toMatch(/<details[^>]*open=""/);
     expect(html).toContain("есть описание"); expect(html).toContain("Личная"); expect(html).toContain("Приоритет: высокий");
     expect(html).toContain("4 нояб.");
+    expect(html).toMatch(/<h2[^>]*>Подготовка<\/h2>/);
+  });
+  it("uses the entered title for new tasks and falls back for whitespace-only titles", () => {
+    expect(render({ ...note, title: "  Подготовить доклад  " })).toMatch(/<h2[^>]*>Подготовить доклад<\/h2>/);
+    expect(render({ ...note, title: "   " })).toMatch(/<h2[^>]*>Новая задача<\/h2>/);
   });
 });

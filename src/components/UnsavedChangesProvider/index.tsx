@@ -63,7 +63,7 @@ export const UnsavedChangesProvider = ({ children }: { children: ReactNode }) =>
 
   return <UnsavedChangesContext.Provider value={value}>
     {children}
-    {(blocker.state === "blocked" || pendingAction) && <ConfirmDialog title="Уйти без сохранения?" confirmLabel="Уйти без сохранения" cancelLabel="Продолжить редактирование" error={actionError} onConfirm={confirm} onCancel={cancel}>
+    {(blocker.state === "blocked" || pendingAction) && <ConfirmDialog intent="discard" title="Уйти без сохранения?" confirmLabel="Уйти без сохранения" cancelLabel="Продолжить редактирование" error={actionError} onConfirm={confirm} onCancel={cancel}>
       <p>В открытой форме есть несохранённые изменения или выбранные файлы. При переходе они могут быть потеряны.</p>
       <p>Уже сохранённые черновики останутся доступными.</p>
     </ConfirmDialog>}

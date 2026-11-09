@@ -9,7 +9,7 @@ export interface AssessmentResult { studentId: string; outcome: AssessmentOutcom
 export interface AssessmentStudent { studentId: string; name: string; studentNumber: string | null }
 export interface AssessmentRecordBookMetadata { semester: number; hours: number; category: "required" | "elective" }
 export interface AssessmentAttempt {
-  id: string; number: number; kind: AssessmentAttemptKind; date: string; startsAt: string; teacherId: string;
+  id: string; number: number; kind: AssessmentAttemptKind; date: string; startsAt: string; room?: string; teacherId: string;
   chairId: string | null; memberIds: string[]; studentIds: string[]; results: AssessmentResult[];
   state: "draft" | "published"; createdAt: string; createdBy: string;
   publishedAt: string | null; publishedBy: string | null;
@@ -30,7 +30,7 @@ export interface AssessmentCommandContext {
   accountsRevision: number; groupRevision: number; subjectRevision: number;
 }
 export interface AssessmentAttemptDraft {
-  date: string; startsAt: string; teacherId: string; chairId: string | null; memberIds: string[]; studentIds: string[];
+  date: string; startsAt: string; room?: string; teacherId: string; chairId: string | null; memberIds: string[]; studentIds: string[];
 }
 export interface AssessmentDraft {
   title: string; kind: AssessmentKind; subjectId: string | null; groupId: string; period: string;

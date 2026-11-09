@@ -20,7 +20,7 @@
 .unavailable button { padding: 10px 14px; }
 .primary { @include ui.primary; display: inline-flex; gap: 10px; min-height: 44px; padding: 12px 16px; }
 .detailNavigation { display: flex; align-items: start; gap: 16px; min-width: 0; }
-.segments { display: flex; flex-shrink: 0; gap: 4px; padding: 3px; border: 1px solid ui.$line; border-radius: 10px; background: ui.$quiet; }
+.segments { flex-shrink: 0; }
 .segments span { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 3px; border-radius: 5px; background: $color-ghost; font-size: 12px; }
 .condition { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, .8fr); align-items: stretch; gap: 20px; }
 .condition h3, .parameters h3 { margin: 0 0 18px; font-size: 17px; }
@@ -53,6 +53,3 @@
   .conditionBody, .parameters { padding: 20px; }
 }
 @media(prefers-reduced-motion: reduce) { .layout :is(button, input, textarea) { transition: none; } }
-
-
-.segments { padding: 0; border: 0; border-radius: 0; background: transparent; }

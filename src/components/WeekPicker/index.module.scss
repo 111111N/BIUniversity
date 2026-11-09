@@ -1,56 +1,49 @@
 @use "../../styles/variables" as *;
-@use "../../styles/mixins" as *;
+@use "../../styles/navigationControls" as controls;
 
-$week-picker-arrow-size: 44px;
+$week-picker-control-height: 46px;
 
 .weekPicker {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border-radius: 8px;
+  container-type: inline-size;
   width: 100%;
 }
 
 
 .weekPickerControls {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) $week-picker-control-height auto $week-picker-control-height;
+  align-items: center;
+  gap: 8px;
   width: 100%;
 }
 
-.weekPickerArrow {
-  align-self: center;
-  flex: 0 0 $week-picker-arrow-size;
-  width: $week-picker-arrow-size;
-  height: $week-picker-arrow-size;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  &:hover { background: transparent; color: $color-accent-hover; }
+.weekPickerControls .weekPickerArrow {
+  width: $week-picker-control-height;
+  height: $week-picker-control-height;
 }
 
 .weekPickerCurrentButton {
-  padding: 8px 30px;
-  margin-inline: 5px;
-  background: $color-dark-primary;
-  border-color: $color-dark-primary;
+  @include controls.button;
+  min-height: $week-picker-control-height;
+  height: $week-picker-control-height;
+  padding: 8px 16px;
+  white-space: nowrap;
 }
-:root[data-theme="light"] .weekPickerCurrentButton { border-color: $color-border; background: $color-dark-secondary; }
-:root[data-theme="light"] .weekPickerCurrentButton:not(:disabled):hover { border-color: $color-accent-primary; background: $color-accent-background-hover; color: $color-text-light; }
 
 .weekPickerDisplayWrapper {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  margin-right: 12px;
+  --dropdown-control-height: #{$week-picker-control-height};
 }
 
-@media (max-width: 650px) {
-  .weekPickerControls { display: grid; grid-template-columns: $week-picker-arrow-size minmax(0, 1fr) $week-picker-arrow-size; gap: 10px 4px; }
-  .weekPickerDisplayWrapper { grid-column: 1 / -1; margin-right: 0; }
-  .weekPickerCurrentButton { margin: 0 5px; padding: 8px 12px; }
+@container (max-width: 680px) {
+  .weekPickerControls { grid-template-columns: $week-picker-control-height minmax(0, 1fr) $week-picker-control-height; }
+  .weekPickerDisplayWrapper { grid-column: 1 / -1; }
+  .weekPickerCurrentButton { padding-inline: 12px; }
 }
-@media print { .weekPickerArrow, .weekPickerCurrentButton { display: none; } }
-
-.weekPickerArrow { color: $color-text-secondary; }.weekPickerCurrentButton { min-height: 44px; background: $color-panel; color: $color-text-light; border: 1px solid $color-control-border; }.weekPickerCurrentButton:not(:disabled):hover { background: $color-control-hover; color: $color-text-light; border-color: $color-accent-primary; }
+@media print {
+  .weekPickerArrow, .weekPickerCurrentButton { display: none; }
+  .weekPickerControls { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .weekPickerDisplayWrapper { grid-column: 1; }
+}

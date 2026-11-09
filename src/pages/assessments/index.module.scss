@@ -1,37 +1,53 @@
 @use "../../styles/administration" as admin;
 @use "../../styles/variables" as *;
 
-.page { @include admin.workspace; display: grid; gap: 20px; min-width: 0; align-content: start; --dropdown-control-height: 44px; color: $color-text-light; }
+.page { display: grid; gap: 24px; min-width: 0; align-content: start; padding: 30px; position: relative; z-index: 1; box-sizing: border-box; color: $color-text-light; }
+.pageHeader { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-width: 0; h1 { margin: 6px 0 10px; font-size: clamp(24px, 3vw, 32px); line-height: 1.2; letter-spacing: -.025em; } > div { min-width: 0; } > .actions { justify-content: flex-end; } }
+.eyebrow { margin: 0; color: $color-text-secondary; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding-inline-start: 20px; border-inline-start: 2px solid $color-accent-primary; } span { color: $color-text-secondary; font-size: 13px; line-height: 1.5; } strong { font-size: 20px; line-height: 1.2; font-weight: 600; } }
+.filterPanel, .detailSummary { display: grid; gap: 20px; }
+.metadata { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 12px; color: $color-text-secondary; }
+.catalogBody { flex: 1; }
+.catalogFacts { display: flex; flex-wrap: wrap; gap: 16px 28px; margin: 18px 0 0; font-size: 13px; line-height: 1.5; dt { color: $color-text-secondary; font-size: 12px; margin-bottom: 4px; } dd { margin: 0; } }
 .page :where(.toolbar, .actions, .pagination, .warning, .error) > button { @include admin.button; }
 .page button.primary { @include admin.primary; }
-.demoNotice, .note { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
-.demoNotice { padding: 10px 14px; border: 1px solid $color-border; border-radius: 8px; background: $color-panel; font-size: 12px; }
-.toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 260px) auto; gap: 14px; align-items: end; }
-.toolbar > :last-child:not(button) { grid-column: 2 / 4; }
+.note { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 20px; align-items: start; }
 .sectionHeader, .actions, .pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-width: 0; }
 .sectionHeader { justify-content: space-between; > h3 { margin: 0; font-size: 15px; line-height: 1.5; } > span { font-size: 13px; } }
 .pagination { font-size: 12px; color: $color-text-secondary; }
 .list, .form, .results, .commission { display: grid; gap: 16px; min-width: 0; }
-.catalogCard, .card { min-width: 0; padding: 20px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; overflow-wrap: anywhere; }
+.catalogCard, .card { min-width: 0; overflow-wrap: anywhere; }
 .catalogCard { display: flex; align-items: center; justify-content: space-between; gap: 20px; > div { min-width: 0; } h2 { margin: 6px 0; font-size: 17px; line-height: 1.5; a { color: $color-text-light; text-decoration: none; &:hover { color: $color-link; text-decoration: underline; } &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } } } }
 .catalogStatus { display: grid; gap: 10px; justify-items: end; flex-shrink: 0; max-width: 100%; }
-.openLink, .back { display: inline-flex; align-items: center; min-height: 44px; color: $color-link; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } }
+.openLink, .back { @include admin.button; }
+.openLink { @include admin.primary; gap: 16px; }
+.kindBadge { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 8px; border: 1px solid color-mix(in srgb, #{$color-accent-primary} 35%, #{$color-border}); background: color-mix(in srgb, #{$color-accent-primary} 9%, #{$color-panel}); color: $color-accent-primary; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.detailFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0; > div { padding: 14px 16px; border-radius: 10px; background: $color-panel-muted; min-width: 0; } dt { color: $color-text-secondary; font-size: 12px; line-height: 1.5; margin-bottom: 6px; } dd { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; } }
+.attemptNumber { display: inline-flex; justify-content: center; padding: 6px 10px; margin-inline-end: 12px; color: $color-accent-primary; background: color-mix(in srgb, #{$color-accent-primary} 9%, #{$color-panel}); border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.personalResults { padding: 16px 20px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel-muted; .resultRow { padding: 0; grid-template-columns: minmax(0, 1fr) auto; > span { justify-self: end; } } }
+.completion { appearance: none; display: block; width: 100%; height: 6px; border: 0; border-radius: 10px; overflow: hidden; background: $color-panel-muted; accent-color: $color-accent-primary; &::-webkit-progress-bar { background: $color-panel-muted; } &::-webkit-progress-value { background: $color-accent-primary; border-radius: 10px; } &::-moz-progress-bar { background: $color-accent-primary; border-radius: 10px; } }
 .badge, .published { display: inline-flex; align-items: center; align-self: start; padding: 5px 10px; border: 1px solid $color-control-border; border-radius: 6px; background: $color-panel-muted; font-size: 12px; line-height: 1.5; }
 .published { color: $color-success; border-color: color-mix(in srgb, #{$color-success} 40%, #{$color-border}); background: color-mix(in srgb, #{$color-success} 7%, #{$color-panel}); }
 .card { display: grid; gap: 14px; }
 .cardHeader, .detailHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; > div { min-width: 0; } h2, h3 { margin: 0; line-height: 1.5; overflow-wrap: anywhere; } h2 { font-size: 20px; margin: 6px 0; } h3 { font-size: 16px; } p { margin: 5px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; } }
 .detailHeader { align-items: center; }
-.disclosure { min-width: 0; border-top: 1px solid $color-border; summary { width: fit-content; max-width: 100%; box-sizing: border-box; min-height: 44px; padding: 12px 0; font-size: 13px; line-height: 1.5; cursor: pointer; color: $color-text-light; overflow-wrap: anywhere; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } } p { margin: 5px 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } }
+.disclosure { min-width: 0; border: 1px solid $color-border; border-radius: 10px; padding: 0 16px; &[open] { padding-bottom: 16px; } summary { width: 100%; max-width: 100%; box-sizing: border-box; min-height: 44px; padding: 14px 0; font-size: 13px; line-height: 1.5; cursor: pointer; color: $color-text-light; overflow-wrap: anywhere; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } } p { margin: 5px 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; align-items: start; }
 .field { display: grid; gap: 8px; min-width: 0; color: $color-text-light; font-size: 13px; line-height: 1.5; > small { color: $color-text-secondary; font-size: 12px; } }
 .field > input, .resultRow select { box-sizing: border-box; min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-panel; color: $color-text-light; font: inherit; font-size: 14px; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; } &:disabled { color: $color-text-secondary; background: $color-panel-muted; cursor: not-allowed; } }
 .plainFieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
-.selection { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; }
+.selection { display: grid; gap: 16px; min-width: 0; }
 .selectionItems, .resultList { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; min-width: 0; }
-.selectionItems > li { border-bottom: 1px solid $color-border; &:last-child { border-bottom: 0; } > label { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 0; box-sizing: border-box; cursor: pointer; font-size: 13px; line-height: 1.5; > input { width: 18px; height: 18px; flex-shrink: 0; accent-color: $color-accent-primary; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } } > span { display: grid; gap: 3px; overflow-wrap: anywhere; } small { color: $color-text-secondary; font-size: 12px; } } }
+.selectionItems > li { padding: 10px 0; border-bottom: 1px solid $color-border; &:last-child { border-bottom: 0; } }
+.optionLabel { display: grid; gap: 4px; overflow-wrap: anywhere; small { color: $color-text-secondary; font-size: 12px; } }
 .resultRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 200px); gap: 12px; align-items: center; border-bottom: 1px solid $color-border; padding: 12px 0; min-width: 0; &:last-child { border-bottom: 0; } > div { display: grid; min-width: 0; gap: 4px; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; } label, strong { font-size: 14px; font-weight: 500; } small { color: $color-text-secondary; font-size: 12px; } > span { justify-self: end; } }
-.outcome, .unsuccessful { font-size: 15px; font-weight: 600; line-height: 1.5; }
-.unsuccessful { color: $color-danger-text; }
+.profileLink { color: $color-link; text-underline-offset: 3px; &:hover { text-decoration-thickness: 2px; } &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; } }
+.compactGrade { display: grid; place-items: center; box-sizing: border-box; width: 40px; height: 44px; border-radius: 10px; color: var(--grade-color, #{$color-success}); background: color-mix(in srgb, var(--grade-color, #{$color-success}) 12%, transparent); border: 1px solid color-mix(in srgb, var(--grade-color, #{$color-success}) 28%, transparent); font-size: 20px; font-weight: 700; line-height: 1; }
+.outcomeBadge { display: inline-grid; place-items: center; box-sizing: border-box; min-height: 44px; max-width: 100%; padding: 8px 12px; border-radius: 12px; color: var(--outcome-color); background: color-mix(in srgb, var(--outcome-color) 12%, transparent); border: 1px solid color-mix(in srgb, var(--outcome-color) 28%, transparent); font-size: 15px; font-weight: 700; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
+.passed { --outcome-color: #{$color-success}; }
+.failed { --outcome-color: #{$color-error}; }
+.pending { --outcome-color: #{$color-text-secondary}; }
 .conflict { display: grid; gap: 8px; padding: 10px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-panel-muted; p { margin: 0; font-size: 12px; line-height: 1.65; } }
 .warning, .error, .notice { margin: 0; padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; p { margin: 0 0 10px; &:last-child { margin-bottom: 0; } } }
 .warning { @include admin.notice($color-warning); }
@@ -39,14 +55,17 @@
 .notice { @include admin.notice($color-success); }
 .empty { display: grid; justify-items: center; gap: 8px; padding: 30px 20px; border: 1px dashed $color-border; border-radius: 12px; color: $color-text-secondary; text-align: center; line-height: 1.7; font-size: 14px; strong { color: $color-text-light; } p { margin: 0; max-width: 640px; } }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-@media(max-width: 900px) { .detailHeader { align-items: flex-start; flex-direction: column; } .catalogCard { align-items: flex-start; } }
+.sectionHeader > h2 { margin: 0; font-size: 18px; line-height: 1.5; }
+.form > .plainFieldset { display: grid; gap: 20px; }
+.form .fields { margin-bottom: 0; }
+@media(max-width: 1000px) { .pageHeader, .detailHeader { align-items: flex-start; flex-direction: column; } .pageHeader > .actions { justify-content: flex-start; } .catalogCard { align-items: flex-start; } }
 @media(max-width: 650px) {
-  .toolbar { grid-template-columns: minmax(0, 1fr); > :last-child:not(button) { grid-column: auto; } }
-  .fields { grid-template-columns: minmax(0, 1fr); }
-  .catalogCard, .card { padding: 16px; }
+  .page { padding: 22px 16px; gap: 18px; }
+  .toolbar, .fields { grid-template-columns: minmax(0, 1fr); }
+  .overview { grid-template-columns: minmax(0, 1fr); gap: 18px; > div { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; } strong { font-size: 20px; } }
   .catalogCard { flex-direction: column; gap: 12px; }
   .catalogStatus { display: flex; flex-wrap: wrap; justify-content: space-between; width: 100%; align-items: center; flex-shrink: 1; }
-  .selection { padding: 12px; }
+  .catalogFacts { gap: 12px 20px; }
   .resultRow { grid-template-columns: minmax(0, 1fr); gap: 8px; > span { justify-self: start; } }
   .cardHeader { flex-wrap: wrap; }
   .detailHeader > .actions { width: 100%; > button { flex: 1 1 180px; } }

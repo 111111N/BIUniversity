@@ -40,7 +40,6 @@
 .tableHeading p { margin: 5px 0 0; color: $color-text-secondary; font-size: .65rem; line-height: 1.5; text-transform: capitalize; }
 .tableHeading .tableMeta { display: flex; flex-wrap: wrap; gap: 5px 14px; font-size: 12px; text-transform: none; }
 .tableActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.modeSwitch { display: flex; gap: 3px; padding: 3px; border: 1px solid $color-border; border-radius: 9px; }
 .editButton { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 8px 12px; border: 1px solid theme-alpha($color-accent-primary, .35); border-radius: 8px; color: $color-on-accent; background: $color-accent-primary; font-size: .66rem; }
 .editButton:hover { background: $color-accent-hover; color: $color-on-accent; }
 .editButton svg, .controlButton svg { flex: 0 0 auto; }
@@ -157,7 +156,3 @@
   .studentSearch > :first-child { flex-grow: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .studentLink { transition: none; } }
-
-
-
-.modeSwitch { padding: 0; border: 0; background: transparent; }

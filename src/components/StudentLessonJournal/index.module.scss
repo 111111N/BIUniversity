@@ -9,8 +9,6 @@
 .period > div:first-child { flex: 1; min-width: 0; }
 .period button { min-height: 44px; }
 .monthButtons { display: flex; gap: 6px; }
-.monthButtons button { width: 44px; height: 44px; padding: 0; border: 1px solid $color-border; background: transparent; color: $color-text-secondary; }
-.monthButtons button:not(:disabled):hover { background: $color-accent-background-hover; color: $color-accent-primary; }
 .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
 .metrics > div { display: grid; align-content: start; gap: 5px; padding: 12px; border: 1px solid $color-border; border-radius: 10px; background: var(--student-journal-surface); }
 .metrics span, .metrics small { color: $color-text-secondary; font-size: 12px; line-height: 1.5; }

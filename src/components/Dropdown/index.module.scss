@@ -2,22 +2,20 @@
 @use "../../styles/variables" as *;
 
 :root {
-  --dropdown-control: #{$color-dark-tertiary};
-  --dropdown-control-border: #{$color-border};
-  --dropdown-control-active: #{$color-dark-tertiary};
-  --dropdown-base: #{$color-field};
-  --dropdown-panel: #{$color-panel};
-  --dropdown-border: #{$color-control-border};
+  --dropdown-control: #{$color-dark-primary};
+  --dropdown-control-border: #{$color-picker-border};
+  --dropdown-panel: #{$color-field};
+  --dropdown-border: #{$color-picker-border};
   --dropdown-accent: #{$color-accent-primary};
   --dropdown-text: #{$color-text-light};
+  --dropdown-option-text: color-mix(in srgb, #{$color-text-secondary} 75%, #{$color-text-light});
   --dropdown-muted: #{$color-text-secondary};
-  --dropdown-hover: #{$color-control-hover};
   --dropdown-active: color-mix(in srgb, #{$color-accent-primary} 9%, #{$color-panel});
   --dropdown-gradient: linear-gradient(to left, #{$color-action-primary}, #{$color-accent-secondary});
   --dropdown-on-accent: #{$color-on-accent};
   --dropdown-shadow: #{$color-shadow};
 }
-:root[data-theme="light"] { --dropdown-control: #{$color-dark-secondary}; --dropdown-control-active: #{$color-dark-secondary}; }
+:root[data-theme="light"] { --dropdown-option-text: var(--dropdown-text); }
 
 .field { min-width: 0; }
 .error { display: block; margin-top: 7px; color: $color-danger-text; font-size: 12px; line-height: 1.6; }

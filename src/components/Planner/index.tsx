@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { PlusIcon } from "../ButtonIcons/Icons";
@@ -6,7 +6,10 @@ import PlannerNoteForm from "../PlannerNoteForm";
 import PlannerMoveDialog from "../PlannerMoveDialog";
 import PlannerTaskCard from "../PlannerTaskCard";
 import SearchField from "../SearchField";
+import SearchIcon from "../SearchIcon";
+import Card from "../Card";
 import WeekNavigation from "./WeekNavigation";
+import EdgeScrollControls from "../EdgeScrollControls";
 import styles from "./index.module.scss";
 import { PlannerWriteError, usePlannerNotes, type PlannerNote } from "../../data/plannerStore";
 import { toLocalDateKey } from "../../domain/schedule";
@@ -41,6 +44,30 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, onSelectDay,
   const [status, setStatus] = useState<StatusFilter>("all");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchId = useId();
+  const boardId = useId();
+  const searchRef = useRef<HTMLElement>(null);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    searchToggleRef.current?.focus({ preventScroll: true });
+  }, []);
+  useLayoutEffect(() => {
+    if (!searchOpen || document.activeElement !== searchToggleRef.current) return;
+    try { searchRef.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus({ preventScroll: true }); }
+    catch (error) { console.error("Не удалось перейти к поиску задач планировщика:", error); }
+  }, [searchOpen]);
+  useEffect(() => {
+    if (!searchOpen) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || !searchRef.current?.contains(event.target as Node)) return;
+      event.preventDefault();
+      closeSearch();
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [searchOpen, closeSearch]);
   const [deletedNote, setDeletedNote] = useState<PlannerNote | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
@@ -65,6 +92,7 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, onSelectDay,
   const activeNote = editingNote;
   const closeForm = () => { setEditingNote(null); refreshNotes(); onClearTask?.(); };
   const gridRef = useRef<HTMLDivElement>(null);
+  const boardFrameRef = useRef<HTMLDivElement>(null);
   const focusDayTask = usePlannerTaskFocus(gridRef, toLocalDateKey(selectedWeekStart));
   const dragScroll = useDragScroll(gridRef, { axis: "x", enabled: view === "board", resetKey: toLocalDateKey(selectedWeekStart) });
   const selectedKey = selectedDate ? toLocalDateKey(selectedDate) : "";
@@ -235,30 +263,46 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, onSelectDay,
       {storageError && <div className={styles.storageError} role="alert"><span>{storageError}</span><button type="button" onClick={refreshNotes}>Повторить чтение</button></div>}
       {selectedTaskId && !requestedNote && !storageError && <div className={styles.actionNotice} role="status"><span>Задача не найдена. Возможно, она уже удалена.</span><button type="button" onClick={onClearTask}>Показать неделю</button></div>}
       {!storageError && (deletedNote || saveMessage) && <div className={styles.actionNotice} role="status"><span>{deletedNote ? `Задача «${deletedNote.title}» удалена` : saveMessage}</span>{deletedNote && <button type="button" onClick={restoreNote}>Отменить удаление</button>}{!deletedNote && moveUndo && <button type="button" onClick={undoTransfer}>Отменить перенос</button>}<button type="button" className={styles.dismissNotice} aria-label="Скрыть сообщение" onClick={() => { setDeletedNote(null); setMoveUndo(null); setSaveMessage(""); }}>×</button></div>}
-      <div className={styles.plannerToolbar}>
-        <div className={styles.toolbarTop}><div className={styles.filterGroups}><div className={styles.filterGroup}><span>Статус</span><div className={styles.filters} role="group" aria-label="Статус задачи">{STATUS_FILTERS.map(([value, label]) => <button type="button" aria-pressed={status === value} className={status === value ? styles.filterActive : ""} onClick={() => setStatus(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilters(note, value, category)).length}</span></button>)}</div></div><div className={styles.filterGroup}><span>Категория</span><div className={styles.filters} role="group" aria-label="Категория задачи">{CATEGORY_FILTERS.map(([value, label]) => <button type="button" aria-pressed={category === value} className={category === value ? styles.filterActive : ""} onClick={() => setCategory(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilters(note, status, value)).length}</span></button>)}</div></div></div><div className={styles.toolbarActions}><button type="button" className={styles.createButton} aria-label="Создать задачу" onClick={() => createNoteForDay(activeDay)}><PlusIcon size={16} />Создать</button><div className={styles.viewSwitch} role="group" aria-label="Вид планировщика"><button type="button" aria-pressed={view === "board"} onClick={() => changeView("board")}>Неделя</button><button type="button" aria-pressed={view === "list"} onClick={() => changeView("list")}>Список</button></div></div></div>
-        <div className={styles.tools}><div className={styles.search}><SearchField label="Поиск по неделе" value={query} onChange={updateQuery} placeholder="Название или описание задачи" /></div><div className={styles.weekSummary}>{weekNotes.length ? <><span>Выполнено <strong>{completedCount} из {weekNotes.length}</strong></span><div className={styles.progress} role="progressbar" aria-label="Задачи за неделю выполнены" aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={weekNotes.length}><span style={{ width: `${completedCount / weekNotes.length * 100}%` }} /></div></> : <span>На этой неделе пока нет задач</span>}</div></div>
-        {hasFilters && <div className={styles.filterResult} role="status"><span>{filteredNotes.length ? `Найдено за неделю: ${filteredNotes.length} из ${weekNotes.length} задач` : "По этим условиям задач за неделю нет"}</span><button type="button" onClick={resetFilters}>Сбросить фильтры</button></div>}
-      </div>
-      {!weekNotes.length && !storageError && <div className={styles.emptyWeek}><div><strong>Спланируйте свою неделю</strong><p>Добавьте учебную задачу или личное дело на подходящий день.</p></div><button type="button" onClick={() => createNoteForDay(activeDay)}><PlusIcon size={16} />Первая задача</button></div>}
+      <Card className={styles.plannerToolbar} aria-label="Управление задачами">
+        <div className={styles.toolbarTop}>
+          <div className={styles.weekSummary}>{weekNotes.length ? <><span>Выполнено <strong>{completedCount} из {weekNotes.length}</strong></span><div className={styles.progress} role="progressbar" aria-label="Задачи за неделю выполнены" aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={weekNotes.length}><span style={{ width: `${completedCount / weekNotes.length * 100}%` }} /></div></> : <span>На этой неделе пока нет задач</span>}</div>
+          <div className={styles.toolbarActions}>
+            <button type="button" ref={searchToggleRef} className={styles.searchToggle} aria-label={hasFilters ? "Поиск задач, применены фильтры" : "Поиск задач"} aria-expanded={searchOpen} aria-controls={searchId} onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); setSearchOpen((open) => !open); }}><SearchIcon /><span>Поиск</span>{hasFilters && <small aria-hidden="true">{Number(status !== "all") + Number(category !== "all") + Number(Boolean(query.trim()))}</small>}</button>
+            <div className={styles.viewSwitch} role="group" aria-label="Вид планировщика"><button type="button" aria-pressed={view === "board"} onClick={() => changeView("board")}>Неделя</button><button type="button" aria-pressed={view === "list"} onClick={() => changeView("list")}>Список</button></div>
+          </div>
+        </div>
+      </Card>
+      <section id={searchId} ref={searchRef} hidden={!searchOpen} className={styles.searchPanel} aria-label="Поиск и фильтры задач">
+        <Card className={styles.searchCard}>
+          <SearchField label="Поиск по неделе" value={query} onChange={updateQuery} placeholder="Название или описание задачи" withIcon />
+          <div className={styles.filterGroups}>
+            <div className={styles.filterGroup}><span>Статус</span><div className={styles.filters} role="group" aria-label="Статус задачи">{STATUS_FILTERS.map(([value, label]) => <button type="button" aria-pressed={status === value} className={status === value ? styles.filterActive : ""} onClick={() => setStatus(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilters(note, value, category)).length}</span></button>)}</div></div>
+            <div className={styles.filterGroup}><span>Категория</span><div className={styles.filters} role="group" aria-label="Категория задачи">{CATEGORY_FILTERS.map(([value, label]) => <button type="button" aria-pressed={category === value} className={category === value ? styles.filterActive : ""} onClick={() => setCategory(value)} key={value}>{label}<span>{searchedNotes.filter((note) => matchesFilters(note, status, value)).length}</span></button>)}</div></div>
+            {hasFilters && <button type="button" className={styles.resetFilters} onClick={resetFilters}>Сбросить фильтры</button>}
+          </div>
+        </Card>
+      </section>
+      <Card className={styles.tasksCard} aria-label="Задачи по дням недели">
       {weekNotes.length > 0 && filteredNotes.length === 0 && hasFilters && <div className={styles.emptyWeek} role="status"><div><strong>По этим условиям задач нет</strong><p>Измените поиск, статус или категорию, чтобы увидеть задачи недели.</p></div><button type="button" onClick={resetFilters}>Сбросить фильтры</button></div>}
-      <WeekNavigation days={days} counts={days.map((day) => getPlannerDayNotes(weekNotes, day).length)} selectedKey={focusedDay} boardRef={gridRef} view={view} onSelect={selectDay} />
-      {(view === "board") && <p className={styles.boardHint}>Неделя прокручивается по горизонтали. На телефоне можно переключиться на список.</p>}
-      <div className={`${styles.weekGrid} ${view === "list" ? styles.listView : ""} ${dragScroll.dragging ? styles.dragging : ""}`} ref={gridRef} onPointerDown={dragScroll.onPointerDown} onClickCapture={dragScroll.onClickCapture} onDragStartCapture={dragScroll.onDragStartCapture} tabIndex={view === "board" ? 0 : undefined} role="region" aria-label={view === "board" ? "Задачи по дням недели. Листайте, зажав левую кнопку мыши, или прокручивайте по горизонтали" : "Задачи списком по дням недели"}>
+      <div className={styles.calendarToolbar}>
+        <WeekNavigation days={days} counts={days.map((day) => getPlannerDayNotes(weekNotes, day).length)} boardId={boardId} onSelect={selectDay} />
+        <button type="button" className={styles.createButton} aria-label="Создать задачу" onClick={() => createNoteForDay(activeDay)}><PlusIcon size={16} />Создать</button>
+      </div>
+      <div ref={boardFrameRef} className={`${styles.boardFrame} ${view === "list" ? styles.listFrame : ""}`}>
+      <div id={boardId} className={`${styles.weekGrid} ${view === "list" ? styles.listView : ""} ${dragScroll.dragging ? styles.dragging : ""}`} ref={gridRef} onPointerDown={dragScroll.onPointerDown} onClickCapture={dragScroll.onClickCapture} onDragStartCapture={dragScroll.onDragStartCapture} tabIndex={view === "board" ? 0 : undefined} role="region" aria-label={view === "board" ? "Задачи по дням недели. Листайте, зажав левую кнопку мыши, или прокручивайте по горизонтали" : "Задачи списком по дням недели"}>
         {days.map((day) => {
           const dayNotes = getPlannerDayNotes(filteredNotes, day);
           const allDayNotes = getPlannerDayNotes(weekNotes, day);
           const isToday = isSameDay(day, new Date());
-          const isSelected = toLocalDateKey(day) === focusedDay;
           const activeNotes = dayNotes.filter((note) => !note.completed);
           const doneNotes = dayNotes.filter((note) => note.completed);
 
           return (
-            <article className={`${styles.dayColumn} ${isSelected ? styles.selectedDay : ""} ${taskDrag.targetDay === toLocalDateKey(day) ? styles.dropTarget : ""}`} key={day.toISOString()} data-date={toLocalDateKey(day)} onDragOver={(event) => taskDrag.over(event, toLocalDateKey(day))} onDragLeave={taskDrag.leave} onDrop={(event) => taskDrag.drop(event, toLocalDateKey(day))}>
+            <article id={`${boardId}-${toLocalDateKey(day)}`} className={`${styles.dayColumn} ${taskDrag.targetDay === toLocalDateKey(day) ? styles.dropTarget : ""}`} key={day.toISOString()} data-date={toLocalDateKey(day)} onDragOver={(event) => taskDrag.over(event, toLocalDateKey(day))} onDragLeave={taskDrag.leave} onDrop={(event) => taskDrag.drop(event, toLocalDateKey(day))}>
               <header className={styles.dayHeader}>
                 <div className={styles.dayIdentity}>
                   <span className={styles.weekday}>{format(day, "EEEE", { locale: ru })}<small aria-label={`Задач за день: ${allDayNotes.length}`}>{allDayNotes.length}</small></span>
-                  <div className={styles.dayDate}><time dateTime={toLocalDateKey(day)} className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{format(day, "d")}</time><span>{isToday ? "Сегодня" : format(day, "MMM", { locale: ru })}</span>{isSelected && <span className={styles.selectedLabel}>Выбрано</span>}</div>
+                  <div className={styles.dayDate}><time dateTime={toLocalDateKey(day)} className={styles.dayNumber}>{format(day, "d")}</time><span>{isToday ? "Сегодня" : format(day, "MMM", { locale: ru })}</span></div>
                 </div>
                 <button type="button" className={styles.addButton} onClick={() => createNoteForDay(day)} title="Добавить задачу" aria-label={`Добавить задачу на ${format(day, "d MMMM", { locale: ru })}`}><PlusIcon size={14} /></button>
               </header>
@@ -278,6 +322,9 @@ const Planner = ({ weekNavigation, selectedWeekStart, selectedDate, onSelectDay,
           );
         })}
       </div>
+      {view === "board" && <EdgeScrollControls boardRef={gridRef} frameRef={boardFrameRef} boardId={boardId} scopeKey={toLocalDateKey(selectedWeekStart)} />}
+      </div>
+      </Card>
 
       {activeNote && <PlannerNoteForm key={activeNote.id || "new"} note={activeNote} currentNote={activeNote.id && !storageError ? notes.find((note) => note.id === activeNote.id) ?? null : undefined} error={storageError} onSave={saveNote} onClose={closeForm} />}
       {movingNote && <PlannerMoveDialog key={movingNote.id} note={movingNote} currentNote={storageError ? undefined : notes.find((note) => note.id === movingNote.id) ?? null} error={storageError} onRetry={refreshNotes} onMove={(day) => transferNote(movingNote, day)} onClose={() => { setMovingNote(null); refreshNotes(); }} />}

@@ -1,0 +1,33 @@
+@use "variables" as *;
+
+@mixin button {
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: $frame-border-width solid $color-frame-border;
+  border-radius: 8px;
+  background: $color-panel;
+  color: $color-text-light;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+
+  &:not(:disabled):hover {
+    background: $color-button-accent-hover;
+    border-color: $color-button-accent-hover;
+    color: $color-on-accent;
+  }
+  &:not(:disabled):active {
+    background: $color-button-accent-hover;
+    border-color: $color-button-accent-hover;
+    color: $color-on-accent;
+  }
+  &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+  &:disabled { opacity: 1; cursor: not-allowed; background: $color-panel-muted; border-color: $color-border; color: $color-text-secondary; }
+  @media (prefers-reduced-motion: reduce) { transition: none; }
+}

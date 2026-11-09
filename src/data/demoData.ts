@@ -8,13 +8,16 @@ import { getAssignmentHref } from "../domain/journalNavigation";
 import { getSubmissionAttempts } from "../domain/assignments";
 import { appendJournalDemoRecords } from "./journalStore";
 import type { JournalActor } from "./journalStore";
+import { appendAssessmentDemoRecords } from "./assessmentStore";
 
-export interface DemoImportResult { assignments: number; submissions: number; tasks: number; materials: number; journals: number; journalCells: number; grades: number; warnings: string[] }
-export interface DemoImportOptions { journalActor?: JournalActor }
+export interface DemoImportResult { assignments: number; submissions: number; tasks: number; materials: number; journals: number; journalCells: number; grades: number; assessments: number; assessmentAttempts: number; warnings: string[] }
+export interface DemoImportOptions { journalActor?: JournalActor; plannerOwnerId?: string }
 
 const runDemoImport = async (anchor: Date, options: DemoImportOptions): Promise<DemoImportResult> => {
-  const result: DemoImportResult = { assignments: 0, submissions: 0, tasks: 0, materials: 0, journals: 0, journalCells: 0, grades: 0, warnings: [] };
-  const actor = options.journalActor;
+  const result: DemoImportResult = { assignments: 0, submissions: 0, tasks: 0, materials: 0, journals: 0, journalCells: 0,   grades: 0, assessments: 0, assessmentAttempts: 0, warnings: [] };
+    try { Object.assign(result, await appendAssessmentDemoRecords()); }
+    catch { result.warnings.push("Аттестации не добавлены: проверьте учётные записи, учебный каталог и хранилище аттестаций. Существующие ведомости не перезаписаны."); }
+    const actor = options.journalActor;
   if (actor) {
     const visited = new Set<string>();
     for (const membership of actor.memberships ?? []) {
@@ -83,8 +86,8 @@ const runDemoImport = async (anchor: Date, options: DemoImportOptions): Promise<
   } catch {
     result.warnings.push("Не удалось добавить задания и ответы. Проверьте доступ к хранилищу браузера.");
   } finally { await cleanupUnusedFiles(); }
-  try { result.tasks = appendPlannerDemoNotes(createPlannerDemo(anchor), actor?.id); }
-  catch { result.warnings.push("Задачи не добавлены: проверьте хранилище планировщика."); }
+  try { result.tasks = appendPlannerDemoNotes(createPlannerDemo(anchor), options.plannerOwnerId ?? actor?.id); }
+  catch (error) { console.error("Не удалось добавить демонстрационные задачи планировщика:", error); result.warnings.push("Задачи не добавлены: проверьте хранилище планировщика."); }
 
   for (const subject of DEMO_SUBJECTS) {
     const scope = `group:${subject.id}:112-mko`;

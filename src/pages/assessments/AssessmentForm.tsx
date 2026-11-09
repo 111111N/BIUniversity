@@ -14,18 +14,18 @@ interface Props { actorId: string; snapshot: AssessmentSnapshot; assessment?: As
 export default function AssessmentForm({ actorId, snapshot, assessment, attemptKind = "retake", blocked = false, onClose, onSaved, refresh }: Props) {
   const [base, setBase] = useState(snapshot);
   const [context, setContext] = useState<AssessmentCommandContext>(() => assessmentContext(snapshot, actorId));
-  const [draft, setDraft] = useState<AssessmentDraft>(() => ({ title: "", kind: "exam", subjectId: null, groupId: "", period: "", attempt: { date: todayDate(), startsAt: "", teacherId: assessment?.supervisorId ?? "", chairId: null, memberIds: [], studentIds: [] } }));
+  const [draft, setDraft] = useState<AssessmentDraft>(() => ({ title: "", kind: "exam", subjectId: null, groupId: "", period: "", attempt: { date: todayDate(), startsAt: "", room: "", teacherId: assessment?.supervisorId ?? "", chairId: null, memberIds: [], studentIds: [] } }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [bookDraft, setBookDraft] = useState(() => recordBookDraft(null));
   const bookMetadata = parseRecordBookDraft(bookDraft);
   const { requestAction } = useUnsavedChangesGuard();
-  const titleId = useId(); const periodId = useId(); const dateId = useId(); const timeId = useId();
+  const titleId = useId(); const periodId = useId(); const dateId = useId(); const timeId = useId(); const roomId = useId();
   const stale = assessmentContextChanged(context, snapshot, actorId);
   const locked = busy || stale || blocked;
   const supervised = isSupervisedAssessment(assessment?.kind ?? draft.kind);
   const fixedSupervisor = assessment?.supervisorId ?? null;
-  const dirty = Boolean(draft.title || draft.period || draft.subjectId || draft.groupId || draft.attempt.teacherId !== (fixedSupervisor ?? "") || draft.attempt.startsAt || draft.attempt.studentIds.length || draft.attempt.memberIds.length || draft.attempt.chairId || draft.kind !== "exam" || draft.attempt.date !== todayDate());
+  const dirty = Boolean(draft.title || draft.period || draft.subjectId || draft.groupId || draft.attempt.teacherId !== (fixedSupervisor ?? "") || draft.attempt.startsAt || draft.attempt.room || draft.attempt.studentIds.length || draft.attempt.memberIds.length || draft.attempt.chairId || draft.kind !== "exam" || draft.attempt.date !== todayDate());
   useUnsavedChangesWarning(dirty || busy || Boolean(bookDraft.semester || bookDraft.hours || bookDraft.category !== "required"));
   const close = () => { if (!busy) requestAction(onClose); };
   const students = assessment ? assessment.roster.map((entry) => ({ id: entry.studentId, name: entry.name, detail: entry.studentNumber ?? "Номер зачётки не указан" }))
@@ -36,6 +36,7 @@ export default function AssessmentForm({ actorId, snapshot, assessment, attemptK
   const commission = Boolean(assessment && attemptKind === "commission");
   const requiresSubject = !assessment && ["exam", "pass", "gradedPass"].includes(draft.kind);
   const valid = Boolean((assessment || (draft.title.trim().length >= 2 && draft.period.trim() && base.groups.some((entry) => entry.id === draft.groupId && entry.status !== "archived") && (!requiresSubject || draft.subjectId) && (!draft.subjectId || base.subjects.some((entry) => entry.id === draft.subjectId)))) && draft.attempt.date && draft.attempt.startsAt && draft.attempt.teacherId
+    && (!assessment || draft.attempt.room?.trim()) && (draft.attempt.room?.trim().length ?? 0) <= 256
     && base.teachers.some((entry) => entry.id === draft.attempt.teacherId) && draft.attempt.studentIds.length && draft.attempt.studentIds.every((id) => students.some((entry) => entry.id === id))
     && (!commission || (draft.attempt.chairId && draft.attempt.memberIds.length && draft.attempt.memberIds.every((id) => base.teachers.some((entry) => entry.id === id)) && base.teachers.some((entry) => entry.id === draft.attempt.chairId))));
   const review = async () => {
@@ -48,8 +49,10 @@ export default function AssessmentForm({ actorId, snapshot, assessment, attemptK
     event.preventDefault(); if (locked || !valid || (!assessment && !bookMetadata)) return;
     setBusy(true); setError("");
     try {
-      await assessmentService.execute(assessment ? { ...context, type: "add-attempt", assessmentId: assessment.id, kind: attemptKind, draft: { ...draft.attempt, chairId: commission ? draft.attempt.chairId : null, memberIds: commission ? draft.attempt.memberIds : [] } }
-        : { ...context, type: "create", draft: { ...draft, title: draft.title.trim(), period: draft.period.trim(), recordBook: bookMetadata! } });
+      const { room, ...attemptFields } = draft.attempt;
+      const attempt = { ...attemptFields, ...(room?.trim() ? { room: room.trim() } : {}) };
+      await assessmentService.execute(assessment ? { ...context, type: "add-attempt", assessmentId: assessment.id, kind: attemptKind, draft: { ...attempt, chairId: commission ? draft.attempt.chairId : null, memberIds: commission ? draft.attempt.memberIds : [] } }
+        : { ...context, type: "create", draft: { ...draft, attempt, title: draft.title.trim(), period: draft.period.trim(), recordBook: bookMetadata! } });
       onSaved(assessment ? "Новая попытка создана. Преподаватель может заполнить ведомость." : "Аттестация создана. Основная ведомость доступна назначенному преподавателю.");
     } catch (failure) { console.error("Не удалось сохранить аттестацию:", failure); setError(failure instanceof Error ? failure.message : "Не удалось сохранить. Ввод остался в форме."); }
     finally { setBusy(false); }
@@ -70,6 +73,7 @@ export default function AssessmentForm({ actorId, snapshot, assessment, attemptK
         <div className={styles.fields}>
           <label className={styles.field} htmlFor={dateId}>Дата сдачи<input id={dateId} required type="date" value={draft.attempt.date} onChange={(event) => patchAttempt({ date: event.target.value })} /></label>
           <label className={styles.field} htmlFor={timeId}>Время (Москва)<input id={timeId} required type="time" value={draft.attempt.startsAt} onChange={(event) => patchAttempt({ startsAt: event.target.value })} /><small>Внесение результатов откроется с этого момента.</small></label>
+          <label className={styles.field} htmlFor={roomId}>{assessment ? "Аудитория" : "Аудитория (необязательно)"}<input id={roomId} required={Boolean(assessment)} maxLength={256} value={draft.attempt.room ?? ""} onChange={(event) => patchAttempt({ room: event.target.value })} /></label>
           <Dropdown label={supervised ? "Научный руководитель" : "Преподаватель, заполняющий ведомость"} value={draft.attempt.teacherId} disabled={locked || Boolean(fixedSupervisor)} options={teachers} searchable placeholder="" onChange={(teacherId) => patchAttempt({ teacherId })} />
         </div>
         {fixedSupervisor && <p className={base.teachers.some((entry) => entry.id === fixedSupervisor) ? styles.note : styles.error}>{base.teachers.some((entry) => entry.id === fixedSupervisor) ? "На всех попытках ведомость заполняет закреплённый научный руководитель." : "Закреплённый научный руководитель недоступен. Создание попытки заблокировано; проверьте его учётную запись."}</p>}

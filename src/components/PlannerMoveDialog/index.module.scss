@@ -1,9 +1,9 @@
 @use "../../styles/variables" as *;
 @use "../../styles/administration" as admin;
 
-.dialog { box-sizing: border-box; width: min(480px, 100%); padding: 24px; background: $color-panel; color: $color-text-light; }
+.dialog { box-sizing: border-box; width: min(480px, 100%); padding: 24px; border: $frame-border-width solid $color-frame-border; border-radius: 14px; background: $color-panel; color: $color-text-light; }
 .header { display: flex; align-items: start; justify-content: space-between; gap: 12px; h2 { margin: 4px 0 0; font-size: 22px; line-height: 1.4; } }
-.close { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 1px solid $color-border; border-radius: 8px; background: transparent; color: $color-text-light; font-size: 26px; }
+.close { @include admin.button; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; font-size: 26px; }
 .title { margin: 12px 0 20px; overflow-wrap: anywhere; line-height: 1.6; }
 .field { display: grid; gap: 8px; min-width: 0; label { color: $color-text-secondary; font-size: 13px; } > div > button { min-height: 44px; } }
 .preview { display: grid; gap: 12px; margin: 20px 0 12px; padding: 14px; border: 1px solid $color-border; border-radius: 8px; > div { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(0, 2fr); gap: 10px; font-size: 13px; line-height: 1.6; } dt { color: $color-text-secondary; } dd { margin: 0; overflow-wrap: anywhere; } dd span { display: block; } }
@@ -11,5 +11,5 @@
 .error { color: $color-danger-text; font-size: 13px; line-height: 1.6; }
 .actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 10px; margin-top: 22px; button { @include admin.button; } .primary { @include admin.primary; } }
 .retry { @include admin.button; }
-.dialog :is(button, input):focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+.dialog button:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 @media (max-width: 480px) { .dialog { padding: 18px; } .actions > button { flex: 1 1 auto; } }

@@ -43,7 +43,7 @@ export default function TodaySchedule({ date, unavailableReason, onRetry }: Prop
     </div>
     <p className={styles.caption}>{selectedDate.toLocaleDateString("ru-RU", { weekday: "long" })} · демонстрационное расписание</p>
     <div className={styles.body}>
-      {scheduleError ? <div className={styles.error} role="alert"><p>{scheduleError}</p>{onRetry && <button type="button" onClick={(event) => retryWithFocusRecovery(event.currentTarget, headingRef.current, onRetry)}>Повторить загрузку</button>}</div> : schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : <div className={styles.empty}><p>На {dateLabel} занятий нет.</p><div className={styles.nextDay}><span>{nextDate ? "Следующий учебный день" : "Посмотрите другие дни"}</span><Link to={`/schedule?date=${nextDate ? toLocalDateKey(nextDate) : key}`}>{nextDate ? nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : "Полное расписание"}<ArrowCircle /></Link></div></div>}
+      {scheduleError ? <div className={styles.error} role="alert"><p>{scheduleError}</p>{onRetry && <button type="button" onClick={(event) => retryWithFocusRecovery(event.currentTarget, headingRef.current, onRetry)}>Повторить загрузку</button>}</div> : schedule.length ? <Schedule schedule={schedule} currentTime={now} fill /> : nextDate && <div className={styles.nextDay}><span>Следующий учебный день</span><Link to={`/schedule?date=${toLocalDateKey(nextDate)}`}>{nextDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}<ArrowCircle /></Link></div>}
     </div>
   </section>;
 }

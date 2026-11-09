@@ -8,7 +8,12 @@
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ui-link: #ff8892;
+  --ui-link: var(--ui-text-light);
+  --ui-frame-border-width: 2px;
+  --ui-frame-border-color: color-mix(in srgb, var(--ui-text-secondary) 22%, var(--ui-panel));
+  --ui-picker-border: var(--ui-frame-border-color);
+  --ui-picker-main-radius: 17px 17px 0 0;
+  --ui-button-accent-hover: var(--ui-accent-primary);
   --ui-danger-text: #ff9196;
   --ui-panel: #262629;
   --ui-panel-muted: #1c1c20;
@@ -46,7 +51,8 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --ui-link: #a1263e;
+  --ui-button-accent-hover: var(--ui-action-hover);
+  --ui-link: var(--ui-text-light);
   --ui-danger-text: #b42338;
   --ui-panel: #ffffff;
   --ui-panel-muted: #f0f2f6;

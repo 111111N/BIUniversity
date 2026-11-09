@@ -7,6 +7,10 @@ import SelectionList from "./SelectionList";
 import AssessmentDetails from "./AssessmentDetails";
 import ResultEditor from "./ResultEditor";
 import AssessmentForm from "./AssessmentForm";
+import AssessmentCatalogCard from "./AssessmentCatalogCard";
+import OutcomeBadge from "./OutcomeBadge";
+import gradeStyles from "../../components/AssignmentCenter/SubmissionResult/index.module.scss";
+import styles from "./index.module.scss";
 
 vi.mock("../../components/UnsavedChangesProvider", () => ({ useUnsavedChangesGuard: () => ({ requestAction: (action: () => void) => action() }) }));
 vi.mock("../../hooks/useUnsavedChangesWarning", () => ({ default: () => undefined }));
@@ -23,13 +27,52 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new 
 afterEach(() => { vi.useRealTimers(); });
 
 describe("assessment workspace presentation", () => {
+  it("reuses assignment grade styling for every numeric outcome", () => {
+    for (const grade of [2, 3, 4, 5] as const) {
+      const html = renderToStaticMarkup(<OutcomeBadge outcome={{ status: "graded", grade }} />);
+      expect(html).toContain(styles.compactGrade);
+      if (grade !== 5) expect(html).toContain(gradeStyles[`grade_${grade}`]);
+      expect(html).toContain(`aria-label="Оценка ${grade}"`);
+    }
+  });
+  it("distinguishes pass, fail and unrecorded outcomes", () => {
+    expect(renderToStaticMarkup(<OutcomeBadge outcome={{ status: "passed" }} />)).toContain(styles.passed);
+    expect(renderToStaticMarkup(<OutcomeBadge outcome={{ status: "failed" }} />)).toContain(styles.failed);
+    for (const outcome of [null, { status: "absent" } as const]) {
+      expect(renderToStaticMarkup(<OutcomeBadge outcome={outcome} />)).toContain(styles.pending);
+    }
+  });
+  it("renders a shared catalog card with personal outcome and an isolated example link", () => {
+    const html = renderToStaticMarkup(<MemoryRouter><AssessmentCatalogCard assessment={{ ...assessment, attempts: [{ ...assessment.attempts[0], state: "published" }] }} actorId="student" student example /></MemoryRouter>);
+    expect(html).toContain("<article"); expect(html).toContain('href="/assessments/assessment?example=1"');
+    expect(html).toContain("Последняя попытка"); expect(html).toContain("Не указан"); expect(html).toContain(">2</strong>");
+    expect(html).not.toContain("Анна Смирнова"); expect(html).not.toContain("Черновик");
+  });
+  it("keeps the staff catalog state separate from personal results", () => {
+    const html = renderToStaticMarkup(<MemoryRouter><AssessmentCatalogCard assessment={assessment} actorId="teacher" /></MemoryRouter>);
+    expect(html).toContain("Предстоит"); expect(html).toContain("Открыть ведомости"); expect(html).not.toContain("?example=1");
+  });
   it("keeps the result of two visible as a failing grade without changing it to absence", () => {
-    const html = renderToStaticMarkup(<AttemptResults assessment={assessment} attempt={assessment.attempts[0]} />);
+    const html = renderToStaticMarkup(<MemoryRouter><AttemptResults assessment={assessment} attempt={assessment.attempts[0]} /></MemoryRouter>);
     expect(html).toContain("Анна Смирнова"); expect(html).toContain("202610001"); expect(html).toContain('>2</span>'); expect(html).not.toContain("Неявка"); expect(html).not.toContain("<select");
   });
   it("labels a projected student result without exposing an editing control", () => {
     const html = renderToStaticMarkup(<AttemptResults assessment={assessment} attempt={assessment.attempts[0]} student />);
     expect(html).toContain("Ваш результат"); expect(html).not.toContain("Анна Смирнова"); expect(html).not.toContain("202610001"); expect(html).not.toContain("<select");
+  });
+  it("keeps lists collapsed, links profiles and omits single-page counters", () => {
+    const html = details("teacher");
+    expect(html).toContain('href="/students/student"');
+    expect(html).toContain('href="/teachers/teacher"');
+    expect(html).not.toMatch(/<details[^>]*open/);
+    expect(html).not.toContain("1 / 1");
+    expect(html).not.toContain("Опубликованная попытка доступна только для просмотра.");
+  });
+  it("shows upcoming and awaiting-publication states without draft grades", () => {
+    expect(details("student")).toContain("Предстоит");
+    expect(details("student")).not.toContain('aria-label="Оценка 2"');
+    vi.setSystemTime(new Date("2026-11-06T09:00:00Z"));
+    expect(details("student")).toContain("Ожидается результат");
   });
   it("limits participant rows to twenty even if a group has hundreds of people", () => {
     const options = Array.from({ length: 105 }, (_, id) => ({ id: String(id), name: `Студент ${id}` }));
@@ -51,6 +94,12 @@ describe("assessment workspace presentation", () => {
     expect(details("teacher", true)).toMatch(/<button[^>]*disabled=""[^>]*>Опубликовать<\/button>/);
     const html = renderToStaticMarkup(<ResultEditor actorId="teacher" snapshot={snapshot} assessment={assessment} attempt={assessment.attempts[0]} blocked onClose={noop} onSaved={noop} refresh={noop} />);
     expect(html).toMatch(/<select[^>]*disabled=""/);
+  });
+  it("shows structured record details and completion only to staff", () => {
+    const staff = details("teacher");
+    expect(staff).toContain("Навигация по аттестациям"); expect(staff).toContain("Объём программы");
+    expect(staff).toContain("История попыток"); expect(staff).toContain('<progress');
+    expect(details("student")).not.toContain('<progress');
   });
   it("keeps configuring and filling a statement separate", () => {
     const html = details("configurator"); expect(html).toContain("Добавить пересдачу"); expect(html).not.toContain("Заполнить ведомость"); expect(html).not.toContain(">Опубликовать</button>");

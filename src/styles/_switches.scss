@@ -1,7 +1,7 @@
 @use "variables" as *;
 
 @mixin selected($navigation: false) {
-  border-color: $color-border;
+  border-color: theme-alpha($color-text-secondary, .5);
   background: $color-dark-secondary;
   color: $color-text-light;
   box-shadow: none;
@@ -70,7 +70,7 @@
 
 @mixin active-counter($navigation: false) {
   background: $color-accent-background-hover;
-  color: $color-accent-primary;
+  color: $color-link;
   @if $navigation {
     background: theme-alpha($color-on-accent, .18);
     color: $color-on-accent;
@@ -83,6 +83,26 @@
   gap: 6px;
 
   > button { @include button($navigation); }
+
+  @if $navigation {
+    display: inline-flex;
+    box-sizing: border-box;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 0;
+    max-width: 100%;
+    padding: 0;
+    border: $frame-border-width solid $color-frame-border;
+    border-radius: 10px;
+    background: $color-panel-muted;
+
+    > button {
+      border-radius: 0;
+      &:first-child { border-start-start-radius: 8px; border-end-start-radius: 8px; }
+      &:last-child { border-start-end-radius: 8px; border-end-end-radius: 8px; }
+      &:focus-visible { outline-offset: -3px; }
+    }
+  }
 
   @if $counter {
     > button #{$counter} { @include counter; }

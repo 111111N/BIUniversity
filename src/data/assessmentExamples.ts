@@ -27,7 +27,7 @@ export const createAssessmentExamples = (studentId: string) => {
     const attempts: AssessmentAttempt[] = [];
     const addAttempt = (number: number, attemptKind: AssessmentAttempt["kind"], result: AssessmentOutcome) => {
       const attemptDate = dayOffset(date, (number - 1) * 7);
-      attempts.push({ id: `${id}-attempt-${number}`, number, kind: attemptKind, date: attemptDate, startsAt: "12:40", teacherId,
+      attempts.push({ id: `${id}-attempt-${number}`, number, kind: attemptKind, date: attemptDate, startsAt: "12:40", room: "A-101", teacherId,
         chairId: attemptKind === "commission" ? teachers[2].id : null, memberIds: attemptKind === "commission" ? [teachers[1].id, teachers[3].id] : [],
         studentIds: [studentId], results: [{ studentId, outcome: result }], state: "published", createdAt: `${dayOffset(attemptDate, -1)}T09:00:00.000Z`, createdBy: "example-configurator",
         publishedAt: `${attemptDate}T11:00:00.000Z`, publishedBy: teacherId });

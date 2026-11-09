@@ -6,6 +6,7 @@ import { downloadJournalCsv } from "../../domain/journalExport";
 import { matchesSearchText } from "../../domain/search";
 import { useHistoryView } from "../../hooks/useLibraryView";
 import SearchField from "../SearchField";
+import Card from "../Card";
 import ChangeBatch from "./ChangeBatch";
 import styles from "./index.module.scss";
 
@@ -29,7 +30,7 @@ const JournalHistory = ({ changes, lessons, error = "" }: Props) => {
     catch (error) { console.error("Не удалось экспортировать историю журнала:", error); setExportMessage("Не удалось подготовить CSV. Попробуйте ещё раз."); }
   };
 
-  return <section className={styles.history} aria-labelledby={headingId}>
+  return <Card as="section" className={styles.history} aria-labelledby={headingId}>
     <header><div><span>Аудит изменений</span><h2 id={headingId}>История журнала</h2><p>Кто, когда и что изменил. Правки одного сохранения собраны вместе.</p></div><button type="button" disabled={!filtered.length || Boolean(error)} onClick={exportHistory}>Экспорт CSV <span aria-hidden="true">↓</span></button></header>
     {error && <p className={styles.error} role="alert">{error}</p>}
     {exportMessage && <p className={styles.notice} role="status">{exportMessage}</p>}
@@ -38,7 +39,7 @@ const JournalHistory = ({ changes, lessons, error = "" }: Props) => {
     {batches.length ? <div className={styles.batchList}>{batches.slice(0, limit).map((batch, index) => <ChangeBatch key={batch.id} batch={batch} lessonsById={lessonsById} initiallyOpen={index === 0} />)}</div> : <div className={styles.empty}><strong>{error && !changes.length ? "История недоступна" : changes.length ? "Совпадений нет" : "Исправлений пока нет"}</strong><p>{error && !changes.length ? "Записи в хранилище не изменялись. Сообщение выше поможет понять причину." : changes.length ? "Измените поиск или сбросьте фильтры." : "После первого сохранения здесь появятся автор, время и содержание правок."}</p>{changes.length > 0 && <button type="button" onClick={resetFilters}>Показать всю историю</button>}</div>}
     {batches.length > limit && <button type="button" className={styles.loadMore} onClick={() => changeView({ limit: Math.min(200, limit + 8) })}>Показать ещё сохранения · осталось {batches.length - limit}</button>}
     <p className={styles.footnote}>Локальная история хранит до 200 последних изменений. Экспорт включает все найденные записи, даже если часть сохранений пока свёрнута или скрыта за кнопкой «Показать ещё».</p>
-  </section>;
+  </Card>;
 };
 
 export default JournalHistory;

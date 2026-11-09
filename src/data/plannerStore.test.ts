@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appendPlannerDemoNotes, getPlannerStorageKey, readPlannerState, updatePlannerNotes, type PlannerNote } from "./plannerStore";
 import { applyPlannerMove } from "../domain/plannerMove";
+import { createPlannerDemo } from "./demo/learning";
 
 const saved = new Map<string, string>();
 beforeEach(() => {
@@ -19,6 +20,29 @@ describe("planner account isolation", () => {
     appendPlannerDemoNotes([{ ...task, id: "new-private" }], "new-teacher");
     expect(readPlannerState("new-teacher").notes[0].id).toBe("new-private");
     expect(readPlannerState().notes[0].id).toBe("private");
+  });
+});
+
+describe("weekly planner demo imports", () => {
+  it("adds the November 9 pack after an older import without rewriting existing tasks", () => {
+    const older = createPlannerDemo(new Date(2026, 9, 26));
+    const legacy = older.map((note, index) => ({ ...note, id: `demo-expanded-v1:planner:${index}` }));
+    legacy[0].title = "Мои изменения";
+    appendPlannerDemoNotes(legacy, "owner");
+    const next = createPlannerDemo(new Date(2026, 10, 9));
+    expect(appendPlannerDemoNotes(next, "owner")).toBe(next.length);
+    expect(readPlannerState("owner").notes.find((note) => note.id === legacy[0].id)?.title).toBe("Мои изменения");
+    expect(readPlannerState("owner").notes.some((note) => note.createdAt.getTime() === new Date(2026, 10, 9).getTime())).toBe(true);
+    expect(appendPlannerDemoNotes(createPlannerDemo(new Date(2026, 10, 12)), "owner")).toBe(0);
+    expect(readPlannerState().notes).toHaveLength(0);
+  });
+  it("does not duplicate unchanged-date legacy examples already on the requested week", () => {
+    const pack = createPlannerDemo(new Date(2026, 10, 9));
+    const legacy = pack.map((note, index) => ({ ...note, id: `demo-expanded-v1:planner:${index}`, title: `Моя задача ${index}` }));
+    appendPlannerDemoNotes(legacy);
+    expect(appendPlannerDemoNotes(pack)).toBe(0);
+    expect(readPlannerState().notes).toHaveLength(legacy.length);
+    expect(readPlannerState().notes[0].title).toBe("Моя задача 0");
   });
 });
 

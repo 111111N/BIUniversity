@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
-import Select from "react-select";
-import { createDropdownStyles, type DropdownOption } from "../Dropdown";
+import DropdownSelect from "../Dropdown/Select";
+import type { DropdownOption } from "../Dropdown";
 import SearchField from "../SearchField";
 import fieldStyles from "../Dropdown/index.module.scss";
 import styles from "./index.module.scss";
@@ -16,8 +16,6 @@ interface Props {
   knownOptions?: DropdownOption[];
 }
 
-const selectStyles = createDropdownStyles<true>("compact");
-
 const SearchMultiSelect = ({ label, options, value, onChange, disabled = false, knownOptions = [] }: Props) => {
   const inputId = useId();
   const summaryId = useId();
@@ -30,7 +28,7 @@ const SearchMultiSelect = ({ label, options, value, onChange, disabled = false, 
   return <div className={styles.picker}>
     <div className={fieldStyles.field}>
       <label htmlFor={inputId}>{label}</label>
-      <Select<DropdownOption, true>
+      <DropdownSelect<true>
         inputId={inputId}
         aria-label={label}
         aria-describedby={summaryId}
@@ -48,12 +46,12 @@ const SearchMultiSelect = ({ label, options, value, onChange, disabled = false, 
         hideSelectedOptions
         closeMenuOnSelect={false}
         backspaceRemovesValue={false}
-        styles={selectStyles}
         placeholder=""
         noOptionsMessage={({ inputValue }) => !options.length ? "Нет доступных групп" : inputValue ? "Группы не найдены или уже выбраны" : "Все доступные группы уже выбраны"}
         screenReaderStatus={({ count }) => `Доступно групп: ${count}`}
         maxMenuHeight={260}
         minMenuHeight={80}
+        menuPlacement="auto"
         menuPosition="fixed"
         menuPortalTarget={typeof document === "undefined" ? undefined : document.body}
       />

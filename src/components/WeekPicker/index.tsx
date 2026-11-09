@@ -12,7 +12,7 @@ import {
 } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import styles from './index.module.scss';
-import ArrowCircle from '../ArrowCircle';
+import ArrowButton from '../ArrowButton';
 
 const WEEK_OPTIONS = { locale: ru, weekStartsOn: 1 as 1 };
 
@@ -125,14 +125,12 @@ const weeks: WeekOption[] = useMemo(() => {
           />
         </div>
 
-        <button
+        <ArrowButton
           className={styles.weekPickerArrow}
           onClick={() => changeWeek(-1)}
-          type="button"
-          aria-label="Предыдущая неделя"
-        >
-          <ArrowCircle direction="left" />
-        </button>
+          label="Предыдущая неделя"
+          direction="left"
+        />
 
         <button
           className={styles.weekPickerCurrentButton}
@@ -142,14 +140,11 @@ const weeks: WeekOption[] = useMemo(() => {
           Текущая неделя
         </button>
 
-        <button
+        <ArrowButton
           className={styles.weekPickerArrow}
           onClick={() => changeWeek(1)}
-          type="button"
-          aria-label="Следующая неделя"
-        >
-          <ArrowCircle />
-        </button>
+          label="Следующая неделя"
+        />
       </div>
     </div>
   );

@@ -1,0 +1,22 @@
+@use "../../styles/variables" as *;
+
+.controls { position: absolute; inset: 4px 0; z-index: 8; pointer-events: none; }
+.edge { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; }
+.left { left: 8px; }
+.right { right: 8px; }
+.controls .edgeButton {
+  opacity: 0;
+  pointer-events: none;
+  background-color: $color-panel;
+  box-shadow: 0 4px 16px $color-shadow;
+  transition: opacity .15s ease, background-color .18s ease, border-color .18s ease;
+}
+.controls .edgeButton[data-revealed="true"], .controls .edgeButton:focus-visible { opacity: 1; pointer-events: auto; }
+.controls .edgeButton:disabled { visibility: hidden; opacity: 0; pointer-events: none; }
+
+@media (hover: none), (pointer: coarse) {
+  .controls .edgeButton:not(:disabled) { opacity: 1; pointer-events: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls .edgeButton { transition: none; }
+}

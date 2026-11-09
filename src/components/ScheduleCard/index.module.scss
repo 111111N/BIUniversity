@@ -8,9 +8,10 @@
 .top time { color: var(--schedule-card-muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .type { display: inline-flex; align-items: center; padding: 3px 6px; border-radius: 5px; font-size: 12px; font-weight: 500; line-height: 1.4; }
 .lecture { color: color-mix(in srgb, var(--ui-chart-blue) 75%, #{$color-text-light}); background: theme-alpha(var(--ui-chart-blue), .08); }
-.practice { color: color-mix(in srgb, #{$color-accent-added} 60%, #{$color-text-light}); background: theme-alpha($color-accent-added, .08); }
+.practice { color: #c7a6ff; background: rgba(171, 124, 232, .18); }
 .lab { color: color-mix(in srgb, #{$color-success} 80%, #{$color-text-light}); background: theme-alpha($color-success, .08); }
 :root[data-theme="light"] .lecture { color: color-mix(in srgb, var(--ui-chart-blue) 55%, #{$color-text-light}); }
+:root[data-theme="light"] .practice { color: #7338a7; background: rgba(139, 91, 182, .12); }
 :root[data-theme="light"] .lab { color: color-mix(in srgb, #{$color-success} 65%, #{$color-text-light}); }
 .subject { display: block; color: $color-text-light; font-size: 16px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
 .info { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--schedule-card-muted); font-size: 13px; line-height: 1.5; }

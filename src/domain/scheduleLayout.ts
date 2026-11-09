@@ -22,10 +22,18 @@ export const getScheduleSuggestions = (schedule: ScheduleItem[], type: ScheduleS
   }
   return [...values].map(([title, count]) => ({ title, count })).sort((a, b) => a.title.localeCompare(b.title, "ru-RU", { numeric: true }));
 };
-export const getScheduleRange = (schedule: ScheduleItem[]) => ({
-  start: schedule.length ? Math.min(8 * 60, ...schedule.map((lesson) => Math.floor(timeToMinutes(lesson.startTime) / 60) * 60)) : 8 * 60,
-  end: schedule.length ? Math.max(16 * 60, ...schedule.map((lesson) => Math.ceil(timeToMinutes(lesson.endTime) / 60) * 60)) : 16 * 60,
-});
+export const getScheduleRange = (schedule: ScheduleItem[]) => {
+  let start = 8 * 60;
+  let end = 21 * 60;
+  for (const lesson of schedule) {
+    const from = timeToMinutes(lesson.startTime);
+    const to = timeToMinutes(lesson.endTime);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) continue;
+    start = Math.min(start, Math.floor(from / 60) * 60);
+    end = Math.max(end, Math.ceil(to / 60) * 60);
+  }
+  return { start, end };
+};
 
 export interface ScheduleListRow {
   key: string;

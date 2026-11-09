@@ -1,0 +1,12 @@
+@use "../../styles/administration" as controls;
+
+.button[data-size] {
+  @include controls.button;
+  @include controls.text-button;
+
+  &[data-size="compact"] {
+    min-height: 40px;
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+}

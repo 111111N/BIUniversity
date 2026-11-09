@@ -14,4 +14,11 @@ describe("calendar trigger accessibility contract", () => {
     expect(html).not.toContain("aria-invalid"); expect(html).not.toContain("aria-describedby"); expect(html).not.toContain("disabled");
     expect(html).toContain("28 октября 2026, 09:00");
   });
+  it("keeps optional-date clearing separate from the calendar trigger and respects allowClear", () => {
+    const value = new Date(2026, 10, 12, 9);
+    const html = renderToStaticMarkup(<DateTimePicker value={value} ariaLabel="Начало задачи" onChange={() => undefined} />);
+    expect(html).toMatch(/<\/button><button[^>]*aria-label="Очистить: начало задачи"/);
+    const required = renderToStaticMarkup(<DateTimePicker value={value} allowClear={false} onChange={() => undefined} />);
+    expect(required).not.toContain("Очистить:");
+  });
 });

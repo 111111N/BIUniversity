@@ -1,0 +1,9 @@
+@use "../../styles/mixins" as *;
+
+.card {
+  @include card-surface;
+}
+
+@media (max-width: 620px) {
+  .card { padding: 14px; }
+}

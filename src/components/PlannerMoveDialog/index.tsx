@@ -5,6 +5,7 @@ import { movePlannerNoteToDay } from "../../domain/plannerMove";
 import { samePlannerNote } from "../../domain/plannerDraft";
 import { toLocalDateKey } from "../../domain/schedule";
 import DateTimePicker from "../DateTimePicker";
+import CancelButton from "../CancelButton";
 import Modal from "../Modal";
 import styles from "./index.module.scss";
 
@@ -33,7 +34,7 @@ export default function PlannerMoveDialog({ note, currentNote, error, onRetry, o
       {deleted ? <p className={styles.error} role="alert">Задача удалена в другом месте. Перенос не восстановит её.</p> : currentNote && !samePlannerNote(note, currentNote) && <p className={styles.hint} role="status">Задача изменилась в другом месте. Если её дата или время уже изменены, перенос будет отменён.</p>}
       {(validation || error) && <p className={styles.error} role="alert">{validation || error}</p>}
       {error && <button type="button" className={styles.retry} onClick={onRetry}>Повторить чтение</button>}
-      <footer className={styles.actions}><button type="button" onClick={onClose}>Отмена</button><button type="submit" className={styles.primary} disabled={unchanged || deleted || Boolean(validation || error)}>Перенести</button></footer>
+      <footer className={styles.actions}><CancelButton onClick={onClose} /><button type="submit" className={styles.primary} disabled={unchanged || deleted || Boolean(validation || error)}>Перенести</button></footer>
     </form>
   </Modal>;
 }

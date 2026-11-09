@@ -1,5 +1,19 @@
 .page {
+  --planner-page-inset: 30px;
+  --planner-mobile-navigation: 0px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - var(--planner-mobile-navigation));
+  padding: var(--planner-page-inset);
   position: relative;
   z-index: 1;
   box-sizing: border-box;
+}
+.page > section { min-height: calc(100dvh - var(--planner-page-inset) - var(--planner-page-inset) - var(--planner-mobile-navigation)); }
+
+@media (max-width: 760px) {
+  .page { --planner-mobile-navigation: calc(66px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 620px) {
+  .page { --planner-page-inset: 22px; padding-inline: 16px; }
 }

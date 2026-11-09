@@ -6,12 +6,11 @@
 .categoryFilters { @include switches.group(false, "> span"); }
 .categoryFilters .categoryActive { @include switches.selected(false); }
 
-.storage { @include dashboard-card($color-dark-secondary, 22px); min-width: 0; border-width: 1px; border-radius: 14px; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .header > div { flex: 1 1 260px; min-width: 0; }
-.header h2 { margin: 5px 0 8px; color: $color-text-light; font-size: 1.15rem; line-height: 1.35; }
+.header h2 { margin: 5px 0 8px; color: $color-text-light; font-size: 18px; font-weight: 600; line-height: 1.5; }
 .header p { max-width: 750px; margin: 0; color: $color-text-secondary; font-size: readability.$control; line-height: 1.6; overflow-wrap: anywhere; }
-.eyebrow { color: $color-accent-hover; font-size: readability.$caption; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.eyebrow { color: $color-text-secondary; font-size: 12px; font-weight: 500; line-height: 1.5; }
 .uploadButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 14px; border: 1px solid theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-hover; font-size: readability.$caption; line-height: 1.4; }
 .uploadButton:hover:not(:disabled) { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
 .uploadPanel { display: grid; gap: 16px; margin-top: 20px; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-ghost; }
@@ -58,7 +57,6 @@
 .loadingDot { width: 8px; height: 8px; border-radius: 50%; background: $color-accent-primary; box-shadow: 0 0 0 4px $color-accent-background-hover; }
 .storage button:disabled { cursor: not-allowed; }
 @media (max-width: 760px) {
-  .storage { padding: 16px; }
   .uploadFields, .libraryTools { grid-template-columns: 1fr; }
   .uploadPanel { padding: 14px; }
   .header > .uploadButton { width: 100%; }

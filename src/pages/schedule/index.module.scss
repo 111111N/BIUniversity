@@ -3,6 +3,7 @@
 @use "../../styles/switches" as switches;
 
 .page { min-width: 0; }
+@media(max-width: 760px) { .page { --workspace-bottom-inset: calc(66px + env(safe-area-inset-bottom, 0px)); } }
 .context { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
 .context > span { color: $color-text-light; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
 .context button { min-height: 44px; padding: 8px 10px; border: 0; background: transparent; color: $color-accent-hover; font-size: 13px; font-weight: 500; }
@@ -19,7 +20,8 @@
   :global(.dashboard-layout):has(.page) > :global(nav) { display: none; }
   :global(.main-content):has(.page) { overflow: visible; padding: 0; }
   :global(.main-content):has(.page) > :global(.blob) { display: none; }
-  .page { --ui-dark-primary: #fff; --ui-dark-secondary: #fff; --ui-dark-tertiary: #fff; --ui-text-light: #20232b; --ui-text-secondary: #4b5260; --ui-border: #d9dde4; --ui-ghost: transparent; --ui-accent-primary: #a92c43; --ui-accent-hover: #a92c43; --dropdown-text: #20232b; --dropdown-panel: #fff; --dropdown-border: #d9dde4; padding: 0; background: #fff; color: #20232b; }
+  .page { --ui-dark-primary: #fff; --ui-dark-secondary: #fff; --ui-dark-tertiary: #fff; --ui-panel: #fff; --ui-panel-muted: #fff; --ui-text-light: #20232b; --ui-text-secondary: #4b5260; --ui-border: #d9dde4; --ui-ghost: transparent; --ui-accent-primary: #a92c43; --ui-accent-hover: #a92c43; --dropdown-text: #20232b; --dropdown-panel: #fff; --dropdown-border: #d9dde4; padding: 0; background: #fff; color: #20232b; }
+  .page { --ui-field: #fff; --dropdown-control: #fff; --dropdown-control-border: #d9dde4; --dropdown-muted: #4b5260; }
   .context button, .searchToggle, .searchPanel { display: none; }
   .context > span { color: $color-text-light; font-size: 15px; }
 }

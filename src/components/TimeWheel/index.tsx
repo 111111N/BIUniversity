@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import styles from "./index.module.scss";
+import { getTimeWheelDirection } from "./wheelStep";
 
 const ITEM_HEIGHT = 38;
 
@@ -27,6 +28,28 @@ const TimeColumn = ({ label, max, value, onChange }: TimeColumnProps) => {
   useEffect(() => () => {
     if (scrollTimer.current) clearTimeout(scrollTimer.current);
   }, []);
+
+  useEffect(() => {
+    const column = ref.current;
+    if (!column) return;
+    let lastWheelAt = -Infinity;
+    const wheel = (event: WheelEvent) => {
+      const direction = getTimeWheelDirection(event.deltaY, event.deltaX, event.ctrlKey);
+      if (!direction) return;
+      event.preventDefault();
+      event.stopPropagation();
+      // Несколько событий одного движения трекпада не пролистывают сразу несколько значений.
+      if (event.timeStamp - lastWheelAt < 90) return;
+      lastWheelAt = event.timeStamp;
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      const next = Math.max(0, Math.min(max, latest.current.value + direction));
+      if (next === latest.current.value) return;
+      latest.current = { ...latest.current, value: next };
+      latest.current.onChange(next);
+    };
+    column.addEventListener("wheel", wheel, { passive: false });
+    return () => column.removeEventListener("wheel", wheel);
+  }, [max]);
 
   const selectFromScroll = () => {
     if (!ref.current) return;

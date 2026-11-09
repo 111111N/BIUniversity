@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { searchOnEnter } from "./keyboard";
 
-describe("home schedule search keyboard", () => {
+describe("shared search field keyboard", () => {
   it("runs one search and prevents the default action for an ordinary Enter", () => {
     const preventDefault = vi.fn();
     const search = vi.fn();

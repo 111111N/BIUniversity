@@ -23,7 +23,7 @@
 .workflowText { min-width: 0; p { margin: 8px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; } }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; > span { color: $color-text-secondary; font-size: 12px; line-height: 1.6; } }
 .statusBadge { display: inline-flex; padding: 4px 9px; background: $color-panel-muted; border: 1px solid $color-border; border-radius: 6px; color: $color-text-light; font-size: 13px; line-height: 1.5; font-weight: 600; }
-.statusBadge.unsaved { color: $color-link; border-color: color-mix(in srgb, #{$color-link} 45%, #{$color-panel}); background: color-mix(in srgb, #{$color-link} 6%, #{$color-panel}); }
+.statusBadge.unsaved { color: $color-link; border-color: color-mix(in srgb, #{$color-accent-primary} 45%, #{$color-panel}); background: color-mix(in srgb, #{$color-accent-primary} 6%, #{$color-panel}); }
 .error, .message, .undo, .conflicts { margin: 0; padding: 14px 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .page .error { @include admin.notice($color-error); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; white-space: pre-line; }
 .page .message { @include admin.notice($color-success); }
@@ -39,7 +39,7 @@
 .day { min-width: 0; display: grid; gap: 8px; }
 .dayHeading { display: flex; align-items: center; gap: 10px; margin: 0 0 3px; font-size: 14px; font-weight: 600; line-height: 1.6; > span { color: $color-text-secondary; font-weight: 400; font-size: 12px; } }
 .card { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 16px 18px; background: $color-panel; border: 1px solid $color-border; border-radius: 10px; min-width: 0; }
-.selectedCard { border-color: $color-link; box-shadow: inset 3px 0 $color-link; }
+.selectedCard { border-color: $color-accent-primary; box-shadow: inset 3px 0 $color-accent-primary; }
 .time { display: grid; gap: 5px; align-content: start; strong { font-size: 16px; line-height: 1.5; font-variant-numeric: tabular-nums; } span { color: $color-text-secondary; font-size: 13px; line-height: 1.6; font-variant-numeric: tabular-nums; } }
 .details { display: grid; gap: 7px; min-width: 0; > strong { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; } }
 .lessonMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }

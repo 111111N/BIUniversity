@@ -6,6 +6,7 @@ import { changesMaterialScope } from "../../domain/unsavedNavigation";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import { useFileView } from "../../hooks/useLibraryView";
 import Checkbox from "../Checkbox";
+import Card from "../Card";
 import ConfirmDialog from "../ConfirmDialog";
 import Dropdown from "../Dropdown";
 import SearchField from "../SearchField";
@@ -204,7 +205,7 @@ const FileStorage = ({
     }
   };
 
-  return <section className={styles.storage} aria-labelledby={headingId}>
+  return <Card as="section" className={styles.storage} aria-labelledby={headingId}>
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>{eyebrow}</span><h2 id={headingId}>{title}</h2><p>{description}</p></div>
       {!readOnly && <button type="button" className={styles.uploadButton} disabled={busy} aria-expanded={uploadOpen} aria-controls={uploadId} onClick={() => setUploadOpen((current) => !current)}><ArrowIcon direction="up" size={16} />{uploadOpen ? "Свернуть загрузку" : "Добавить материалы"}</button>}
@@ -239,7 +240,7 @@ const FileStorage = ({
     {!loading && !loadError && files.length === 0 && !hasFilters && !uploadOpen && <div className={styles.emptyState}><span className={styles.emptyIcon} aria-hidden="true">{readOnly ? "≡" : <ArrowIcon direction="up" size={22} />}</span><strong>{emptyHeading}</strong><p>{emptyHint}</p></div>}
     {pendingDelete && !readOnly && <ConfirmDialog title="Удалить материал?" busy={deleting} error={deleteError} onCancel={() => setPendingDelete(null)} onConfirm={() => { void deleteFile(pendingDelete.id); }}><p><strong>{pendingDelete.name}</strong></p><p>Файл исчезнет из этого раздела. Восстановить его можно только повторной загрузкой.</p></ConfirmDialog>}
     {previewFile && <FilePreview key={previewFile.id} name={previewFile.name} blob={previewFile.blob} onDownload={() => materialRepository.download(previewFile)} onClose={() => setPreviewFile(null)} />}
-  </section>;
+  </Card>;
 };
 
 export default FileStorage;

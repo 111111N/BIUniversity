@@ -109,7 +109,8 @@ const validateDocument = (value: unknown): AssessmentDocument => {
     if (!sequence.length) fail();
     itemCount += roster.length + sequence.length;
     for (const [index, attempt] of sequence.entries()) {
-      object(attempt, ["id", "number", "kind", "date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds", "results", "state", "createdAt", "createdBy", "publishedAt", "publishedBy"]);
+      object(attempt, ["id", "number", "kind", "date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds", "results", "state", "createdAt", "createdBy", "publishedAt", "publishedBy", ...(Object.hasOwn(attempt, "room") ? ["room"] : [])]);
+      if (Object.hasOwn(attempt, "room") && !string(attempt.room)) fail();
       if (!id(attempt.id) || attempts.has(attempt.id) || attempt.number !== index + 1 || !date(attempt.date) || !time(attempt.startsAt) || !id(attempt.teacherId) || !id(attempt.createdBy) || !timestamp(attempt.createdAt) || (assessment.supervisorId !== null && attempt.teacherId !== assessment.supervisorId)) fail();
       if ((index === 0 && attempt.kind !== "primary") || (index > 0 && !["retake", "commission"].includes(attempt.kind))) fail();
       const memberIds = uniqueIds(attempt.memberIds);
@@ -184,7 +185,8 @@ export const decodeAssessmentDocument = (raw: string): AssessmentDocument => {
 };
 
 const validateAttemptDraft = (draft: AssessmentAttemptDraft, context: AssessmentDomainContext, roster: Set<string>, primary: boolean): string[] => {
-  object(draft, ["date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds"]);
+  object(draft, ["date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds", ...(Object.hasOwn(draft, "room") ? ["room"] : [])]);
+  if (Object.hasOwn(draft, "room") && !string(draft.room)) fail("Укажите аудиторию длиной от 1 до 256 символов.");
   assessmentStartsAt(draft);
   const teacher = (teacherId: unknown) => id(teacherId) && context.accounts.some((account) => account.id === teacherId && account.role === "teacher" && isAccountActive(account));
   if (!teacher(draft.teacherId)) fail("Выберите активного преподавателя для заполнения ведомости.");
@@ -244,8 +246,9 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
     }
     const draft = command.type === "create" ? command.draft.attempt : command.draft;
     const attemptKind = command.type === "create" ? "primary" : command.kind;
+    if (attemptKind !== "primary" && !string(draft.room)) fail("Укажите аудиторию пересдачи.");
     if (attemptKind === "commission" ? draft.chairId === null || !draft.memberIds.length : draft.chairId !== null || draft.memberIds.length !== 0) fail("Для комиссионной попытки укажите председателя и хотя бы одного члена. У обычной попытки комиссии быть не должно.");
-    attempt = { id: generated.attemptId, number: target!.attempts.length + 1, kind: attemptKind, date: draft.date, startsAt: draft.startsAt, teacherId: draft.teacherId, chairId: draft.chairId, memberIds: [...draft.memberIds], studentIds: [...draft.studentIds], results: draft.studentIds.map((studentId) => ({ studentId, outcome: null })), state: "draft", createdAt: generated.occurredAt, createdBy: actor.id, publishedAt: null, publishedBy: null };
+    attempt = { id: generated.attemptId, number: target!.attempts.length + 1, kind: attemptKind, date: draft.date, startsAt: draft.startsAt, ...(draft.room ? { room: draft.room } : {}), teacherId: draft.teacherId, chairId: draft.chairId, memberIds: [...draft.memberIds], studentIds: [...draft.studentIds], results: draft.studentIds.map((studentId) => ({ studentId, outcome: null })), state: "draft", createdAt: generated.occurredAt, createdBy: actor.id, publishedAt: null, publishedBy: null };
     target!.attempts.push(attempt);
   } else if (command.type === "update-record-book") {
     if (actor.role !== "configurator") fail("Реквизиты зачётки изменяет только настройщик.");
@@ -283,9 +286,9 @@ export const projectAssessments = (state: AssessmentDocument, actor: PortalAccou
   if (actor.role === "configurator") return copy(state.assessments);
   if (actor.role !== "teacher" && actor.role !== "student") fail("Недостаточно прав для просмотра аттестаций.");
   return state.assessments.flatMap((assessment) => {
-    const visible = assessment.attempts.filter((attempt) => actor.role === "teacher" ? attempt.teacherId === actor.id : attempt.state === "published" && attempt.studentIds.includes(actor.id));
+    const visible = assessment.attempts.filter((attempt) => actor.role === "teacher" ? attempt.teacherId === actor.id : attempt.studentIds.includes(actor.id));
     if (!visible.length) return [];
     const students = actor.role === "student" ? new Set([actor.id]) : new Set(visible.flatMap((attempt) => attempt.studentIds));
-    return [copy({ ...assessment, roster: assessment.roster.filter((student) => students.has(student.studentId)), attempts: visible.map((attempt) => ({ ...attempt, studentIds: attempt.studentIds.filter((studentId) => students.has(studentId)), results: attempt.results.filter((result) => students.has(result.studentId)) })) })];
+    return [copy({ ...assessment, roster: assessment.roster.filter((student) => students.has(student.studentId)), attempts: visible.map((attempt) => ({ ...attempt, studentIds: attempt.studentIds.filter((studentId) => students.has(studentId)), results: actor.role === "student" && attempt.state === "draft" ? [] : attempt.results.filter((result) => students.has(result.studentId)) })) })];
   });
 };

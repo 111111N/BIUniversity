@@ -8,7 +8,7 @@ import { getStudentJournalMonths, readStudentResultFilter, resolveStudentJournal
 import { formatCount } from "../../domain/formatCount";
 import useJournalView from "../../hooks/useJournalView";
 import Dropdown from "../Dropdown";
-import ArrowCircle from "../ArrowCircle";
+import ArrowButton from "../ArrowButton";
 import LessonTypeFilter from "../LessonTypeFilter";
 import JournalSummary from "../JournalSummary";
 import { VisitMarkIcon } from "../ButtonIcons/Icons";
@@ -59,7 +59,7 @@ export default function StudentLessonJournal({ student, lessons, now }: { studen
   const period = month === "all" ? "Весь семестр" : monthLabel(month);
   return <div className={styles.journal}>
     <div className={styles.toolbar}>
-      <div className={styles.period}><Dropdown label="Период" value={month} onChange={changeMonth} options={[{ value: "all", label: "Весь семестр" }, ...months.map((value) => ({ value, label: monthLabel(value) }))]} /><div className={styles.monthButtons}><button type="button" aria-label="Предыдущий месяц" disabled={monthIndex <= 0} onClick={() => changeMonth(months[monthIndex - 1])}><ArrowCircle direction="left" /></button><button type="button" aria-label="Следующий месяц" disabled={monthIndex < 0 || monthIndex >= months.length - 1} onClick={() => changeMonth(months[monthIndex + 1])}><ArrowCircle /></button></div></div>
+      <div className={styles.period}><Dropdown label="Период" value={month} onChange={changeMonth} options={[{ value: "all", label: "Весь семестр" }, ...months.map((value) => ({ value, label: monthLabel(value) }))]} /><div className={styles.monthButtons}><ArrowButton label="Предыдущий месяц" direction="left" disabled={monthIndex <= 0} onClick={() => changeMonth(months[monthIndex - 1])} /><ArrowButton label="Следующий месяц" disabled={monthIndex < 0 || monthIndex >= months.length - 1} onClick={() => changeMonth(months[monthIndex + 1])} /></div></div>
       <LessonTypeFilter lessons={periodLessons} value={lessonType} onChange={setLessonType} />
     </div>
     <div className={styles.metrics} aria-label="Мои показатели за выбранный период">

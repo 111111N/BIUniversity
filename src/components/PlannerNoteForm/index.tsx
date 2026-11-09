@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { differenceInMinutes, startOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
 import type { PlannerNote } from "../../data/plannerStore";
 import { formatPlannerTime } from "../../domain/planner";
 import { samePlannerNote } from "../../domain/plannerDraft";
@@ -8,6 +8,7 @@ import { toLocalDateKey } from "../../domain/schedule";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import { changesPlannerTask } from "../../domain/unsavedNavigation";
 import ConfirmDialog from "../ConfirmDialog";
+import CancelButton from "../CancelButton";
 import DateTimePicker from "../DateTimePicker";
 import Dropdown from "../Dropdown";
 import Modal from "../Modal";
@@ -33,8 +34,6 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
   const deletedElsewhere = Boolean(initialNote.id) && currentNote === null;
   const day = startAt ?? plannedDay;
   const dirty = title !== initialNote.title || text !== initialNote.text || priority !== initialNote.priority || category !== initialNote.category || startAt?.getTime() !== initialNote.startAt?.getTime() || endAt?.getTime() !== initialNote.endAt?.getTime() || toLocalDateKey(day) !== toLocalDateKey(initialNote.startAt ?? initialNote.createdAt);
-  const duration = startAt && endAt ? differenceInMinutes(endAt, startAt) : 0;
-  const durationLabel = duration > 0 ? [Math.floor(duration / 60) ? `${Math.floor(duration / 60)} ч` : "", duration % 60 ? `${duration % 60} мин` : ""].filter(Boolean).join(" ") : "";
   useUnsavedChangesWarning(dirty, changesPlannerTask);
   const requestClose = () => { if (dirty) setConfirmDiscard(true); else onClose(); };
   const revealAdditionalError = () => { setAdditionalOpen(true); additionalRef.current?.setAttribute("open", ""); };
@@ -57,21 +56,20 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
     const createdAt = startAt || (!initialNote.startAt && samePlannedDay) ? initialNote.createdAt : plannedDay;
     onSave({ ...initialNote, title: title.trim() || "Без названия", text: text.trim(), createdAt, startAt, endAt, priority, category }, initialNote);
   };
-  if (confirmDiscard) return <ConfirmDialog title="Закрыть без сохранения?" confirmLabel="Не сохранять" cancelLabel="Продолжить редактирование" onConfirm={onClose} onCancel={() => setConfirmDiscard(false)}><p>Изменения в задаче не сохранены. Можно вернуться к редактированию и сохранить их.</p></ConfirmDialog>;
+  if (confirmDiscard) return <ConfirmDialog intent="discard" title="Закрыть без сохранения?" confirmLabel="Не сохранять" cancelLabel="Продолжить редактирование" onConfirm={onClose} onCancel={() => setConfirmDiscard(false)}><p>Изменения в задаче не сохранены. Можно вернуться к редактированию и сохранить их.</p></ConfirmDialog>;
   return <Modal className={styles.form} labelledBy={id} onClose={requestClose} initialFocusRef={titleRef}>
     {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The form handles Ctrl/Cmd+Enter from its fields while preserving native field controls. */}
     <form onSubmit={(event) => { event.preventDefault(); submit(); }} onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.defaultPrevented) { event.preventDefault(); submit(); } }}>
-      <header className={styles.header}><div><span>Планировщик</span><h2 id={id}>{note.id ? "Редактировать задачу" : "Новая задача"}</h2></div><button type="button" className={styles.close} onClick={requestClose} aria-label="Закрыть">×</button></header>
+      <header className={styles.header}><h2 id={id}>{title.trim() || "Новая задача"}</h2><button type="button" className={styles.close} onClick={requestClose} aria-label="Закрыть">×</button></header>
       {(changedElsewhere || deletedElsewhere) && <p className={styles.externalNotice} role="status">{deletedElsewhere ? "Задача удалена в другом месте. Черновик оставлен здесь, чтобы вы могли скопировать текст. Сохранение не восстановит удалённую задачу." : "Сохранённая задача обновилась в другом месте. Независимые правки будут объединены; при конфликте ваш черновик останется открытым."}</p>}
-      <p className={styles.day}>{day.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}<span>{startAt || endAt ? `${formatPlannerTime({ ...note, startAt, endAt })}${durationLabel ? ` · ${durationLabel}` : ""}` : "Без времени"}</span></p>
-      <fieldset className={styles.section}><legend>Задача</legend>
+      <fieldset className={styles.mainFields} aria-label="Основные параметры задачи">
       <label className={styles.field}>Название<input ref={titleRef} value={title} placeholder="Например, подготовить материалы к паре" onChange={(event) => { setTitle(event.target.value); setValidation(""); }} /></label>
       <div className={styles.field}><span>День задачи</span><DateTimePicker value={day} showTime={false} allowClear={false} onChange={changeDay} ariaLabel="День задачи" /></div>
       </fieldset>
       <details className={styles.additional} ref={additionalRef} open={additionalOpen} onToggle={(event) => setAdditionalOpen(event.currentTarget.open)}>
       <summary>Дополнительные параметры <span>{[text.trim() ? "есть описание" : "", formatPlannerTime({ ...note, startAt, endAt }), category === "study" ? "Учебная" : "Личная", `Приоритет: ${priority === "high" ? "высокий" : priority === "low" ? "низкий" : "обычный"}`].filter(Boolean).join(" · ")}</span></summary>
       <label className={styles.field}>Описание<textarea value={text} placeholder="Детали, ссылки и заметки" onChange={(event) => setText(event.target.value)} /></label>
-      <fieldset className={styles.section}><legend>Время</legend>
+      <fieldset className={styles.section} aria-label="Интервал задачи">
       <p className={styles.timeHint}>День задачи определяет, где она показана. Начало и окончание задают интервал; окончание без начала — крайний срок.</p>
       <div className={styles.columns}><div className={styles.field}><span>Начало · необязательно</span><DateTimePicker value={startAt} initialDate={plannedDay} onChange={(date) => { if (date) setPlannedDay(startOfDay(date)); setStartAt(date); setValidation(""); }} placeholder="Без времени" ariaLabel="Начало задачи" /></div><div className={styles.field}><span>Окончание · необязательно</span><DateTimePicker value={endAt} initialDate={startAt ?? plannedDay} onChange={(date) => { setEndAt(date); setValidation(""); }} placeholder="Не задано" ariaLabel="Окончание задачи" /></div></div>
       {!startAt && endAt && <p className={styles.timeHint}>Задача останется в выбранном дне. «Окончание» — её крайний срок, даже если он позже этого дня.</p>}
@@ -79,7 +77,7 @@ const PlannerNoteForm = ({ note, currentNote, error, onSave, onClose }: Props) =
       <fieldset className={styles.section}><legend>Параметры</legend><div className={`${styles.columns} ${styles.metadata}`}><Dropdown label="Категория" value={category} onChange={(value) => setCategory(value as PlannerNote["category"])} options={[{ value: "study", label: "Учебная" }, { value: "personal", label: "Личная" }]} /><Dropdown label="Приоритет" value={priority} onChange={(value) => setPriority(value as PlannerNote["priority"])} options={[{ value: "low", label: "Низкий" }, { value: "medium", label: "Обычный" }, { value: "high", label: "Высокий" }]} /></div></fieldset>
       </details>
       {(validation || error) && <p className={styles.error} role="alert">{validation || error}</p>}
-      <footer className={styles.footer}><span className={styles.saveHint}>{dirty ? "Есть несохранённые изменения" : "Ctrl / ⌘ + Enter — сохранить"}</span><div className={styles.actions}><button type="button" onClick={requestClose}>Отмена</button><button type="submit" className={styles.save}>{note.id ? "Сохранить изменения" : "Добавить задачу"}</button></div></footer>
+      <footer className={styles.actions}><CancelButton onClick={requestClose} /><button type="submit" className={styles.save} aria-keyshortcuts="Control+Enter Meta+Enter">{note.id ? "Сохранить изменения" : "Добавить задачу"}</button></footer>
     </form>
   </Modal>;
 };

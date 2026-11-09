@@ -1,30 +1,32 @@
 @use "../../styles/variables" as *;
 
 .agenda { display: grid; gap: 13px; }
-.agenda header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.agenda header > div > span { color: $color-accent-hover; font-size: .75rem; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
-.agenda h2 { margin: 4px 0 0; font-size: .93rem; }
-.agenda a { color: $color-accent-hover; text-decoration: none; }
-.agenda header a { display: inline-flex; align-items: center; min-height: 44px; gap: 3px; font-size: .8rem; }
+.agenda header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.agenda header > div:first-child { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.agenda header > div > span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; font-weight: 500; }
+.agenda h2 { margin: 4px 0 0; font-size: 18px; line-height: 1.5; font-weight: 600; }
+.agenda a { color: $color-link; text-decoration: none; }
+.agenda header a:hover, .empty a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.agenda header a { display: inline-flex; align-items: center; min-height: 44px; gap: 3px; font-size: 13px; }
 .dayEmpty { margin: 0; color: $color-text-secondary; font-size: .8rem; line-height: 1.5; }
 .agenda a:focus-visible, .agenda button:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 2px; }
-.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-.actions button, .empty .planButton { min-height: 44px; padding: 7px 10px; border: 1px solid theme-alpha($color-accent-primary, .35); border-radius: 7px; background: $color-accent-background-hover; color: $color-accent-hover; font-size: .65rem; }
-.actions button:hover, .empty .planButton:hover { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.actions button, .empty .planButton { min-height: 44px; padding: 8px 12px; border: 1px solid $color-control-border; border-radius: 8px; background: $color-panel; color: $color-text-light; font-size: 13px; font-weight: 500; }
+.actions button:hover, .empty .planButton:hover { border-color: $color-accent-primary; background: $color-control-hover; color: $color-text-light; }
 .empty .planButton { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; flex-shrink: 0; }
 .tasks { display: grid; gap: 6px; }
-.task { display: grid; grid-template-columns: 16px minmax(0, 1fr) 28px; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid $color-border; border-radius: 9px; background: $color-dark-secondary; }
+.task { display: grid; grid-template-columns: 16px minmax(0, 1fr) 28px; align-items: center; min-height: 44px; gap: 9px; padding: 9px 11px; border: 1px solid $color-border; border-radius: 9px; background: $color-panel-muted; }
 .task:hover, .task:focus-visible { border-color: $color-accent-primary; background: $color-accent-background-hover; }
 .task > span:nth-child(2) { display: grid; min-width: 0; gap: 4px; }
-.task strong { color: $color-text-light; font-size: .73rem; font-weight: 500; overflow-wrap: anywhere; }
+.task strong { color: $color-text-light; font-size: 14px; line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
 .task small { color: $color-text-secondary; font-size: .75rem; }
 .marker { display: grid; place-items: center; width: 14px; height: 14px; border: 1px solid $color-border; border-radius: 4px; font-size: .6rem; }
 .marker.high { border-color: $color-error; }
 .completed .marker { border-color: $color-success; background: theme-alpha($color-success, .1); color: $color-success; }
 .completed strong { color: $color-text-secondary; text-decoration: line-through; }
 .empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 13px; border: 1px dashed $color-border; border-radius: 9px; }
-.empty strong { color: $color-text-light; font-size: .74rem; font-weight: 500; }
-.empty p { margin: 5px 0 0; color: $color-text-secondary; font-size: .63rem; line-height: 1.5; }
-.empty a { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; font-size: .64rem; }
-.error { margin: 0; color: $color-error; font-size: .7rem; line-height: 1.5; }
+.empty strong { color: $color-text-light; font-size: 14px; line-height: 1.5; font-weight: 500; }
+.empty p { margin: 5px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
+.empty a { display: inline-flex; align-items: center; min-height: 44px; gap: 3px; flex-shrink: 0; font-size: 13px; }
+.error { margin: 0; color: $color-danger-text; font-size: 13px; line-height: 1.6; }
 @media (max-width: 620px) { .empty { align-items: start; flex-direction: column; } .agenda header { flex-wrap: wrap; } }

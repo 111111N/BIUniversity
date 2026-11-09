@@ -14,8 +14,9 @@ const ArrowCircle = ({ direction = "right", color, hoverColor, hoverBackground, 
   <span
     className={`${styles.circle} ${styles[direction]} ${className}`}
     style={{
-      "--arrow-circle-color": color,
-      "--arrow-circle-hover-color": hoverColor,
+      "--arrow-circle-color": color === "inherit" ? "currentColor" : color,
+      // В custom property `inherit` наследует саму переменную, а не цвет текста.
+      "--arrow-circle-hover-color": hoverColor === "inherit" ? "currentColor" : hoverColor,
       "--arrow-circle-hover-background": hoverBackground,
     } as CSSProperties}
     aria-hidden="true"

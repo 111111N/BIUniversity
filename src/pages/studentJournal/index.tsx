@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import AssignmentCenter from "../../components/AssignmentCenter";
+import Card from "../../components/Card";
 import StudentLessonJournal from "../../components/StudentLessonJournal";
 import JournalMaterials from "../../components/JournalMaterials";
 import Tabs from "../../components/Tabs";
@@ -46,9 +47,6 @@ const StudentJournal = () => {
 
   if (!subject || !group) return (
     <div className={`pageContainer ${catalogStyles.page}`}>
-      <header className={catalogStyles.pageHeader}>
-        <nav className={catalogStyles.breadcrumbs} aria-label="Навигационная цепочка"><span aria-current="page">Журнал</span></nav>
-      </header>
       <div className={catalogStyles.catalogTools}><SearchField label="Найти дисциплину" value={catalogQuery} onChange={setCatalogQuery} placeholder="Название дисциплины" /></div>
       {catalogQuery.trim() && <p className={catalogStyles.resultLine} role="status">Найдено: {visibleSubjects.length} из {subjects.length}</p>}
       <div className={catalogStyles.subjectsGrid}>
@@ -56,7 +54,7 @@ const StudentJournal = () => {
           const membershipGroupId = currentUser.memberships.find((membership) => membership.subjectId === item.id)?.groupIds[0] ?? "";
           const membershipGroup = item.groups.find((entry) => entry.id === membershipGroupId);
           return (
-          <section className={`${catalogStyles.subjectCard} ${catalogStyles[item.color]}`} key={item.id}>
+          <Card as="section" className={`${catalogStyles.subjectCard} ${catalogStyles[item.color]}`} key={item.id}>
             <header className={catalogStyles.subjectHeader}>
               <div className={catalogStyles.subjectIcon}>{item.shortName}</div>
               <div><Link className={catalogStyles.subjectLink} to={`/journal/${item.id}`}><h2>{item.name}</h2></Link><p>{item.semester}</p></div>
@@ -67,7 +65,7 @@ const StudentJournal = () => {
                 <span>Посещаемость, оценки, задания и материалы</span>
               </Link>
             </div>
-          </section>
+          </Card>
           );
         })}
       </div>
@@ -85,13 +83,13 @@ const StudentJournal = () => {
         </div>
       </header>
       <Tabs className={styles.studentTabs} ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Мои результаты" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }]} />
-      {activeSection === "journal" && <section className={styles.tableSection}>
+      {activeSection === "journal" && <Card as="section" className={styles.tableSection}>
         {journal.error && <p className={styles.pageError} role="alert">{journal.error}</p>}
         {student ? <StudentLessonJournal student={student} lessons={lessons} now={now} /> : <p>Записи студента пока не найдены.</p>}
-      </section>}
-      {activeSection === "assignments" && <section className={styles.tableSection}>
+      </Card>}
+      {activeSection === "assignments" && <Card as="section" className={styles.tableSection}>
         <AssignmentCenter key={`${subject.id}:${group.id}`} subject={subject.name} group={group.name} />
-      </section>}
+      </Card>}
       {activeSection === "materials" && <div className={styles.groupMaterials}>
         <JournalMaterials subject={subject} group={group} readOnly />
       </div>}

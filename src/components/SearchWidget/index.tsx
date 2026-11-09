@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "./index.module.scss";
-import SearchInput from "./search";
+import SearchField from "../SearchField";
+import PickerButton from "../PickerButton";
 
 interface SearchProps {
   searchMode: "group" | "auditorium";
@@ -18,35 +19,28 @@ const Search: React.FC<SearchProps> = ({ searchMode, setSearchMode, query, setQu
   return (
     <div className={styles.dashboardCard}>
       <div className={styles.toggleRow}>
-        <button
-          type="button"
+        <PickerButton
           aria-pressed={searchMode === "auditorium"}
-          className={`${styles.toggleButton} ${searchMode === "auditorium" ? styles.active : ""}`}
           onClick={() => setSearchMode("auditorium")}
         >
           Поиск по аудитории
-        </button>
-        <button
-          type="button"
+        </PickerButton>
+        <PickerButton
           aria-pressed={searchMode === "group"}
-          className={`${styles.toggleButton} ${searchMode === "group" ? styles.active : ""}`}
           onClick={() => setSearchMode("group")}
         >
           Поиск по группе
-        </button>
+        </PickerButton>
       </div>
 
-      <p className={styles.hint}>Введите группу или аудиторию. Без запроса откроется полное расписание.</p>
-      <SearchInput
-        buttonLabel={searchAction}
-        query={query}
-        setQuery={setQuery}
+      <SearchField
+        searchButtonLabel={searchAction}
+        value={query}
+        onChange={setQuery}
         label={searchLabel}
-        labelClassName={styles.searchLabel}
+        hideLabel
+        placeholder=""
         onSearch={onSearch}
-        containerClassName={styles.searchRow}
-        inputClassName={styles.input}
-        searchButtonClassName={styles.searchButton}
       />
     </div>
   );

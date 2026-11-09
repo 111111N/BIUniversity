@@ -22,7 +22,7 @@ const RoleSwitcher = () => {
   return (
     <div className={styles.wrapper}>
       <span className={styles.label}>Демо-режим</span>
-      <Dropdown label="Демонстрационная учётная запись" searchable hideLabel value={currentUser.id} options={accounts.filter(isAccountActive).map((account) => ({ value: account.id, label: `${account.name} · ${ACCOUNT_ROLE_LABELS[account.role]}`, searchText: account.login }))} onChange={selectDemoAccount} disabled={Boolean(accountError)} />
+      <Dropdown label="Демонстрационная учётная запись" searchable hideLabel menuPlacement="top" value={currentUser.id} options={accounts.filter(isAccountActive).map((account) => ({ value: account.id, label: `${account.name} · ${ACCOUNT_ROLE_LABELS[account.role]}`, searchText: account.login }))} onChange={selectDemoAccount} disabled={Boolean(accountError)} />
       {accountError && <p className={styles.error} role="alert">{accountError}</p>}
       <DemoDataManager />
       {currentUser.role === "configurator" && isAccountActive(currentUser) && !accountError && <NavLink className={styles.utility} to="/admin/data">Резервная копия данных</NavLink>}

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import type { ScheduleItem } from "../../types/sched";
 import { scheduleLessonTypeLabels } from "../../domain/scheduleLayout";
 import ArrowCircle from "../ArrowCircle";
@@ -26,4 +26,4 @@ const ScheduleCard = ({ item, compact = false, short = false, grid = false, list
   return <button type="button" data-schedule-lesson={item.id} className={className} style={style} onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onOpen(item); }} aria-haspopup="dialog" aria-label={label} title={title}>{content}</button>;
 };
 
-export default ScheduleCard;
+export default memo(ScheduleCard);

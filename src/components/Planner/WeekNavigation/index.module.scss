@@ -1,27 +1,17 @@
 ﻿@use "../../../styles/variables" as *;
 @use "../../../styles/switches" as switches;
 
-.navigation { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.navigation { display: flex; flex: 1 1 300px; min-width: 0; align-items: center; flex-wrap: wrap; gap: 12px; }
 .days { display: flex; flex-wrap: wrap; gap: 6px; }
 .day { @include switches.button; position: relative; gap: 6px; padding-inline: 10px; }
 .day > span { text-transform: capitalize; }
 .day strong { font-weight: 600; }
 .day small { @include switches.counter; }
-.day.selected { border-color: theme-alpha($color-text-secondary, .5); background: $color-ghost; color: $color-text-light; }
-.today::after { content: ""; position: absolute; bottom: 3px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: $color-accent-primary; }
-.scrollTools { display: flex; align-items: center; gap: 6px; }
-.scrollTools > span { margin-right: 6px; color: $color-text-secondary; font-size: 12px; }
-.scrollTools button { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; padding: 10px; border: 1px solid $color-border; background: transparent; }
-.scrollTools svg { width: 20px; height: 20px; }
-:root[data-theme="light"] .day.selected { border-color: theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; color: $color-accent-primary; }
-:root[data-theme="light"] .day.selected small { background: $color-dark-secondary; color: $color-accent-primary; }
-:root[data-theme="light"] .scrollTools button { background: $color-dark-secondary; color: $color-text-secondary; }
-:root[data-theme="light"] .scrollTools button:not(:disabled):hover { border-color: theme-alpha($color-accent-primary, .35); background: $color-accent-background-hover; color: $color-accent-primary; }
+.day:hover, .day:focus-visible { border-color: transparent; }
+.day[aria-current="date"]::after { content: ""; position: absolute; bottom: 3px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: $color-accent-primary; }
 @media(max-width: 600px) {
   .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); width: 100%; gap: 3px; }
   .day { flex-direction: column; gap: 3px; padding: 8px 2px; font-size: 12px; }
   .day strong { font-size: 14px; }
   .day small { min-width: 16px; height: 16px; font-size: 11px; }
-  .scrollTools { width: 100%; }
-  .scrollTools > span { flex: 1; }
 }

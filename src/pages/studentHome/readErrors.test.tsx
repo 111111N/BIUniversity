@@ -26,6 +26,26 @@ beforeEach(() => {
 afterEach(() => { values.clear(); refreshAcademicCatalog(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("home read failure presentation", () => {
+  it("keeps the teacher's search and daily tools before the attention panel and calendar", () => {
+    const markup = render(true);
+    const search = markup.indexOf("Поиск по аудитории");
+    const schedule = markup.indexOf('id="home-schedule"');
+    const tasks = markup.indexOf('id="home-tasks"');
+    const metrics = markup.indexOf('aria-labelledby="home-stats-title"');
+    const attention = markup.indexOf('aria-labelledby="home-focus-title"');
+    const calendar = markup.indexOf('aria-labelledby="home-calendar-title"');
+    expect(search).toBeGreaterThan(-1);
+    expect(schedule).toBeGreaterThan(search); expect(tasks).toBeGreaterThan(schedule);
+    expect(metrics).toBeGreaterThan(tasks); expect(attention).toBeGreaterThan(metrics); expect(calendar).toBeGreaterThan(attention);
+    expect(markup).not.toContain("<h1>Главная</h1>");
+    expect(markup).toMatch(/aria-pressed="true"[^>]*>Поиск по группе<\/button>/);
+  });
+  it("keeps the student's auditorium search first, attention second and study summary last", () => {
+    const markup = render();
+    expect(markup.indexOf("Поиск по аудитории")).toBeLessThan(markup.indexOf("Что требует внимания"));
+    expect(markup.indexOf("Что требует внимания")).toBeLessThan(markup.indexOf("Учебный обзор"));
+    expect(markup).toMatch(/aria-pressed="true"[^>]*>Поиск по аудитории<\/button>/);
+  });
   it.each([false, true])("does not claim everything is under control when assignments are unreadable (staff: %s)", (staff) => {
     values.set("bi-university-demo-assignments", "bad-json");
     const markup = render(staff);

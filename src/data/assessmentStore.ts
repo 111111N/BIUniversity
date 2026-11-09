@@ -1,8 +1,9 @@
-import { getStudentGroupId, isAccountActive } from "../domain/accounts";
+import { createAccount, decodeAccountsDocument, getStudentGroupId, isAccountActive } from "../domain/accounts";
 import { isStudyingStudent } from "../domain/studentEnrollment";
 import { applyAssessmentCommand, decodeAssessmentDocument, emptyAssessmentDocument, projectAssessments } from "../domain/assessments";
 import type { AssessmentCommand, AssessmentDocument, AssessmentService, AssessmentSnapshot } from "../domain/assessmentTypes";
-import { readAccountsState, subscribeAccounts } from "./accountStore";
+import { ACCOUNTS_STORAGE_KEY, createInitialAccountsDocument, readAccountsState, subscribeAccounts } from "./accountStore";
+import { appendAssessmentDemo, repairAssessmentDemoText } from "./demo/assessments";
 import { ACADEMIC_GROUPS, refreshAcademicCatalog, readSubjectCatalogDocument, SUBJECT_CATALOG_CHANGE_EVENT, SUBJECT_CATALOG_STORAGE_KEY } from "./academicCatalog";
 import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY, readGroupCatalogDocument } from "./groupCatalogRead";
 import { executeAdministrationWrite } from "./administrationWrite";
@@ -12,7 +13,7 @@ export const ASSESSMENTS_CHANGE_EVENT = "bi-university-assessments-change";
 
 const readDocument = (): AssessmentDocument => {
   const raw = localStorage.getItem(ASSESSMENTS_STORAGE_KEY);
-  return raw === null ? emptyAssessmentDocument() : decodeAssessmentDocument(raw);
+  return raw === null ? emptyAssessmentDocument() : repairAssessmentDemoText(decodeAssessmentDocument(raw));
 };
 
 const readContext = (actorId: string) => {
@@ -52,6 +53,37 @@ const subscribe = (listener: () => void): (() => void) => {
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", visibility);
   };
 };
+
+/** Explicit demo import only; ordinary reads never seed data. */
+export const appendAssessmentDemoRecords = (): Promise<{ assessments: number; assessmentAttempts: number }> => executeAdministrationWrite(() => {
+  const state = readDocument();
+  const { context } = readContext("configurator-demo");
+  const rawAccounts = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+  let accounts = rawAccounts === null ? createInitialAccountsDocument() : decodeAccountsDocument(rawAccounts);
+  const now = new Date();
+  let addedAccount = false;
+  if (!context.accounts.some((account) => account.role === "teacher" && account.id !== "teacher-elena-volkova" && isAccountActive(account))) {
+    const actor = accounts.accounts.find((account) => account.id === "configurator-demo")!;
+    accounts = createAccount(accounts, { actorId: actor.id, actorRevision: actor.revision, expectedRevision: accounts.revision, draft: { name: "Иван Петров (демо-комиссия)", login: "demo.assessment.commission", role: "teacher", memberships: [] } }, "demo-assessment-commission-teacher", "demo-assessment-commission-teacher:created", now.toISOString());
+    decodeAccountsDocument(JSON.stringify(accounts));
+    context.accounts = accounts.accounts;
+    context.accountsRevision = accounts.revision;
+    addedAccount = true;
+  }
+  const next = appendAssessmentDemo(state, context, now);
+  const counts = { assessments: next.assessments.length - state.assessments.length, assessmentAttempts: next.assessments.reduce((sum, item) => sum + item.attempts.length, 0) - state.assessments.reduce((sum, item) => sum + item.attempts.length, 0) };
+  if (!counts.assessments) return counts;
+  const serialized = JSON.stringify(next);
+  decodeAssessmentDocument(serialized);
+  // Persist the referenced account first. A failed assessment write can be retried without duplicating it.
+  if (addedAccount) {
+    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("bi-university-accounts-change"));
+  }
+  localStorage.setItem(ASSESSMENTS_STORAGE_KEY, serialized);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(ASSESSMENTS_CHANGE_EVENT));
+  return counts;
+});
 
 /** The UI depends on this asynchronous boundary, rather than local storage or account documents. */
 export const assessmentService: AssessmentService = {

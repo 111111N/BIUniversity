@@ -31,8 +31,13 @@ describe("schedule layout and search", () => {
     expect(filterSchedule(schedule, "teacher", "неизвестный")).toEqual([]);
   });
   it("keeps a useful time range while including early and late lessons", () => {
-    expect(getScheduleRange(schedule)).toEqual({ start: 480, end: 960 });
+    expect(getScheduleRange(schedule)).toEqual({ start: 480, end: 1260 });
     expect(getScheduleRange([item(1, "07:15", "08:00"), item(2, "20:30", "22:15")])).toEqual({ start: 420, end: 1380 });
+  });
+  it("keeps the same evening scale for a short student day and an empty source", () => {
+    expect(getScheduleRange([item(1, "08:30", "10:00")])).toEqual({ start: 480, end: 1260 });
+    expect(getScheduleRange([])).toEqual({ start: 480, end: 1260 });
+    expect(getScheduleRange([item(1, "invalid", "11:00"), item(2, "10:00", "09:00")])).toEqual({ start: 480, end: 1260 });
   });
   it("preserves exact offsets and durations without viewport-dependent sizing", () => {
     const [entry] = layoutScheduleDay([item(1, "08:30", "10:00")], 480, 2);

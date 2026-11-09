@@ -1,14 +1,12 @@
 @use "variables" as *;
 
 @mixin workspace {
-  --ui-link: var(--ui-accent-primary);
-  --ui-action-primary: var(--ui-accent-primary);
-  --ui-action-hover: var(--ui-accent-hover);
-  --ui-control-border: var(--ui-border);
-  --dropdown-accent: var(--ui-accent-primary);
-  --dropdown-control: var(--ui-dark-tertiary);
-  --dropdown-control-border: var(--ui-border);
-  --dropdown-control-active: var(--ui-dark-tertiary);
+  --ui-control-border: var(--ui-admin-control-border);
+  --dropdown-control: var(--ui-dark-primary);
+  --dropdown-control-border: var(--ui-picker-border);
+  --ui-dark-secondary: var(--ui-panel);
+  --ui-dark-tertiary: var(--ui-field);
+  --ui-gradient-logo: linear-gradient(to left, var(--ui-action-primary), var(--ui-accent-secondary));
 }
 
 // Apply to action controls, leaving calendars, tabs and search controls to their components.
@@ -19,32 +17,44 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  min-height: 46px;
+  min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid $color-border;
+  border: 1px solid $color-control-border;
   border-radius: 8px;
-  background: $color-dark-tertiary;
-  color: $color-text-secondary;
+  background: $color-panel;
+  color: $color-text-light;
   font: inherit;
-  font-size: $font-size-base;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1.4;
   text-decoration: none;
   text-align: center;
   overflow-wrap: anywhere;
   cursor: pointer;
-  &:not(:disabled):hover { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+  &:not(:disabled):hover { border-color: $color-accent-primary; background: $color-control-hover; color: $color-text-light; }
   &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
-  &:disabled { opacity: .55; cursor: not-allowed; color: $color-text-secondary; box-shadow: none; }
+  &:disabled { opacity: 1; cursor: not-allowed; color: $color-text-secondary; background: $color-panel-muted; border-color: $color-border; box-shadow: none; }
 }
 
 @mixin primary {
-  background: $color-accent-primary;
-  border-color: $color-accent-primary;
+  background: $color-action-primary;
+  border-color: $color-action-primary;
   color: $color-on-accent;
   font-weight: 600;
-  &:not(:disabled):hover { background: $color-accent-hover; border-color: $color-accent-hover; color: $color-on-accent; }
-  &:disabled { opacity: .55; background: $color-dark-tertiary; border-color: $color-border; color: $color-text-secondary; cursor: not-allowed; }
+  &:not(:disabled):hover { background: $color-action-hover; border-color: $color-action-hover; color: $color-on-accent; }
+  &:disabled { opacity: 1; background: $color-panel-muted; border-color: $color-border; color: $color-text-secondary; cursor: not-allowed; }
+}
+
+@mixin text-button {
+  border-color: transparent;
+  background: transparent;
+  color: $color-text-secondary;
+  &:not(:disabled):hover {
+    border-color: transparent;
+    background: transparent;
+    color: $color-accent-primary;
+  }
+  &:disabled { border-color: transparent; background: transparent; }
 }
 
 @mixin notice($color) {

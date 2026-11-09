@@ -9,7 +9,7 @@ const teacher = account("teacher", "teacher");
 const student = account("student", "student", { studentGroupId: "group" });
 const other = account("other", "student", { studentGroupId: "group", status: "blocked" });
 const context = (): AssessmentDomainContext => ({ accounts: [config, teacher, student, other, account("chair", "teacher"), account("member", "teacher"), account("stranger", "teacher")], accountsRevision: 3, groups: [{ id: "group", name: "Группа" }], groupRevision: 2, subjects: [{ id: "subject", name: "Дисциплина" }], subjectRevision: 4 });
-const attemptDraft = (patch: Partial<AssessmentAttemptDraft> = {}): AssessmentAttemptDraft => ({ date: "2026-11-06", startsAt: "09:00", teacherId: teacher.id, studentIds: [student.id, other.id], chairId: null, memberIds: [], ...patch });
+const attemptDraft = (patch: Partial<AssessmentAttemptDraft> = {}): AssessmentAttemptDraft => ({ date: "2026-11-06", startsAt: "09:00", room: "A-101", teacherId: teacher.id, studentIds: [student.id, other.id], chairId: null, memberIds: [], ...patch });
 const draft = (patch: Partial<AssessmentDraft> = {}): AssessmentDraft => ({ title: "Экзамен по дисциплине", kind: "exam", subjectId: "subject", groupId: "group", period: "Осень 2026", attempt: attemptDraft(), ...patch });
 type Payload = { [K in AssessmentCommand["type"]]: Omit<Extract<AssessmentCommand, { type: K }>, "actorId" | "actorRevision" | "expectedRevision" | "accountsRevision" | "groupRevision" | "subjectRevision"> }[AssessmentCommand["type"]];
 const execute = (state: AssessmentDocument, payload: Payload, actor = config, domain = context(), occurredAt = "2026-11-06T10:00:00.000Z") => applyAssessmentCommand(state, { ...payload, actorId: actor.id, actorRevision: actor.revision, expectedRevision: state.revision, accountsRevision: domain.accountsRevision, groupRevision: domain.groupRevision, subjectRevision: domain.subjectRevision }, domain, { assessmentId: `assessment-${state.revision}`, attemptId: `attempt-${state.revision}`, historyId: `history-${state.revision}`, occurredAt });
@@ -121,6 +121,24 @@ describe("assessment commands", () => {
 });
 
 describe("assessment document integrity", () => {
+  it("accepts legacy attempts without rooms without rewriting history", () => {
+    const state = add(published(), "commission", { chairId: "chair", memberIds: ["member"] });
+    for (const attempt of state.assessments[0].attempts) delete attempt.room;
+    expect(decodeAssessmentDocument(JSON.stringify(state))).toEqual(state);
+    expect(add(publish(save(state, [{ studentId: student.id, outcome: { status: "graded", grade: 3 } }]))).history.slice(0, state.history.length)).toEqual(state.history);
+  });
+  it.each(["", " ", "A".repeat(257), "A\nB"])("rejects invalid room %j", (room) => {
+    expect(() => add(published(), "retake", { room })).toThrow();
+    expect(() => add(published(), "commission", { room, chairId: "chair", memberIds: ["member"] })).toThrow();
+    expect(corrupt(create(), (state) => { state.assessments[0].attempts[0].room = room; })).toThrow();
+  });
+  it("requires rooms for new retakes and commissions but not primary attempts", () => {
+    const attempt = attemptDraft(); delete attempt.room;
+    expect(create({ attempt }).assessments[0].attempts[0].room).toBeUndefined();
+    for (const kind of ["retake", "commission"] as const) {
+      expect(() => execute(published(), { type: "add-attempt", assessmentId: "assessment-0", kind, draft: { ...attempt, ...(kind === "commission" ? { chairId: "chair", memberIds: ["member"] } : {}) } })).toThrow();
+    }
+  });
   it("round trips a complete history of primary, retake and commission", () => {
     let state = add(published()); state = publish(save(state, [{ studentId: student.id, outcome: { status: "graded", grade: 2 } }]));
     state = add(state, "commission", { chairId: "chair", memberIds: ["member"] });
@@ -249,8 +267,17 @@ describe("record book metadata and legacy compatibility", () => {
 });
 
 describe("assessment projections", () => {
-  it("does not expose drafts to students or another student's results/identity", () => {
-    expect(projectAssessments(save(create()), student)).toEqual([]);
+  it.each(["primary", "retake", "commission"] as const)("shows future %s schedules only to participants, with no results", (kind) => {
+    const fields = { date: "2099-11-06", room: "B-202", ...(kind === "commission" ? { chairId: "chair", memberIds: ["member"] } : {}) };
+    const state = kind === "primary" ? create({ attempt: attemptDraft({ ...fields, studentIds: [student.id] }) }) : add(published(), kind, fields);
+    const own = projectAssessments(state, student)[0];
+    expect(own.attempts.at(-1)).toMatchObject({ kind, date: fields.date, room: "B-202", state: "draft", studentIds: [student.id], results: [] });
+    expect(own.roster.map((row) => row.studentId)).toEqual([student.id]);
+    expect(projectAssessments(state, account("outsider", "student"))).toEqual([]);
+    expect(state.assessments[0].attempts.at(-1)!.results).toHaveLength(1);
+  });
+  it("exposes draft schedules but not unpublished results or another student's identity", () => {
+    expect(projectAssessments(save(create()), student)[0].attempts[0].results).toEqual([]);
     const state = add(published(), "retake", { teacherId: "stranger", studentIds: [other.id] });
     const projection = projectAssessments(state, student);
     expect(projection[0].roster.map((row) => row.studentId)).toEqual([student.id]);

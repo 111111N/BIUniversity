@@ -7,6 +7,19 @@ describe("SearchField appearance variants", () => {
     const html = renderToStaticMarkup(<SearchField label="Поиск" value="" onChange={() => undefined} />);
     expect(html).toContain('type="search"');
     expect(html).not.toContain("<svg");
+    expect(html).not.toContain("enterKeyHint");
+    expect(html).not.toContain('aria-label="Найти"');
+  });
+
+  it("supports an explicit search action while retaining an accessible hidden label", () => {
+    const html = renderToStaticMarkup(<SearchField hideLabel label="Аудитория" value="424/1" placeholder="" onChange={() => undefined} onSearch={() => undefined} searchButtonLabel="Найти расписание" />);
+    const inputId = html.match(/<input[^>]*id="([^"]+)"/)?.[1];
+    expect(inputId).toBeTruthy();
+    expect(html).toMatch(new RegExp(`<label[^>]*for="${inputId}"[^>]*>Аудитория</label>`));
+    expect(html).toContain('enterKeyHint="search"');
+    expect(html).toContain('aria-label="Найти расписание"');
+    expect(html).toContain('aria-label="Очистить: Аудитория"');
+    expect(html).not.toContain("<form");
   });
 
   it("renders a decorative magnifier beside the input when requested", () => {

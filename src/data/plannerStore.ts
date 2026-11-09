@@ -57,8 +57,14 @@ export const subscribePlannerStore = (listener: () => void, userId = LEGACY_OWNE
 export const appendPlannerDemoNotes = (notes: PlannerNote[], userId = LEGACY_OWNER_ID) => {
   const current = readPlannerState(userId);
   if (current.error) throw new PlannerWriteError(current.error);
-  const ids = new Set(current.notes.map((note) => note.id));
-  const added = notes.filter((note) => !ids.has(note.id));
+  const savedById = new Map(current.notes.map((note) => [note.id, note]));
+  const added = notes.filter((note) => {
+    if (savedById.has(note.id)) return false;
+    const legacyIndex = /^demo-expanded-v1:planner:\d{4}-\d{2}-\d{2}:(\d+)$/.exec(note.id)?.[1];
+    const legacy = legacyIndex === undefined ? undefined : savedById.get(`demo-expanded-v1:planner:${legacyIndex}`);
+    // Старый набор этой даты сохраняется под прежними ID вместе с пользовательскими правками.
+    return !legacy || legacy.createdAt.getTime() !== note.createdAt.getTime();
+  });
   if (!added.length) return 0;
   localStorage.setItem(getPlannerStorageKey(userId), JSON.stringify([...current.notes, ...added]));
   window.dispatchEvent(new Event(CHANGE_EVENT));

@@ -4,6 +4,7 @@ import type { PlannerNote } from "../plannerStore";
 import { DEMO_SUBJECTS, getAcademicGroup, getSubjectGroups } from "../academicCatalog";
 import { getJournalSnapshot } from "../journalStore";
 import { getDemoWeekSchedule } from "../schedule";
+import { toLocalDateKey } from "../../domain/schedule";
 
 const PREFIX = "demo-expanded-v1";
 const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -88,6 +89,6 @@ export const createPlannerDemo = (anchor: Date): PlannerNote[] => {
   ];
   return templates.map(([offset, title, text, priority, category, start, end], index) => {
     const day = addDays(monday, offset);
-    return { id: `${PREFIX}:planner:${index}`, title, text, priority, category, completed: [0, 2, 4].includes(index), createdAt: dateAt(day, 0), ...(start !== undefined ? { startAt: dateAt(day, start) } : {}), ...(end !== undefined ? { endAt: dateAt(addDays(day, start !== undefined && end < start ? 1 : 0), end) } : {}) };
+    return { id: `${PREFIX}:planner:${toLocalDateKey(monday)}:${index}`, title, text, priority, category, completed: [0, 2, 4].includes(index), createdAt: dateAt(day, 0), ...(start !== undefined ? { startAt: dateAt(day, start) } : {}), ...(end !== undefined ? { endAt: dateAt(addDays(day, start !== undefined && end < start ? 1 : 0), end) } : {}) };
   });
 };

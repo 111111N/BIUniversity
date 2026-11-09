@@ -1,6 +1,5 @@
 @use "../../styles/readability" as readability;
 @use "../../styles/variables" as *;
-@use "../../styles/mixins" as *;
 
 .page { position: relative; z-index: 1; box-sizing: border-box; }
 .pageHeader { margin-bottom: 18px; }
@@ -8,10 +7,10 @@
 .breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px; color: $color-text-secondary; font-size: readability.$caption; }
 .breadcrumbs a { color: $color-accent-primary; text-decoration: none; }
 .breadcrumbs a:hover { color: $color-accent-hover; }
-.subjectsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.subjectsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .singleSubject { grid-template-columns: 1fr; }
 .singleSubject .groupsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.subjectCard { @include dashboard-card($color-dark-tertiary, 18px); position: relative; overflow: hidden; }
+.subjectCard { position: relative; overflow: hidden; }
 .subjectCard::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--subject-accent); }
 .red { --subject-accent: #{$color-accent-primary}; --subject-glow: #{$color-accent-background}; }
 .purple { --subject-accent: #{$color-accent-added}; --subject-glow: #{theme-alpha($color-accent-added, .2)}; }
@@ -21,12 +20,12 @@
 .subjectIcon { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid var(--subject-accent); border-radius: 12px; background: var(--subject-glow); color: var(--subject-accent); font-size: readability.$control; font-weight: 800; }
 .subjectCard:hover .subjectHeader p, .subjectCard:hover .groupsCounter, .subjectCard:hover .subjectLink h2 { color: $color-text-light; }
 .subjectLink { color: inherit; text-decoration: none; }
-.subjectLink h2 { margin: 0 0 5px; font-size: 1rem; }
+.subjectLink h2 { margin: 0 0 5px; font-size: 18px; font-weight: 600; line-height: 1.5; }
 .subjectLink:hover h2 { color: var(--subject-accent); }
 .subjectHeader p { margin: 0; color: $color-text-secondary; font-size: readability.$caption; }
 .groupsCounter { color: $color-text-secondary; font-size: readability.$caption; }
 .groupsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.groupCard { display: block; min-width: 0; padding: 13px; border: 2px solid $color-border; border-radius: $border-radius; background: $color-dark-tertiary; color: inherit; text-decoration: none; transition: border-color .15s ease, transform .15s ease, background .15s ease; }
+.groupCard { display: block; min-width: 0; padding: 13px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel-muted; color: inherit; text-decoration: none; transition: border-color .15s ease, transform .15s ease, background .15s ease; }
 .groupCard:hover { border-color: var(--subject-accent); background: var(--subject-glow); color: $color-text-light; transform: translateY(-2px); }
 .groupCard:hover .groupTopline strong, .groupCard:hover > span { color: $color-text-light; }
 .groupTopline { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

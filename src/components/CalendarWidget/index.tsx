@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { getCalendarMonthDays, getDayInMonth, parseCalendarDate } from "../../domain/calendar";
 import { toLocalDateKey } from "../../domain/schedule";
-import ArrowCircle from "../ArrowCircle";
+import ArrowButton from "../ArrowButton";
 import Tooltip from "../Tooltip";
 import styles from "./index.module.scss";
 
@@ -10,12 +10,11 @@ interface CalendarProps {
   selectedDate?: Date;
   onSelectDate?(date: Date): void;
   getDaySummary?(date: Date): { lessons: number | null; tasks: number | null };
-  summaryLinks?: boolean;
 }
 
 const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary, summaryLinks = false }: CalendarProps) => {
+const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary }: CalendarProps) => {
   const today = new Date();
   const selectedKey = toLocalDateKey(selectedDate ?? today);
   const [firstMonth, setFirstMonth] = useState(() => new Date((selectedDate ?? today).getFullYear(), (selectedDate ?? today).getMonth(), 1));
@@ -70,9 +69,9 @@ const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary, summa
 
   return <div className={styles.calendarWidget} ref={calendarRef}>
     <div className={styles.calendarToolbar}>
-      <button type="button" className={styles.navButton} onClick={() => moveMonth(-1)} aria-label="Предыдущий месяц"><ArrowCircle direction="left" /></button>
+      <ArrowButton onClick={() => moveMonth(-1)} label="Предыдущий месяц" direction="left" />
       <strong aria-live="polite" aria-atomic="true">{title}</strong>
-      <button type="button" className={styles.navButton} onClick={() => moveMonth(1)} aria-label="Следующий месяц"><ArrowCircle /></button>
+      <ArrowButton onClick={() => moveMonth(1)} label="Следующий месяц" />
     </div>
     {onSelectDate && <div className={styles.legend}><span><i className={styles.lessonDot} />Занятия</span><span><i className={styles.taskDot} />Задачи</span><button type="button" onClick={() => { const date = new Date(); setFirstMonth(new Date(date.getFullYear(), date.getMonth(), 1)); setFocusedKey(toLocalDateKey(date)); onSelectDate(date); }}>Сегодня</button></div>}
     <p id={helpId} className={styles.srOnly}>Стрелки — соседний день или неделя. Home и End — начало и конец недели. Page Up и Page Down — смена месяца. Enter — выбрать день.</p>
@@ -105,7 +104,7 @@ const Calendar = ({ months = 1, selectedDate, onSelectDate, getDaySummary, summa
         </div>
       </div>)}
     </div>
-    {onSelectDate && <div className={styles.daySummary} aria-live="polite" aria-atomic="true"><span>{(selectedDate ?? today).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</span><strong>{`Занятия: ${selectedSummary.lessons ?? "недоступны"}, задачи: ${selectedSummary.tasks ?? "недоступны"}`}</strong>{summaryLinks ? <p>Обзор выбранного дня обновлён. <a href="#home-schedule">К занятиям</a> · <a href="#home-tasks">К задачам</a></p> : <p>Выберите день, чтобы увидеть его занятия и задачи в обзоре.</p>}</div>}
+    {onSelectDate && <div className={styles.daySummary} aria-live="polite" aria-atomic="true"><span>{(selectedDate ?? today).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</span><strong>{`Занятия: ${selectedSummary.lessons ?? "недоступны"}, задачи: ${selectedSummary.tasks ?? "недоступны"}`}</strong></div>}
   </div>;
 };
 

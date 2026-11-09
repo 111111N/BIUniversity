@@ -4,6 +4,7 @@ import { AttendanceTable } from "../../components/Attendance";
 import BarChartTop from "../../components/Charts/BarChartTop/withsegments";
 import RadarChart from "../../components/Charts/CircleChart/Radar";
 import JournalMaterials from "../../components/JournalMaterials";
+import Card from "../../components/Card";
 import {
   calculateAttendanceCounts,
   calculateGradeCounts,
@@ -86,7 +87,7 @@ const Journal = () => {
       <Tabs ariaLabel="Разделы журнала" value={activeSection} onChange={setActiveSection} items={[{ value: "journal", label: "Журнал и аналитика" }, { value: "assignments", label: "Задания" }, { value: "materials", label: "Материалы" }, { value: "history", label: "История", count: journal.history.length }]} />
       {journal.historyError && activeSection !== "history" && <p className={styles.pageError} role="alert">{journal.historyError}</p>}
 
-      {activeSection === "journal" && <section className={styles.tableSection}>
+      {activeSection === "journal" && <Card as="section" className={styles.tableSection}>
         <div className={styles.sectionHeading}>
           <div><span>Электронный журнал</span><h2>Студенты группы</h2></div>
           <strong>{formatCount(students.length, ["студент", "студента", "студентов"])} · {JOURNAL_PERIOD}</strong>
@@ -114,15 +115,15 @@ const Journal = () => {
             </div>
           </div>
         </div>
-      </section>}
+      </Card>}
 
       {activeSection === "materials" && <div className={styles.groupMaterials}>
         <JournalMaterials subject={{ id: subjectId, name: subjectName }} group={{ id: groupId, name: groupName }} />
       </div>}
 
-      {activeSection === "assignments" && <section className={styles.tableSection}>
+      {activeSection === "assignments" && <Card as="section" className={styles.tableSection}>
         <AssignmentCenter key={`${subjectId}:${groupId}`} subject={subjectName} group={groupName} />
-      </section>}
+      </Card>}
 
       {activeSection === "history" && <JournalHistory changes={journal.history} lessons={lessons} error={journal.historyError} />}
     </div>

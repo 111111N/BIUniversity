@@ -1,21 +1,18 @@
 @use "../../styles/switches" as switches;
 @use "../../styles/variables" as *;
-@use "../../styles/mixins" as *;
 
 .filters { @include switches.group(false, "> span"); }
 .filters .activeFilter { @include switches.selected(false); }
 
-.history { @include dashboard-card($color-dark-secondary, 22px); }
 .history > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid $color-border; }
-.history header div > span { color: $color-accent-primary; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.history h2 { margin: 5px 0 7px; }
+.history header div > span { color: $color-text-secondary; font-size: 12px; font-weight: 500; line-height: 1.5; }
+.history h2 { margin: 5px 0 7px; font-size: 18px; font-weight: 600; line-height: 1.5; }
 .history header p, .empty p { margin: 0; color: $color-text-secondary; }
 .history header > strong { padding: 7px 10px; border-radius: 999px; background: $color-dark-tertiary; color: $color-text-secondary; font-size: .72rem; white-space: nowrap; }
 .empty { padding: 36px 10px 18px; text-align: center; }
 .empty strong { display: block; margin-bottom: 7px; }
 
 @media (max-width: 620px) {
-  .history { padding: 16px; }
   .history > header { flex-direction: column; }
 }
 
