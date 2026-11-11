@@ -1,0 +1,1 @@
+import{j as t}from"./vendor-react-6hgFNvu_.js";import{N as o}from"./index-BVXqg8D3.js";import"./index-DoJsmbDv.js";import"./vendor-router-BfE4TICl.js";import"./vendor-select-BEIz3jdc.js";import"./index-B7_EQwmw.js";const s="_page_101sr_1",i={page:s},c=()=>t.jsx("div",{className:`pageContainer ${i.page}`,children:t.jsx(o,{})});export{c as default};
