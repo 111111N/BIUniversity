@@ -9,6 +9,7 @@ const issueLink = (issue: AdministrationIssue) => {
   if (issue.kind === "empty-group") return { href: `/admin/groups?group=${encodeURIComponent(issue.groupId!)}`, label: "Открыть состав группы" };
   if (issue.kind === "unassigned-subject") return { href: `/admin/subjects?subject=${encodeURIComponent(issue.subjectId!)}`, label: "Открыть назначения" };
   if (issue.kind === "student-number") return { href: `/admin/accounts?account=${encodeURIComponent(issue.accountId!)}&mode=education`, label: "Выдать номер зачетки" };
+  if (issue.kind === "assessment-dependency") return { href: `/assessments/${encodeURIComponent(issue.assessmentId!)}`, label: "Открыть аттестацию" };
   if (issue.groupArchived && issue.groupId) return { href: `/admin/groups?group=${encodeURIComponent(issue.groupId)}`, label: "Открыть архивную группу" };
   return issue.groupId ? { href: `/admin/schedule?group=${encodeURIComponent(issue.groupId)}&date=${encodeURIComponent(issue.weekStart!)}`, label: "Открыть неделю" } : { href: "/admin/groups", label: "Проверить группы" };
 };
@@ -54,7 +55,7 @@ export default function CheckResults({ snapshot, error, loading, filtered, onPag
         </div>
         <div className={styles.actions}>
           <Link className={styles.openRecord} to={withChecksReturn(link.href, returnTo)} aria-label={`${link.label}: ${issue.title}`}>{link.label}</Link>
-          {issue.kind === "published-lesson" && issue.accountId && <Link className={styles.relatedRecord} to={withChecksReturn(`/admin/accounts?account=${encodeURIComponent(issue.accountId)}`, returnTo)}>Учётная запись преподавателя</Link>}
+          {(issue.kind === "published-lesson" || issue.kind === "assessment-dependency") && issue.accountId && <Link className={styles.relatedRecord} to={withChecksReturn(`/admin/accounts?account=${encodeURIComponent(issue.accountId)}`, returnTo)}>Учётная запись преподавателя</Link>}
         </div>
       </article>;
     })}</section> : <div className={styles.empty}><strong>{filtered ? "По этим условиям записей нет" : "По выполненным проверкам замечаний нет"}</strong><p>{filtered ? "Измените поиск или сбросьте фильтры выше." : "Расписание перед публикацией проверяется отдельно."}</p></div>}

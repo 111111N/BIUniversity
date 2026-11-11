@@ -19,6 +19,7 @@ import { inspectArchivedStudentNumberHistory } from "./backupStudentNumberHistor
 import { inspectArchivedStudentOperations } from "./backupStudentOperations";
 import { indexArchivedAccountHistory } from "./backupAccountHistory";
 import { inspectArchivedStudentImports } from "./backupStudentImports";
+import { BACKUP_ASSESSMENT_DOCUMENTS, inspectBackupAssessments, isBackupAssessmentKey } from "./backupAssessmentDocuments";
 
 export const BACKUP_CORE_DOCUMENTS = {
   accounts: { key: "bi-university-accounts-v1", prefix: "bi-university-accounts-", label: "Учётные записи" },
@@ -31,7 +32,7 @@ export const BACKUP_LEARNING_DOCUMENTS = {
   submissions: { key: "bi-university-demo-submissions", prefix: "bi-university-demo-submissions", label: "Ответы и попытки" },
 } as const;
 const STATIC_BACKUP_DOCUMENTS = { ...BACKUP_CORE_DOCUMENTS, ...BACKUP_LEARNING_DOCUMENTS };
-export const BACKUP_DOCUMENTS = { ...STATIC_BACKUP_DOCUMENTS, ...BACKUP_JOURNAL_DOCUMENTS, ...BACKUP_PLANNER_DOCUMENTS, ...BACKUP_NOTIFICATION_DOCUMENTS, ...BACKUP_SETTINGS_DOCUMENTS, ...BACKUP_MESSAGING_DOCUMENTS, ...BACKUP_MATERIAL_DOCUMENTS };
+export const BACKUP_DOCUMENTS = { ...STATIC_BACKUP_DOCUMENTS, ...BACKUP_JOURNAL_DOCUMENTS, ...BACKUP_PLANNER_DOCUMENTS, ...BACKUP_NOTIFICATION_DOCUMENTS, ...BACKUP_SETTINGS_DOCUMENTS, ...BACKUP_MESSAGING_DOCUMENTS, ...BACKUP_MATERIAL_DOCUMENTS, ...BACKUP_ASSESSMENT_DOCUMENTS };
 export type BackupDocumentKind = keyof typeof BACKUP_DOCUMENTS;
 export interface BackupDocumentBaseline { groupIds: readonly string[]; requiredSubjectIds: readonly string[] }
 export interface BackupDocumentCheck {
@@ -87,7 +88,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     if (index % 128 === 0) { await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); }
     const definition = Object.entries(STATIC_BACKUP_DOCUMENTS).find(([, value]) => entry.key.startsWith(value.prefix));
     if (definition && entry.key !== definition[1].key) issue({ level: "error", kind: definition[0] as BackupDocumentKind, code: "unsupported-key", referenceId: entry.key, message: "Найдена неподдерживаемая версия ключа. Она не заменяет документ версии 1 и не будет пропущена при планировании восстановления." });
-    if (!Object.values(STATIC_BACKUP_DOCUMENTS).some((value) => value.key === entry.key) && !getBackupJournalKind(entry.key) && !isBackupPlannerKey(entry.key) && !isBackupNotificationKey(entry.key) && !isBackupSettingKey(entry.key) && !isBackupMessagingKey(entry.key)) {
+    if (!Object.values(STATIC_BACKUP_DOCUMENTS).some((value) => value.key === entry.key) && !getBackupJournalKind(entry.key) && !isBackupPlannerKey(entry.key) && !isBackupNotificationKey(entry.key) && !isBackupSettingKey(entry.key) && !isBackupMessagingKey(entry.key) && !isBackupAssessmentKey(entry.key)) {
       result.counts.unchecked++; uncheckedKeys.push(entry.key);
     }
   }
@@ -136,6 +137,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const groupIds = groups ? new Set([...baseline.groupIds, ...groups.groups.map((group) => group.id)]) : undefined;
   const savedGroupIds = new Set(groups?.groups.map((group) => group.id) ?? []);
   const subjectIds = subjects ? new Set(subjects.subjects.map((subject) => subject.id)) : undefined;
+  addReview(await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds }, archive.completedAt, signal));
   addReview(await inspectBackupJournals(archive.localStorage, signal, {
     groupIds: groups ? savedGroupIds : undefined, subjectIds, lessonSource: { schedule }, peopleSource: { accountIds },
   }));

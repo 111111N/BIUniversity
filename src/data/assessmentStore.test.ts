@@ -6,7 +6,7 @@ import { createInitialSubjectCatalogDocument, refreshAcademicCatalog, SUBJECT_CA
 import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY } from "./groupCatalogRead";
 import { emptyGroupCatalog } from "../domain/groupCatalog";
 import { ASSESSMENT_KIND_LABELS, type AssessmentCommand, type AssessmentSnapshot } from "../domain/assessmentTypes";
-import { decodeAssessmentDocument } from "../domain/assessments";
+import { assessmentAttemptAssignment, decodeAssessmentDocument } from "../domain/assessments";
 
 let values: Map<string, string>;
 let write: ReturnType<typeof vi.fn>;
@@ -25,6 +25,14 @@ const commandContext = (snapshot: AssessmentSnapshot, id: string) => ({
   accountsRevision: snapshot.accountsRevision, groupRevision: snapshot.groupRevision, subjectRevision: snapshot.subjectRevision,
 });
 const create = async () => { await assessmentService.execute(createCommand()); return (await assessmentService.read(actorId)).assessments[0]; };
+const publishedStatement = async () => {
+  const assessment = await create();
+  let snapshot = await assessmentService.read(teacherId);
+  await assessmentService.execute({ ...commandContext(snapshot, teacherId), type: "save-results", assessmentId: assessment.id, attemptId: assessment.attempts[0].id, results: [{ studentId, outcome: { status: "graded", grade: 5 } }] });
+  snapshot = await assessmentService.read(teacherId);
+  await assessmentService.execute({ ...commandContext(snapshot, teacherId), type: "publish", assessmentId: assessment.id, attemptId: assessment.attempts[0].id });
+  return assessment;
+};
 
 beforeEach(() => {
   values = new Map();
@@ -39,6 +47,173 @@ beforeEach(() => {
   refreshAcademicCatalog();
 });
 afterEach(() => { values.clear(); refreshAcademicCatalog(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+describe("assessment statement export service", () => {
+  it("prepares teacher and configurator files without writing storage or changing history", async () => {
+    const assessment = await publishedStatement();
+    const before = new Map(values);
+    write.mockClear();
+    for (const id of [teacherId, actorId]) {
+      const snapshot = await assessmentService.read(id);
+      const file = await assessmentService.exportStatement({ ...commandContext(snapshot, id), assessmentId: assessment.id, attemptId: assessment.attempts[0].id });
+      expect(file.csv).toContain("Анна Смирнова"); expect(file.filename).toMatch(/\.csv$/);
+    }
+    expect(write).not.toHaveBeenCalled(); expect(values).toEqual(before);
+  });
+  it("does not allow a student to export a full statement even when the personal result is visible", async () => {
+    const assessment = await publishedStatement();
+    const snapshot = await assessmentService.read(studentId);
+    expect(snapshot.assessments[0].attempts[0].state).toBe("published");
+    await expect(assessmentService.exportStatement({ ...commandContext(snapshot, studentId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id })).rejects.toThrow("назначенный преподаватель");
+  });
+  it("rechecks revisions and a blocked actor instead of trusting the retained page snapshot", async () => {
+    const assessment = await publishedStatement();
+    const snapshot = await assessmentService.read(teacherId);
+    const request = { ...commandContext(snapshot, teacherId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id };
+    const admin = await assessmentService.read(actorId);
+    await assessmentService.execute({ ...commandContext(admin, actorId), type: "update-record-book", assessmentId: assessment.id, recordBook: { semester: 2, hours: 72, category: "required" } });
+    await expect(assessmentService.exportStatement(request)).rejects.toThrow("изменились");
+    const accounts = createInitialAccountsDocument();
+    accounts.accounts.find((entry) => entry.id === teacherId)!.status = "blocked";
+    values.set(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    await expect(assessmentService.exportStatement(request)).rejects.toThrow("действующей");
+  });
+  it("keeps damaged assessment storage intact when preparing a file fails", async () => {
+    const assessment = await publishedStatement();
+    const snapshot = await assessmentService.read(teacherId);
+    values.set(ASSESSMENTS_STORAGE_KEY, "{damaged"); write.mockClear();
+    await expect(assessmentService.exportStatement({ ...commandContext(snapshot, teacherId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id })).rejects.toThrow();
+    expect(values.get(ASSESSMENTS_STORAGE_KEY)).toBe("{damaged"); expect(write).not.toHaveBeenCalled();
+  });
+});
+
+describe("supervisor replacement persistence", () => {
+  const setup = async () => {
+    const accounts = createInitialAccountsDocument(); const teacher = accounts.accounts.find((account) => account.id === teacherId)!;
+    const replacementId = "supervisor-replacement";
+    accounts.accounts.push({ ...teacher, id: replacementId, login: "replacement.teacher", name: "Новый руководитель" });
+    values.set(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    const command = createCommand(); if (command.type !== "create") throw new Error("Expected create command");
+    command.draft.kind = "thesis";
+    await assessmentService.execute(command);
+    const snapshot = await assessmentService.read(actorId); const assessment = snapshot.assessments[0];
+    return { replacementId, snapshot, assessment };
+  };
+  it("changes current access, persists prior assignments, and exposes the capability only to the configurator", async () => {
+    const { replacementId, snapshot, assessment } = await setup();
+    expect(snapshot.manageableSupervisorAssessmentIds).toEqual([assessment.id]);
+    const original = decodeAssessmentDocument(values.get(ASSESSMENTS_STORAGE_KEY)!);
+    await assessmentService.execute({ ...commandContext(snapshot, actorId), type: "change-supervisor", assessmentId: assessment.id, teacherId: replacementId, reason: "PRIVATE SUPERVISOR REASON" });
+    expect((await assessmentService.read(teacherId)).assessments).toEqual([]);
+    const replacement = await assessmentService.read(replacementId); const student = await assessmentService.read(studentId);
+    expect(replacement.assessments[0].attempts[0].teacherId).toBe(replacementId); expect(student.assessments[0].supervisorId).toBe(replacementId);
+    for (const view of [replacement, student]) expect(view).not.toHaveProperty("manageableSupervisorAssessmentIds");
+    expect(JSON.stringify(student)).not.toContain("PRIVATE SUPERVISOR REASON");
+    const persisted = decodeAssessmentDocument(values.get(ASSESSMENTS_STORAGE_KEY)!);
+    expect(persisted.history[0]).toEqual(original.history[0]); expect(persisted.history.at(-1)).toMatchObject({ action: "supervisor-changed", previousSupervisorId: teacherId });
+    const config = await assessmentService.read(actorId);
+    const history = await assessmentService.readAttemptHistory({ ...commandContext(config, actorId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id, page: 1 });
+    expect(history.items[0]).toMatchObject({ action: "supervisor-changed", previousSupervisorId: teacherId, assignment: { teacherId: replacementId } });
+  });
+  it.each([true, false])("serializes replacement and the first result (replacement first: %s)", async (replacementFirst) => {
+    const { replacementId, snapshot, assessment } = await setup(); const teacher = await assessmentService.read(teacherId);
+    const change: AssessmentCommand = { ...commandContext(snapshot, actorId), type: "change-supervisor", assessmentId: assessment.id, teacherId: replacementId, reason: "Замена руководителя" };
+    const save: AssessmentCommand = { ...commandContext(teacher, teacherId), type: "save-results", assessmentId: assessment.id, attemptId: assessment.attempts[0].id, results: [{ studentId, outcome: { status: "graded", grade: 4 } }] };
+    write.mockClear(); const results = await Promise.allSettled((replacementFirst ? [change, save] : [save, change]).map((command) => assessmentService.execute(command)));
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "rejected"]); expect(write).toHaveBeenCalledOnce();
+    const current = await assessmentService.read(actorId);
+    expect(current.assessments[0].supervisorId).toBe(replacementFirst ? replacementId : teacherId);
+    expect(current.manageableSupervisorAssessmentIds).toEqual(replacementFirst ? [assessment.id] : []);
+    expect(current.assessments[0].attempts[0].results[0].outcome).toEqual(replacementFirst ? null : { status: "graded", grade: 4 });
+  });
+});
+
+describe("published assessment correction persistence", () => {
+  it("keeps the student's published grade until correction publication and exposes drafts only to staff", async () => {
+    const assessment = await publishedStatement(); const attemptId = assessment.attempts[0].id;
+    const original = decodeAssessmentDocument(values.get(ASSESSMENTS_STORAGE_KEY)!);
+    let snapshot = await assessmentService.read(actorId);
+    await assessmentService.execute({ ...commandContext(snapshot, actorId), type: "open-correction", assessmentId: assessment.id, attemptId, reason: "PRIVATE CORRECTION" });
+    let teacher = await assessmentService.read(teacherId); const correctionId = teacher.corrections![0].id;
+    await assessmentService.execute({ ...commandContext(teacher, teacherId), type: "save-correction", assessmentId: assessment.id, attemptId, correctionId, results: [{ studentId, outcome: { status: "graded", grade: 2 } }] });
+    const before = await assessmentService.read(studentId);
+    expect(before.assessments[0].attempts[0].results[0].outcome).toEqual({ status: "graded", grade: 5 });
+    expect(before).not.toHaveProperty("corrections"); expect(before).not.toHaveProperty("correctionPublications"); expect(JSON.stringify(before)).not.toContain("PRIVATE CORRECTION");
+    teacher = await assessmentService.read(teacherId);
+    await assessmentService.execute({ ...commandContext(teacher, teacherId), type: "publish-correction", assessmentId: assessment.id, attemptId, correctionId });
+    snapshot = await assessmentService.read(actorId);
+    expect(snapshot.corrections).toEqual([]); expect(snapshot.correctionPublications![0]).toMatchObject({ version: 2, state: "published" }); expect(snapshot.correctionPublications![0]).not.toHaveProperty("results");
+    expect((await assessmentService.read(studentId)).assessments[0].attempts[0].results[0].outcome).toEqual({ status: "graded", grade: 2 });
+    const current = decodeAssessmentDocument(values.get(ASSESSMENTS_STORAGE_KEY)!);
+    expect(current.assessments).toEqual(original.assessments); expect(current.history).toEqual(original.history);
+    const latest = await assessmentService.exportStatement({ ...commandContext(snapshot, actorId), assessmentId: assessment.id, attemptId });
+    const first = await assessmentService.exportStatement({ ...commandContext(snapshot, actorId), assessmentId: assessment.id, attemptId, version: 1 });
+    expect(latest.filename).toContain("-v2.csv"); expect(first.filename).toContain("-v1.csv"); expect(latest.csv).not.toBe(first.csv);
+  });
+  it("serializes concurrent correction permissions without opening two drafts", async () => {
+    const assessment = await publishedStatement(); const snapshot = await assessmentService.read(actorId);
+    const command: AssessmentCommand = { ...commandContext(snapshot, actorId), type: "open-correction", assessmentId: assessment.id, attemptId: assessment.attempts[0].id, reason: "Проверка результата" };
+    write.mockClear();
+    const result = await Promise.allSettled([assessmentService.execute(command), assessmentService.execute(command)]);
+    expect(result.map((entry) => entry.status)).toEqual(["fulfilled", "rejected"]); expect(write).toHaveBeenCalledOnce();
+    expect((await assessmentService.read(actorId)).corrections).toHaveLength(1);
+  });
+  it.each([true, false])("serializes correction publication and a concurrent save (publication first: %s)", async (publicationFirst) => {
+    const assessment = await publishedStatement(); const attemptId = assessment.attempts[0].id;
+    const config = await assessmentService.read(actorId);
+    await assessmentService.execute({ ...commandContext(config, actorId), type: "open-correction", assessmentId: assessment.id, attemptId, reason: "Проверка результата" });
+    let teacher = await assessmentService.read(teacherId); const correctionId = teacher.corrections![0].id;
+    await assessmentService.execute({ ...commandContext(teacher, teacherId), type: "save-correction", assessmentId: assessment.id, attemptId, correctionId, results: [{ studentId, outcome: { status: "graded", grade: 2 } }] });
+    teacher = await assessmentService.read(teacherId);
+    const common = { ...commandContext(teacher, teacherId), assessmentId: assessment.id, attemptId, correctionId };
+    const publish: AssessmentCommand = { ...common, type: "publish-correction" };
+    const save: AssessmentCommand = { ...common, type: "save-correction", results: [{ studentId, outcome: { status: "graded", grade: 4 } }] };
+    write.mockClear(); const result = await Promise.allSettled((publicationFirst ? [publish, save] : [save, publish]).map((command) => assessmentService.execute(command)));
+    expect(result.map((entry) => entry.status)).toEqual(["fulfilled", "rejected"]); expect(write).toHaveBeenCalledOnce();
+    expect((await assessmentService.read(studentId)).assessments[0].attempts[0].results[0].outcome).toEqual({ status: "graded", grade: publicationFirst ? 2 : 5 });
+  });
+});
+
+describe("assessment assignment history service", () => {
+  it("returns only an assignment page without writes, events, results or a full audit in any role snapshot", async () => {
+    const assessment = await publishedStatement();
+    const snapshot = await assessmentService.read(actorId);
+    const before = new Map(values); write.mockClear();
+    const listener = vi.fn(); window.addEventListener(ASSESSMENTS_CHANGE_EVENT, listener);
+    const page = await assessmentService.readAttemptHistory({ ...commandContext(snapshot, actorId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id, page: 1 });
+    expect(page).toMatchObject({ revision: snapshot.revision, total: 1, page: 1, pages: 1 });
+    expect(page.items[0].action).toBe("created"); expect(page.items[0]).not.toHaveProperty("results"); expect(page.items[0].assignment).not.toHaveProperty("studentIds");
+    for (const id of [actorId, teacherId, studentId]) expect(await assessmentService.read(id)).not.toHaveProperty("history");
+    page.items[0].assignment!.memberIds.push("not-persisted");
+    expect(write).not.toHaveBeenCalled(); expect(listener).not.toHaveBeenCalled(); expect(values).toEqual(before);
+  });
+  it.each([teacherId, studentId])("rejects direct history reads by %s", async (id) => {
+    const assessment = await create(); const snapshot = await assessmentService.read(id);
+    await expect(assessmentService.readAttemptHistory({ ...commandContext(snapshot, id), assessmentId: assessment.id, attemptId: assessment.attempts[0].id, page: 1 })).rejects.toThrow("только настройщику");
+  });
+  it("rereads revisions and the actor status before returning a page", async () => {
+    const assessment = await create(); const snapshot = await assessmentService.read(actorId);
+    const request = { ...commandContext(snapshot, actorId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id, page: 1 };
+    await assessmentService.execute({ ...commandContext(snapshot, actorId), type: "update-attempt", assessmentId: assessment.id, attemptId: assessment.attempts[0].id, draft: { ...assessmentAttemptAssignment(assessment.attempts[0]), room: "202" } });
+    await expect(assessmentService.readAttemptHistory(request)).rejects.toThrow("изменились");
+    const accounts = createInitialAccountsDocument();
+    const actor = accounts.accounts.find((account) => account.id === actorId)!;
+    accounts.accounts.push({ ...actor, id: "other-configurator", login: "other.configurator" });
+    actor.status = "blocked";
+    values.set(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    await expect(assessmentService.readAttemptHistory(request)).rejects.toThrow("действующей");
+  });
+  it("does not repair a damaged source or recreate a missing attempt during a history read", async () => {
+    const assessment = await create(); const snapshot = await assessmentService.read(actorId);
+    const request = { ...commandContext(snapshot, actorId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id, page: 1 };
+    values.set(ASSESSMENTS_STORAGE_KEY, "{damaged"); write.mockClear();
+    await expect(assessmentService.readAttemptHistory(request)).rejects.toThrow();
+    expect(values.get(ASSESSMENTS_STORAGE_KEY)).toBe("{damaged"); expect(write).not.toHaveBeenCalled();
+    values.delete(ASSESSMENTS_STORAGE_KEY);
+    await expect(assessmentService.readAttemptHistory({ ...request, expectedRevision: 0 })).rejects.toThrow("недоступна");
+    expect(values.has(ASSESSMENTS_STORAGE_KEY)).toBe(false); expect(write).not.toHaveBeenCalled();
+  });
+});
 
 describe("ordinary assessment demo import", () => {
   it("generates real Unicode titles and periods without middle dots", async () => {
@@ -137,8 +312,9 @@ describe("assessment persistence boundary", () => {
     const current = await create();
     const persisted = JSON.parse(values.get(ASSESSMENTS_STORAGE_KEY)!);
     persisted.version = 1;
+    delete persisted.corrections; delete persisted.correctionHistory;
     for (const item of persisted.assessments) delete item.recordBook;
-    for (const item of persisted.history) delete item.recordBook;
+    for (const item of persisted.history) { delete item.recordBook; delete item.assignment; }
     const legacyRaw = JSON.stringify(persisted);
     values.set(ASSESSMENTS_STORAGE_KEY, legacyRaw); write.mockClear();
     const migrated = await assessmentService.read(actorId);
@@ -146,7 +322,7 @@ describe("assessment persistence boundary", () => {
     expect(values.get(ASSESSMENTS_STORAGE_KEY)).toBe(legacyRaw); expect(write).not.toHaveBeenCalled();
     await assessmentService.execute({ ...commandContext(migrated, actorId), type: "update-record-book", assessmentId: current.id, recordBook: { semester: 1, hours: 72, category: "elective" } });
     const saved = JSON.parse(values.get(ASSESSMENTS_STORAGE_KEY)!);
-    expect(saved.version).toBe(2); expect(saved.assessments[0].attempts).toEqual(current.attempts);
+    expect(saved.version).toBe(5); expect(saved.assessments[0].attempts).toEqual(current.attempts);
     expect(saved.history.at(-1)).toMatchObject({ action: "record-book-updated", recordBook: { semester: 1, hours: 72, category: "elective" } });
   });
   it("starts empty without writing invented assessments or other documents", async () => {
@@ -259,6 +435,50 @@ describe("assessment persistence boundary", () => {
     expect(assessment.title).toBe("Экзамен по теории вероятностей");
     expect(assessment.attempts[0].teacherId).toBe(teacherId);
     expect(assessment.attempts[0].studentIds).toEqual([studentId]);
+  });
+});
+
+describe("assessment management persistence", () => {
+  it("exposes audited management only to the configurator and hides private cancellation details from students", async () => {
+    const assessment = await create(); const attempt = assessment.attempts[0];
+    const config = await assessmentService.read(actorId);
+    expect(config.manageableAttemptIds).toEqual([attempt.id]); expect(config).not.toHaveProperty("history");
+    const historyRequest = { ...commandContext(config, actorId), assessmentId: assessment.id, attemptId: attempt.id, page: 1 };
+    expect((await assessmentService.readAttemptHistory(historyRequest)).items[0].assignment).toMatchObject({ teacherId });
+    await assessmentService.execute({ ...commandContext(config, actorId), type: "cancel-attempt", assessmentId: assessment.id, attemptId: attempt.id, reason: "PRIVATE CANCELLATION REASON" });
+    const student = await assessmentService.read(studentId); const teacher = await assessmentService.read(teacherId); const current = await assessmentService.read(actorId);
+    expect(student.assessments[0].attempts[0]).toMatchObject({ id: attempt.id, state: "cancelled", results: [] });
+    expect(JSON.stringify(student)).not.toContain("PRIVATE CANCELLATION");
+    for (const view of [student, teacher]) { expect(view).not.toHaveProperty("history"); expect(view).not.toHaveProperty("manageableAttemptIds"); }
+    expect((await assessmentService.readAttemptHistory({ ...historyRequest, ...commandContext(current, actorId) })).items[0]).toMatchObject({ action: "attempt-cancelled", reason: "PRIVATE CANCELLATION REASON" });
+    expect(current.manageableAttemptIds).toEqual([]);
+  });
+  it("keeps management closed in the read model after a saved grade is cleared", async () => {
+    const assessment = await create(); const attempt = assessment.attempts[0];
+    for (const outcome of [{ status: "graded" as const, grade: 2 as const }, null]) {
+      const snapshot = await assessmentService.read(teacherId);
+      await assessmentService.execute({ ...commandContext(snapshot, teacherId), type: "save-results", assessmentId: assessment.id, attemptId: attempt.id, results: [{ studentId, outcome }] });
+    }
+    const config = await assessmentService.read(actorId); const before = values.get(ASSESSMENTS_STORAGE_KEY); write.mockClear();
+    expect(config.manageableAttemptIds).toEqual([]);
+    await expect(assessmentService.execute({ ...commandContext(config, actorId), type: "cancel-attempt", assessmentId: assessment.id, attemptId: attempt.id, reason: "Перенос" })).rejects.toThrow("первого сохранённого");
+    expect(values.get(ASSESSMENTS_STORAGE_KEY)).toBe(before); expect(write).not.toHaveBeenCalled();
+  });
+  it.each([["cancel-attempt", true], ["cancel-attempt", false], ["update-attempt", true], ["update-attempt", false]] as const)("serializes %s and the first result (result wins: %s) without losing either source", async (type, resultFirst) => {
+    const assessment = await create(); const attempt = assessment.attempts[0];
+    const config = await assessmentService.read(actorId); const teacher = await assessmentService.read(teacherId);
+    const save: AssessmentCommand = { ...commandContext(teacher, teacherId), type: "save-results", assessmentId: assessment.id, attemptId: attempt.id, results: [{ studentId, outcome: { status: "graded", grade: 2 } }] };
+    const common = { ...commandContext(config, actorId), assessmentId: assessment.id, attemptId: attempt.id };
+    const manage: AssessmentCommand = type === "cancel-attempt" ? { ...common, type, reason: "Перенос" } : { ...common, type, draft: { ...assessmentAttemptAssignment(attempt), room: "202" } };
+    write.mockClear();
+    const ordered = resultFirst ? [save, manage] : [manage, save];
+    const outcomes = await Promise.allSettled(ordered.map((command) => assessmentService.execute(command)));
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(["fulfilled", "rejected"]); expect(write).toHaveBeenCalledOnce();
+    const current = await assessmentService.read(actorId); const persisted = current.assessments[0].attempts[0];
+    expect(current.revision).toBe(config.revision + 1);
+    expect(persisted.results[0].outcome).toEqual(resultFirst ? { status: "graded", grade: 2 } : null);
+    expect(persisted.state).toBe(!resultFirst && type === "cancel-attempt" ? "cancelled" : "draft");
+    expect(decodeAssessmentDocument(values.get(ASSESSMENTS_STORAGE_KEY)!).history.at(-1)?.action).toBe(resultFirst ? "results-saved" : type === "cancel-attempt" ? "attempt-cancelled" : "attempt-updated");
   });
 });
 

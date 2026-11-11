@@ -8,14 +8,13 @@ import { ASSESSMENTS_STORAGE_KEY } from "../data/assessmentStore";
 const emptyReview = (): BackupDocumentReview => ({ checks: [], issues: [], uncheckedKeys: [], counts: { valid: 0, invalid: 0, absent: 0, unchecked: 0, errors: 0, reviews: 0 } });
 
 describe("whole-archive document admission", () => {
-  it("keeps restoration blocked until assessment schemas and dependencies are supported by the archive inspector", async () => {
+  it("reads an empty legacy assessment document while still requiring final authorization", async () => {
     const fixture = coreBackupFixture();
     fixture.archive.localStorage.push({ key: ASSESSMENTS_STORAGE_KEY, raw: '{"version":1,"revision":0,"assessments":[],"history":[]}' });
     const review = await inspectBackupDocuments(fixture.archive, "configurator-demo");
-    expect(review.uncheckedKeys).toContain(ASSESSMENTS_STORAGE_KEY);
-    expect(assessBackupRestoreAdmission(review)).toMatchObject({ status: "blocked", blockers: expect.arrayContaining([
-      expect.objectContaining({ category: "unchecked", key: ASSESSMENTS_STORAGE_KEY }),
-    ]) });
+    expect(review.uncheckedKeys).not.toContain(ASSESSMENTS_STORAGE_KEY);
+    expect(review.checks).toContainEqual(expect.objectContaining({ kind: "assessments", status: "valid", records: 0 }));
+    expect(assessBackupRestoreAdmission(review)).toMatchObject({ status: "requires-final-validation", blockers: [] });
   });
   it.each(["unchecked-owner", "unchecked-subject", "missing-group", "unchecked-access"])("blocks the whole archive for one unconfirmed fact: %s", (code) => {
     const review = emptyReview();

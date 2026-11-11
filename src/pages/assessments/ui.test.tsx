@@ -11,6 +11,7 @@ import AssessmentCatalogCard from "./AssessmentCatalogCard";
 import OutcomeBadge from "./OutcomeBadge";
 import gradeStyles from "../../components/AssignmentCenter/SubmissionResult/index.module.scss";
 import styles from "./index.module.scss";
+import { assessmentService } from "../../data/assessmentStore";
 
 vi.mock("../../components/UnsavedChangesProvider", () => ({ useUnsavedChangesGuard: () => ({ requestAction: (action: () => void) => action() }) }));
 vi.mock("../../hooks/useUnsavedChangesWarning", () => ({ default: () => undefined }));
@@ -27,6 +28,56 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new 
 afterEach(() => { vi.useRealTimers(); });
 
 describe("assessment workspace presentation", () => {
+  it("offers supervisor replacement only to a configurator with a current capability for supervised work", () => {
+    const supervised = { ...assessment, kind: "thesis" as const, supervisorId: "teacher" };
+    const render = (role: "configurator" | "teacher", ids: string[]) => renderToStaticMarkup(<MemoryRouter><AssessmentDetails assessment={supervised} snapshot={{ ...snapshot, manageableSupervisorAssessmentIds: ids }} actorId={role} role={role} blocked={false} refresh={noop} onMessage={noop} /></MemoryRouter>);
+    expect(render("configurator", [assessment.id])).toMatch(/<button[^>]*>Заменить руководителя<\/button>/);
+    expect(render("configurator", [])).toMatch(/<button[^>]*disabled=""[^>]*>Заменить руководителя<\/button>/);
+    expect(render("teacher", [assessment.id])).not.toContain("Заменить руководителя");
+    expect(details("configurator")).not.toContain("Заменить руководителя");
+  });
+  it("separates configurator permission from teacher correction actions and hides internal reasons from students", () => {
+    const published = { ...assessment, attempts: [{ ...assessment.attempts[0], state: "published" as const, publishedAt: "2026-11-06T09:00:00Z", publishedBy: "teacher" }] };
+    const correction = { id: "correction", assessmentId: assessment.id, attemptId: "attempt", version: 2, reason: "PRIVATE REASON", openedAt: "2026-11-06T09:00:00Z", openedBy: "configurator", state: "draft" as const, results: [{ studentId: "student", outcome: { status: "graded" as const, grade: 5 as const } }], publishedAt: null, publishedBy: null };
+    const render = (role: "configurator" | "teacher" | "student", active: boolean) => renderToStaticMarkup(<MemoryRouter><AssessmentDetails assessment={published} snapshot={{ ...snapshot, corrections: active ? [correction] : [] }} actorId={role} role={role} blocked={false} refresh={noop} onMessage={noop} /></MemoryRouter>);
+    expect(render("configurator", false)).toContain("Разрешить исправление");
+    expect(render("configurator", true)).not.toContain("Исправить результаты");
+    expect(render("teacher", true)).toContain("Исправить результаты"); expect(render("teacher", true)).toContain("Опубликовать исправление");
+    expect(render("student", true)).not.toContain("PRIVATE REASON"); expect(render("student", true)).not.toContain("Исправить результаты");
+  });
+  it("keeps assignment audit closed without fetching it while rendering a statement", () => {
+    const readHistory = vi.spyOn(assessmentService, "readAttemptHistory");
+    try {
+      const html = details("configurator");
+      expect(html).toContain("История назначения"); expect(html).not.toContain("Загружаем историю");
+      expect(readHistory).not.toHaveBeenCalled();
+      expect(details("teacher")).not.toContain("История назначения"); expect(details("student")).not.toContain("История назначения");
+    } finally { readHistory.mockRestore(); }
+  });
+  it("offers management only with a current configurator capability, including an unchanged blank result after a historic grade", () => {
+    const blank = { ...assessment, attempts: [{ ...assessment.attempts[0], results: [{ studentId: "student", outcome: null }] }] };
+    const role = "configurator" as const;
+    const render = (ids: string[]) => renderToStaticMarkup(<MemoryRouter><AssessmentDetails assessment={blank} snapshot={{ ...snapshot, assessments: [blank], manageableAttemptIds: ids }} actorId="configurator" role={role} blocked={false} refresh={noop} onMessage={noop} /></MemoryRouter>);
+    expect(render(["attempt"])).toMatch(/<button[^>]*>Изменить назначение<\/button>/);
+    expect(render([])).toMatch(/<button[^>]*disabled=""[^>]*>Изменить назначение<\/button>/);
+    expect(render([])).toContain("даже если отметки очищены");
+    expect(details("teacher")).not.toContain("Изменить назначение"); expect(details("student")).not.toContain("Отменить попытку");
+  });
+  it("shows cancellation distinctly, offers replacement to the configurator, and never shows a student an expected result for it", () => {
+    const cancelled = { ...assessment, attempts: [{ ...assessment.attempts[0], state: "cancelled" as const, cancellation: { occurredAt: "2026-11-06T09:00:00Z", actorId: "configurator", reason: "PRIVATE REASON" }, results: [] }] };
+    const render = (role: "student" | "configurator") => renderToStaticMarkup(<MemoryRouter><AssessmentDetails assessment={cancelled} snapshot={{ ...snapshot, assessments: [cancelled], manageableAttemptIds: [] }} actorId={role} role={role} blocked={false} refresh={noop} onMessage={noop} /></MemoryRouter>);
+    expect(render("configurator")).toContain("Назначить заново"); expect(render("configurator")).toContain("PRIVATE REASON");
+    const html = render("student"); expect(html).toContain("Отменено"); expect(html).not.toContain("Ожидается результат"); expect(html).not.toContain("PRIVATE REASON"); expect(html).not.toContain("Ведомость ещё не опубликована");
+    const card = renderToStaticMarkup(<MemoryRouter><AssessmentCatalogCard assessment={cancelled} actorId="student" student /></MemoryRouter>);
+    expect(card).toContain("Отменено"); expect(card).not.toContain("Предстоит");
+  });
+  it("offers CSV only for a published staff statement and disables it while the source is being rechecked", () => {
+    const published = { ...assessment, attempts: [{ ...assessment.attempts[0], state: "published" as const, publishedAt: "2026-11-06T09:00:00Z", publishedBy: "teacher" }] };
+    const render = (role: "teacher" | "student" | "configurator", blocked = false) => renderToStaticMarkup(<MemoryRouter><AssessmentDetails assessment={published} snapshot={{ ...snapshot, assessments: [published] }} actorId={role === "teacher" ? "teacher" : role} role={role} blocked={blocked} refresh={noop} onMessage={noop} /></MemoryRouter>);
+    expect(render("teacher")).toContain("Скачать CSV"); expect(render("configurator")).toContain("Скачать CSV");
+    expect(render("student")).not.toContain("Скачать CSV"); expect(details("teacher")).not.toContain("Скачать CSV");
+    expect(render("teacher", true)).toMatch(/<button[^>]*disabled=""[^>]*>Скачать CSV<\/button>/);
+  });
   it("reuses assignment grade styling for every numeric outcome", () => {
     for (const grade of [2, 3, 4, 5] as const) {
       const html = renderToStaticMarkup(<OutcomeBadge outcome={{ status: "graded", grade }} />);

@@ -13,6 +13,7 @@ import { bindBackupInspectionPreview, releaseBackupInspectionPreview } from "./l
 import { compareBackupNotificationRecords, type BackupNotificationComparison } from "../domain/backupNotificationComparison";
 import { compareBackupFileDifference, type BackupFileDifferenceDetails } from "../domain/backupFileDifference";
 import { createBackupMaterialAreaComparison } from "../domain/backupMaterialAreaComparison";
+import { compareBackupAssessmentRecords, type BackupAssessmentComparison } from "../domain/backupAssessmentComparison";
 export type { BackupDifference, BackupDifferenceKind } from "../domain/backupComparison";
 
 export interface BackupInspection {
@@ -27,6 +28,7 @@ export interface BackupInspection {
   scheduleComparison?: BackupScheduleComparison;
   journalComparison?: BackupJournalComparison;
   notificationComparison?: BackupNotificationComparison;
+  assessmentComparison?: BackupAssessmentComparison;
 }
 export interface BackupInspectionCommand extends BackupCommand { file: File }
 const areaNames: Record<string, string> = {
@@ -77,6 +79,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       const scheduleComparison = await compareBackupScheduleRecords(archive.localStorage, before, command.signal);
       const journalComparison = await compareBackupJournalRecords(archive.localStorage, before, command.signal);
       const notificationComparison = await compareBackupNotificationRecords(archive.localStorage, before, command.signal);
+      const assessmentComparison = await compareBackupAssessmentRecords(archive.localStorage, before, command.signal);
       dependencies.authorize(command);
       for (const entry of archive.localStorage) {
         if (!current.has(entry.key)) difference("new", "Локальные данные", entry.key, { storage: "localStorage", key: entry.key });
@@ -132,7 +135,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       }
       const latest = await dependencies.listDatabases(); checkBackupAbort(command.signal); dependencies.authorize(command);
       if (JSON.stringify(before) !== JSON.stringify(capturePortalStorage(dependencies.storage)) || BACKUP_DATABASES.some(({ name }) => available.find((item) => item.name === name)?.version !== latest.find((item) => item.name === name)?.version)) throw new Error("Текущие данные изменились во время сравнения. Завершите редактирование в других вкладках и повторите проверку.");
-      const inspection: BackupInspection = { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison, journalComparison, notificationComparison };
+      const inspection: BackupInspection = { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison, journalComparison, notificationComparison, assessmentComparison };
       if (currentGeneration !== generation) throw new DOMException("Проверка заменена новым файлом.", "AbortError");
       bindBackupInspectionPreview(inspection, command.file, before);
       previous = inspection;

@@ -4,9 +4,11 @@ import { readAccountsState } from "./accountStore";
 import { ACADEMIC_GROUPS, refreshAcademicCatalog } from "./academicCatalog";
 import { readGroupCatalogDocument } from "./groupCatalogRead";
 import { readManagedScheduleState } from "./managedScheduleStore";
+import { ASSESSMENTS_STORAGE_KEY } from "../domain/assessmentTypes";
+import { decodeAssessmentDocument, emptyAssessmentDocument } from "../domain/assessments";
 
 export interface AdministrationChecksSnapshot extends AdministrationChecksResult {
-  versions: { accounts: number; schedule: number; subjects: number; groups: number };
+  versions: { accounts: number; schedule: number; subjects: number; groups: number; assessments: number };
 }
 export interface AdministrationChecksService {
   list(command: { actorId: string; actorRevision: number; query: AdministrationChecksQuery }): Promise<AdministrationChecksSnapshot>;
@@ -21,8 +23,10 @@ export const administrationChecksService: AdministrationChecksService = {
       if (catalog.error) throw new Error("Учебный каталог недоступен. Проверка данных временно приостановлена.");
       const schedule = readManagedScheduleState();
       if (schedule.error) throw new Error(schedule.error);
-      const listing = queryAdministrationChecks(accounts.accounts, ACADEMIC_GROUPS, catalog.subjects, schedule.snapshot.published, command.query, new Date().toISOString());
-      return { ...listing, versions: { accounts: accounts.revision, schedule: schedule.snapshot.revision, subjects: catalog.revision, groups: readGroupCatalogDocument().revision } };
+      const raw = localStorage.getItem(ASSESSMENTS_STORAGE_KEY);
+      const assessments = raw === null ? emptyAssessmentDocument() : decodeAssessmentDocument(raw);
+      const listing = queryAdministrationChecks(accounts.accounts, ACADEMIC_GROUPS, catalog.subjects, schedule.snapshot.published, command.query, new Date().toISOString(), assessments);
+      return { ...listing, versions: { accounts: accounts.revision, schedule: schedule.snapshot.revision, subjects: catalog.revision, groups: readGroupCatalogDocument().revision, assessments: assessments.revision } };
     } catch (error) { console.error("Не удалось выполнить проверку административных данных:", error); throw error; }
   },
 };

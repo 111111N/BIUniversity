@@ -1,6 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import InspectionPanel from "./InspectionPanel";
+import { compareBackupAssessmentRecords } from "../../domain/backupAssessmentComparison";
+import { assessmentBackupFixture } from "../../testSupport/assessmentBackup";
+import { ASSESSMENTS_STORAGE_KEY } from "../../domain/assessmentTypes";
 import type { BackupInspection } from "../../data/localBackupInspectionService";
 import { compareBackupPlannerRecords } from "../../domain/backupPlannerComparison";
 import { getPlannerStorageKey } from "../../domain/plannerStorage";
@@ -23,6 +26,20 @@ const result: BackupInspection = {
 };
 const render = (patch = {}) => renderToStaticMarkup(<InspectionPanel file={null} busy={false} progress="" error="" result={null} unavailable={false} reportMessage="" reportError="" onFile={noop} onInspect={noop} onCancel={noop} onReport={noop} {...patch} />);
 describe("backup file preview", () => {
+  it("shows assessment and audit fields without private values", async () => {
+    const source = assessmentBackupFixture().document; const current = structuredClone(source);
+    current.assessments[0].title = "PRIVATE CURRENT TITLE";
+    const assessmentComparison = await compareBackupAssessmentRecords([{ key: ASSESSMENTS_STORAGE_KEY, raw: JSON.stringify(source) }], [{ key: ASSESSMENTS_STORAGE_KEY, raw: JSON.stringify(current) }]);
+    const html = render({ result: { ...result, assessmentComparison } });
+    expect(html).toContain("Аттестации и история по ID"); expect(html).toContain("История аттестаций по ID");
+    expect(html).toContain("Название аттестации"); expect(html).not.toContain("PRIVATE");
+  });
+  it("announces an unreadable assessment source once for cards and audit", async () => {
+    const assessmentComparison = await compareBackupAssessmentRecords([{ key: ASSESSMENTS_STORAGE_KEY, raw: "PRIVATE damaged" }], []);
+    const html = render({ result: { ...result, assessmentComparison } });
+    expect(html).toContain("Документы аттестаций не сравнены: 1"); expect(html).not.toContain("Документы аттестаций не сравнены: 2");
+    expect(html).not.toContain("PRIVATE");
+  });
   it("announces unresolved material areas separately from successfully classified metadata", () => {
     const comparison: BackupInspection["comparison"] = { same: 0, new: 0, currentOnly: 0, schema: 0, different: 1, differences: [{ kind: "different", area: "Материалы", id: "file-1", reference: { storage: "indexedDB", database: "bi-university-cabinet", store: "teacher-files", key: { type: "string", value: "file-1" } }, fileDifference: { version: 1, status: "compared", fields: ["description"], issues: [], ownership: "unverified", materialArea: { version: 1, archive: { status: "matched", kind: "user" }, browser: { status: "unavailable-catalog", kind: "user" }, relation: "unresolved" } } }] };
     const html = render({ result: { ...result, comparison } });

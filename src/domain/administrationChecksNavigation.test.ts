@@ -4,6 +4,15 @@ import { changesAdminAccount, changesAdminSubject, changesLocation, createUnsave
 import { groupRegistrySearch } from "../pages/adminGroups/presentation";
 
 describe("navigation from data checks to corrective editing", () => {
+  it("opens an exact assessment and carries the checked return context through its local navigation", () => {
+    const back = createChecksReturn("?kind=assessment-dependency&level=action", 2, "assessment:one");
+    const target = new URL(withChecksReturn("/assessments/assessment%20%26%20one", back), "https://portal.invalid");
+    expect(target.pathname).toBe("/assessments/assessment%20%26%20one");
+    expect(readChecksReturn(target.pathname, target.search)).toBe(back);
+    const account = new URL(inheritChecksReturn("/admin/accounts?account=teacher", target.pathname, target.search), "https://portal.invalid");
+    expect(readChecksReturn(account.pathname, account.search)).toBe(back);
+    for (const href of ["/assessments/one/extra", "https://example.test/assessments/one", "/teachers/one"]) expect(withChecksReturn(href, back)).toBe("/admin/checks");
+  });
   it("keeps search, filters, the actual result page and a safely encoded issue anchor", () => {
     const href = createChecksReturn("?q=Иванов+%26+112&kind=student-number&level=action&page=999&checksReturn=bad", 3, "number:student & one");
     const url = new URL(href, "https://portal.invalid");

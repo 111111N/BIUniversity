@@ -124,6 +124,7 @@ describe("assessment document integrity", () => {
   it("accepts legacy attempts without rooms without rewriting history", () => {
     const state = add(published(), "commission", { chairId: "chair", memberIds: ["member"] });
     for (const attempt of state.assessments[0].attempts) delete attempt.room;
+    for (const entry of state.history) if (entry.assignment) delete entry.assignment.room;
     expect(decodeAssessmentDocument(JSON.stringify(state))).toEqual(state);
     expect(add(publish(save(state, [{ studentId: student.id, outcome: { status: "graded", grade: 3 } }]))).history.slice(0, state.history.length)).toEqual(state.history);
   });
@@ -255,11 +256,11 @@ describe("record book metadata and legacy compatibility", () => {
   });
   it("migrates version one in memory without guessing hours/semester or losing IDs, results or history", () => {
     const state = published();
-    const legacy = { ...state, version: 1, assessments: state.assessments.map(({ recordBook: _metadata, ...entry }) => entry), history: state.history.map(({ recordBook: _metadata, ...entry }) => entry) };
+    const legacy = { version: 1, revision: state.revision, assessments: state.assessments.map(({ recordBook: _metadata, ...entry }) => entry), history: state.history.map(({ recordBook: _metadata, assignment: _assignment, ...entry }) => entry) };
     const raw = JSON.stringify(legacy);
     const migrated = decodeAssessmentDocument(raw);
-    expect(migrated).toEqual(state);
-    expect(migrated.version).toBe(2); expect(migrated.assessments[0].recordBook).toBeNull();
+    expect(migrated).toEqual({ ...state, history: state.history.map((entry) => entry.assignment ? { ...entry, assignmentOrigin: "legacy-snapshot" } : entry) });
+    expect(migrated.version).toBe(5); expect(migrated.assessments[0].recordBook).toBeNull();
     expect(JSON.stringify(legacy)).toBe(raw);
     const corrupted = structuredClone(legacy); Object.assign(corrupted.assessments[0], { unexpected: 12 });
     expect(() => decodeAssessmentDocument(JSON.stringify(corrupted))).toThrow();

@@ -3,12 +3,15 @@ import { isStudyingStudent } from "./studentEnrollment";
 import { isGroupActive, type GroupStatus } from "./groupCatalog";
 import { matchesSearchText } from "./search";
 import type { ManagedScheduleWeek } from "./scheduleManagement";
+import type { AssessmentDocument } from "./assessmentTypes";
+import { inspectAssessmentDependencies } from "./assessmentDependencies";
 
 export const ADMINISTRATION_CHECK_LABELS = {
   "empty-group": "Группы без внесённых учащихся",
   "unassigned-subject": "Дисциплины без действующих назначений",
   "student-number": "Учащиеся без номера зачетки",
   "published-lesson": "Опубликованные пары с недоступными данными",
+  "assessment-dependency": "Аттестации с недоступными связями",
 };
 export type AdministrationIssueKind = keyof typeof ADMINISTRATION_CHECK_LABELS;
 export type AdministrationIssueLevel = "action" | "review";
@@ -25,6 +28,8 @@ export interface AdministrationIssue {
   accountId?: string;
   weekStart?: string;
   lessonDate?: string;
+  assessmentId?: string;
+  attemptId?: string;
 }
 export interface AdministrationChecksResult {
   rows: AdministrationIssue[];
@@ -42,7 +47,7 @@ const collator = new Intl.Collator("ru", { numeric: true, sensitivity: "base" })
 
 export const queryAdministrationChecks = (
   accounts: PortalAccount[], groups: CheckGroup[], subjects: CheckSubject[], published: ManagedScheduleWeek[],
-  query: AdministrationChecksQuery, now: string,
+  query: AdministrationChecksQuery, now: string, assessments?: AssessmentDocument,
 ): AdministrationChecksResult => {
   const instant = Date.parse(now);
   if (!Number.isFinite(instant)) throw new Error("Не удалось определить время проверки данных.");
@@ -83,8 +88,9 @@ export const queryAdministrationChecks = (
     if (!subject) reasons.push("Дисциплина недоступна");
     if (reasons.length) issues.push({ id: `published-lesson:${lesson.id}`, kind: "published-lesson", level: "action", title: subject?.name ?? "Дисциплина недоступна", detail: `${lesson.startsAt}–${lesson.endsAt} · ${teacher?.name ?? lesson.teacherName}${teacher ? ` (${teacher.login})` : ""} · ${group?.name ?? "Группа недоступна"}. ${reasons.join(". ")}.`, groupId: group?.id, groupArchived: group?.status === "archived", subjectId: lesson.subjectId, accountId: teacher?.id, weekStart: week.weekStart, lessonDate: lesson.date });
   }
+  if (assessments) for (const issue of inspectAssessmentDependencies(assessments, { accounts, groups, subjects })) issues.push(issue);
   const counts = { action: 0, review: 0 };
-  const kinds: Record<AdministrationIssueKind, number> = { "empty-group": 0, "unassigned-subject": 0, "student-number": 0, "published-lesson": 0 };
+  const kinds: Record<AdministrationIssueKind, number> = { "empty-group": 0, "unassigned-subject": 0, "student-number": 0, "published-lesson": 0, "assessment-dependency": 0 };
   for (const issue of issues) { counts[issue.level]++; kinds[issue.kind]++; }
   const filtered = issues.filter((issue) => (query.kind === "all" || issue.kind === query.kind) && (query.level === "all" || issue.level === query.level) && matchesSearchText(`${issue.title} ${issue.detail} ${issue.lessonDate ?? ""}`, query.q));
   filtered.sort((a, b) => (a.level === b.level ? 0 : a.level === "action" ? -1 : 1) || (a.lessonDate ?? "9999").localeCompare(b.lessonDate ?? "9999") || collator.compare(a.title, b.title) || a.id.localeCompare(b.id));

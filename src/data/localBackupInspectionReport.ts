@@ -10,6 +10,7 @@ import { assertCompleteJournalComparison } from "../domain/backupJournalComparis
 import { assessBackupRestoreAdmission } from "../domain/backupRestoreAdmission";
 import { assertCompleteNotificationComparison } from "../domain/backupNotificationComparison";
 import { assertBackupFileDifferenceDetails } from "../domain/backupFileDifference";
+import { assertCompleteAssessmentComparison } from "../domain/backupAssessmentComparison";
 
 type ReportCommand = Pick<BackupCommand, "actorId" | "actorRevision"> & { inspection: BackupInspection };
 
@@ -49,6 +50,7 @@ export const prepareBackupInspectionReport = (
     if (report.scheduleComparison) assertCompleteScheduleComparison(report.scheduleComparison);
     if (report.journalComparison) assertCompleteJournalComparison(report.journalComparison);
     if (report.notificationComparison) assertCompleteNotificationComparison(report.notificationComparison);
+    if (report.assessmentComparison) assertCompleteAssessmentComparison(report.assessmentComparison);
     const body = {
       format: "bi-university-backup-inspection", version: 1, scope: "administrative",
       actor: report.actor, inspectedAt: report.inspectedAt,
@@ -56,6 +58,7 @@ export const prepareBackupInspectionReport = (
       warnings: report.warnings, documents: report.documents, comparison: report.comparison, plannerComparison: report.plannerComparison, catalogComparison: report.catalogComparison, accountComparison: report.accountComparison, learningComparison: report.learningComparison, scheduleComparison: report.scheduleComparison, journalComparison: report.journalComparison,
       restoreAdmission: assessBackupRestoreAdmission(report.documents),
       notificationComparison: report.notificationComparison,
+      assessmentComparison: report.assessmentComparison,
     };
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json;charset=utf-8" });
     if (blob.size > BACKUP_LIMITS.archiveBytes) throw new Error("Отчёт превышает лимит 128 МиБ. Частичный файл не скачан.");

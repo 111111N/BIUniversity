@@ -17,4 +17,9 @@ describe("contextual return to data checks", () => {
     expect(render("/admin/groups?checksReturn=https%3A%2F%2Fexample.test")).toBe("");
     expect(render("/admin/checks?checksReturn=%2Fadmin%2Fchecks")).toBe("");
   });
+  it("offers the same explicit return on an assessment opened from the dependency report", () => {
+    const back = createChecksReturn("?kind=assessment-dependency", 1, "assessment:one");
+    expect(render(withChecksReturn("/assessments/one", back))).toContain("Вернуться к результатам");
+    expect(render("/assessments/one")).toBe("");
+  });
 });

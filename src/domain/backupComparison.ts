@@ -5,7 +5,7 @@ import type { BackupFileDifferenceDetails } from "./backupFileDifference";
 export type BackupDifferenceKind = "new" | "different" | "current-only" | "schema";
 export type BackupDifferenceReference =
   | { storage: "localStorage"; key: string }
-  | { storage: "localStorage-record"; key: string; collection: "planner" | "groups" | "subjects" | "group-history" | "subject-history" | "accounts" | "account-history" | "education-events" | "journal-history" | "notifications" | "assignments" | "submissions" | "schedule-drafts" | "schedule-published"; id: string }
+  | { storage: "localStorage-record"; key: string; collection: "planner" | "groups" | "subjects" | "group-history" | "subject-history" | "accounts" | "account-history" | "education-events" | "journal-history" | "notifications" | "assignments" | "submissions" | "schedule-drafts" | "schedule-published" | "assessments" | "assessment-history" | "assessment-corrections" | "assessment-correction-history"; id: string }
   | { storage: "localStorage-child-record"; key: string; collection: "submission-attempts"; parentId: string; id: string }
   | { storage: "localStorage-journal-record"; key: string; collection: "schedule-journal"; subjectId: string; groupId: string; id: string }
   | { storage: "indexedDB"; database: string; store: string; key: BackupValue }

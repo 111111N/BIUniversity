@@ -11,16 +11,19 @@ import SearchField from "../../components/SearchField";
 import styles from "./index.module.scss";
 import Tabs from "../../components/Tabs";
 import CheckResults from "./CheckResults";
+import { assessmentService } from "../../data/assessmentStore";
 
 export default function AdminChecksPage() {
   const { currentUser, accounts, accountError, refreshAccounts } = useRole();
   const subjects = useSubjectCatalog();
   const groups = useGroupCatalog();
   const scheduleUpdate = useManagedScheduleUpdate();
+  const [assessmentUpdate, setAssessmentUpdate] = useState(0);
+  useEffect(() => assessmentService.subscribe(() => setAssessmentUpdate((value) => value + 1)), []);
   const [params, setParams] = useSearchParams();
   const query = useMemo<AdministrationChecksQuery>(() => ({ q: params.get("q") ?? "", kind: params.get("kind") ?? "all", level: params.get("level") ?? "all", page: Number(params.get("page") ?? 1) }), [params]);
   const [reload, setReload] = useState(0);
-  const request = useMemo(() => ({ query, accounts, accountError, subjectRevision: subjects.revision, subjectError: subjects.error, groupRevision: groups.revision, groupError: groups.error, actorId: currentUser.id, scheduleUpdate, reload }), [query, accounts, accountError, subjects.revision, subjects.error, groups.revision, groups.error, currentUser.id, scheduleUpdate, reload]);
+  const request = useMemo(() => ({ query, accounts, accountError, subjectRevision: subjects.revision, subjectError: subjects.error, groupRevision: groups.revision, groupError: groups.error, actorId: currentUser.id, scheduleUpdate, assessmentUpdate, reload }), [query, accounts, accountError, subjects.revision, subjects.error, groups.revision, groups.error, currentUser.id, scheduleUpdate, assessmentUpdate, reload]);
   const [result, setResult] = useState<{ request: object; snapshot: AdministrationChecksSnapshot } | null>(null);
   const [failure, setFailure] = useState<{ request: object; message: string } | null>(null);
   const snapshot = result?.request === request ? result.snapshot : null;
@@ -60,6 +63,6 @@ export default function AdminChecksPage() {
     </div>
     {filtered && <div className={styles.activeFilters}><span>Применены фильтры</span><button type="button" onClick={() => setParams({}, { replace: true })}>Сбросить фильтры</button></div>}
     <CheckResults snapshot={snapshot} error={error} loading={loading} filtered={filtered} onPage={page} />
-    <details className={styles.help}><summary>Что проверяется и как читать результат</summary><div><p>Проверяем внесённые учётки, группы, назначения и предстоящие или текущие опубликованные пары.</p><p>«Нужно исправить» — отсутствует номер зачетки или недоступны данные опубликованной пары. «Проверить» — группа без учащихся или дисциплина без действующих назначений; это может быть этапом подготовки.</p><p>Замечания исправляются вручную в соответствующих разделах. Этот отчёт не заменяет проверку конфликтов и изменений перед публикацией расписания.</p></div></details>
+    <details className={styles.help}><summary>Что проверяется и как читать результат</summary><div><p>Проверяем внесённые учётки, группы, назначения, предстоящие или текущие опубликованные пары и связи аттестаций.</p><p>«Нужно исправить» — отсутствует номер зачетки, недоступны данные пары или участника ведомости, ответственный преподаватель не может заполнить черновик. «Проверить» — группа без учащихся, дисциплина без назначений, изменённые учётки комиссии или незавершённая аттестация архивной группы.</p><p>Замечания разбираются вручную. Зафиксированный состав и опубликованные результаты не меняются вслед за переводом, выпуском или блокировкой учётки. Этот отчёт не подтверждает исторические полномочия и не заменяет проверки перед публикацией.</p></div></details>
   </div>;
 }

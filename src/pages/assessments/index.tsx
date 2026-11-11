@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import Link from "../../components/ChecksContextLink";
 import Dropdown from "../../components/Dropdown";
 import SearchField from "../../components/SearchField";
 import { useRole } from "../../components/RoleContext";
@@ -14,6 +15,7 @@ import AssessmentExamples from "./AssessmentExamples";
 import { Pagination } from "./SelectionList";
 import { filterAssessments, paginate } from "./model";
 import styles from "./index.module.scss";
+import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
 
 function AssessmentWorkspace({ actorId, role, accountError }: { actorId: string; role: UserRole; accountError: string }) {
   const { assessmentId } = useParams<{ assessmentId: string }>();
@@ -25,6 +27,7 @@ function AssessmentWorkspace({ actorId, role, accountError }: { actorId: string;
   const assessment = snapshot?.assessments.find((entry) => entry.id === assessmentId);
   const view = paginate(filterAssessments(snapshot?.assessments ?? [], query, kind), page);
   return <section className={styles.page} aria-label={role === "student" ? "Мои аттестации" : "Аттестации"}>
+    {role === "configurator" && <AdministrationReturnNotice />}
     {sourceError && <div className={styles.error} role="alert"><p>{sourceError}</p><p>Сохранение приостановлено. Ввод в открытой форме сохранён.</p><button type="button" onClick={refresh} disabled={loading}>Повторить загрузку</button></div>}
     {loading && <p className={styles.note} role="status">Обновляем данные аттестаций…</p>}
     {message && <p className={styles.notice} role="status">{message}</p>}

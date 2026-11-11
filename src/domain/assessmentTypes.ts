@@ -1,3 +1,4 @@
+export const ASSESSMENTS_STORAGE_KEY = "bi-university-assessments-v1";
 export const ASSESSMENT_KIND_LABELS = {
   exam: "Экзамен", pass: "Зачёт", gradedPass: "Зачёт с оценкой", internship: "Практика", thesis: "ВКР", coursework: "Курсовая работа",
 } as const;
@@ -11,8 +12,9 @@ export interface AssessmentRecordBookMetadata { semester: number; hours: number;
 export interface AssessmentAttempt {
   id: string; number: number; kind: AssessmentAttemptKind; date: string; startsAt: string; room?: string; teacherId: string;
   chairId: string | null; memberIds: string[]; studentIds: string[]; results: AssessmentResult[];
-  state: "draft" | "published"; createdAt: string; createdBy: string;
+  state: "draft" | "published" | "cancelled"; createdAt: string; createdBy: string;
   publishedAt: string | null; publishedBy: string | null;
+  cancellation?: { occurredAt: string; actorId: string; reason: string };
 }
 export interface Assessment {
   id: string; title: string; kind: AssessmentKind; subjectId: string | null; subjectName: string | null;
@@ -20,11 +22,24 @@ export interface Assessment {
 }
 export interface AssessmentHistoryEntry {
   id: string; assessmentId: string; attemptId: string; actorId: string; occurredAt: string;
-  action: "created" | "attempt-created" | "results-saved" | "published" | "record-book-updated";
+  action: "created" | "attempt-created" | "results-saved" | "published" | "record-book-updated" | "attempt-updated" | "attempt-cancelled" | "supervisor-changed";
   results: AssessmentResult[] | null;
   recordBook: AssessmentRecordBookMetadata | null;
+  assignment?: AssessmentAttemptDraft;
+  assignmentOrigin?: "legacy-snapshot";
+  reason?: string;
+  previousSupervisorId?: string;
 }
-export interface AssessmentDocument { version: 2; revision: number; assessments: Assessment[]; history: AssessmentHistoryEntry[] }
+export interface AssessmentCorrection {
+  id: string; assessmentId: string; attemptId: string; version: number; reason: string; openedAt: string; openedBy: string;
+  state: "draft" | "published"; results: AssessmentResult[]; publishedAt: string | null; publishedBy: string | null;
+}
+export type AssessmentCorrectionSummary = Omit<AssessmentCorrection, "results">;
+export interface AssessmentCorrectionEvent {
+  id: string; correctionId: string; actorId: string; occurredAt: string;
+  action: "opened" | "results-saved" | "published"; results: AssessmentResult[]; reason?: string;
+}
+export interface AssessmentDocument { version: 5; revision: number; assessments: Assessment[]; history: AssessmentHistoryEntry[]; corrections: AssessmentCorrection[]; correctionHistory: AssessmentCorrectionEvent[] }
 export interface AssessmentCommandContext {
   actorId: string; actorRevision: number; expectedRevision: number;
   accountsRevision: number; groupRevision: number; subjectRevision: number;
@@ -39,7 +54,13 @@ export interface AssessmentDraft {
 }
 export type AssessmentCommand = AssessmentCommandContext & (
   | { type: "create"; draft: AssessmentDraft }
-  | { type: "add-attempt"; assessmentId: string; kind: "retake" | "commission"; draft: AssessmentAttemptDraft }
+  | { type: "add-attempt"; assessmentId: string; kind: AssessmentAttemptKind; draft: AssessmentAttemptDraft }
+  | { type: "update-attempt"; assessmentId: string; attemptId: string; draft: AssessmentAttemptDraft }
+  | { type: "cancel-attempt"; assessmentId: string; attemptId: string; reason: string }
+  | { type: "change-supervisor"; assessmentId: string; teacherId: string; reason: string }
+  | { type: "open-correction"; assessmentId: string; attemptId: string; reason: string }
+  | { type: "save-correction"; assessmentId: string; attemptId: string; correctionId: string; results: AssessmentResult[] }
+  | { type: "publish-correction"; assessmentId: string; attemptId: string; correctionId: string }
   | { type: "save-results"; assessmentId: string; attemptId: string; results: AssessmentResult[] }
   | { type: "publish"; assessmentId: string; attemptId: string }
   | { type: "update-record-book"; assessmentId: string; recordBook: AssessmentRecordBookMetadata }
@@ -53,12 +74,29 @@ export interface AssessmentSnapshot {
   revision: number; accountsRevision: number; groupRevision: number; subjectRevision: number; actorRevision: number;
   assessments: Assessment[]; groups: AssessmentGroupOption[]; subjects: AssessmentSubjectOption[];
   teachers: AssessmentTeacherOption[]; students: AssessmentStudentOption[];
+  manageableAttemptIds?: string[];
+  manageableSupervisorAssessmentIds?: string[];
+  corrections?: AssessmentCorrection[];
+  correctionPublications?: AssessmentCorrectionSummary[];
+}
+export interface AssessmentAttemptHistoryRequest extends AssessmentCommandContext { assessmentId: string; attemptId: string; page: number }
+/** Assignment audit excludes grades and the full student roster. */
+export interface AssessmentAttemptHistoryEntry extends Pick<AssessmentHistoryEntry, "id" | "actorId" | "occurredAt" | "assignmentOrigin" | "reason" | "previousSupervisorId"> {
+  action: "created" | "attempt-created" | "attempt-updated" | "attempt-cancelled" | "supervisor-changed";
+  assignment?: Omit<AssessmentAttemptDraft, "studentIds">;
+}
+export interface AssessmentAttemptHistoryPage {
+  revision: number; items: AssessmentAttemptHistoryEntry[]; total: number; page: number; pages: number;
 }
 export interface AssessmentService {
   read(actorId: string): Promise<AssessmentSnapshot>;
+  readAttemptHistory(request: AssessmentAttemptHistoryRequest): Promise<AssessmentAttemptHistoryPage>;
+  exportStatement(request: AssessmentStatementRequest): Promise<AssessmentStatementFile>;
   execute(command: AssessmentCommand): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
+export interface AssessmentStatementRequest extends AssessmentCommandContext { assessmentId: string; attemptId: string; version?: number }
+export interface AssessmentStatementFile { filename: string; csv: string }
 export const assessmentOutcomeLabel = (outcome: AssessmentOutcome | null): string => outcome === null ? "Не выставлено"
   : outcome.status === "graded" ? String(outcome.grade) : outcome.status === "passed" ? "Зачтено" : outcome.status === "failed" ? "Не зачтено" : "Неявка";
 export const isSupervisedAssessment = (kind: AssessmentKind): boolean => kind === "thesis" || kind === "coursework";

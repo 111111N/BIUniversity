@@ -3,7 +3,8 @@ const CHECKS_PATH = "/admin/checks";
 const LOCAL_ORIGIN = "https://portal.invalid";
 const RESULT_PREFIX = "admin-check-";
 const FILTERS = ["q", "kind", "level", "page"] as const;
-const RECORD_PATHS = new Set(["/admin/accounts", "/admin/accounts/import", "/admin/subjects", "/admin/groups", "/admin/schedule"]);
+const RECORD_PATHS = new Set(["/admin/accounts", "/admin/accounts/import", "/admin/subjects", "/admin/groups", "/admin/schedule", "/assessments"]);
+const isRecordPath = (pathname: string) => RECORD_PATHS.has(pathname) || /^\/assessments\/[^/]+$/.test(pathname);
 
 export const getCheckResultId = (issueId: string) => `${RESULT_PREFIX}${issueId}`;
 export const readCheckResultAnchor = (hash: string): string | null => {
@@ -37,7 +38,7 @@ export const createChecksReturn = (search: string, actualPage: number, issueId: 
 };
 
 export const readChecksReturn = (pathname: string, search: string): string | null => {
-  if (!RECORD_PATHS.has(pathname)) return null;
+  if (!isRecordPath(pathname)) return null;
   const params = new URLSearchParams(search);
   return params.getAll(CHECKS_RETURN_PARAM).length === 1 ? validateChecksReturn(params.get(CHECKS_RETURN_PARAM)) : null;
 };
@@ -47,7 +48,7 @@ export const withChecksReturn = (destination: string, returnTo: string | null): 
   if (!valid) return destination;
   try {
     const url = new URL(destination, LOCAL_ORIGIN);
-    if (url.origin !== LOCAL_ORIGIN || !RECORD_PATHS.has(url.pathname) || !destination.startsWith("/admin/")) return CHECKS_PATH;
+    if (url.origin !== LOCAL_ORIGIN || !isRecordPath(url.pathname) || !destination.startsWith("/")) return CHECKS_PATH;
     url.searchParams.set(CHECKS_RETURN_PARAM, valid);
     return `${url.pathname}${url.search}${url.hash}`;
   } catch { return CHECKS_PATH; }
@@ -58,7 +59,7 @@ export const inheritChecksReturn = (destination: string, pathname: string, searc
   if (!returnTo) return destination;
   try {
     const url = new URL(destination, LOCAL_ORIGIN);
-    return url.origin === LOCAL_ORIGIN && destination.startsWith("/admin/") && RECORD_PATHS.has(url.pathname)
+    return url.origin === LOCAL_ORIGIN && destination.startsWith("/") && isRecordPath(url.pathname)
       ? withChecksReturn(destination, returnTo) : destination;
   } catch { return destination; }
 };

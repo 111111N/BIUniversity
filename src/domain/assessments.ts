@@ -3,8 +3,9 @@ import {
   isSupervisedAssessment,
   type Assessment, type AssessmentAttempt, type AssessmentAttemptDraft, type AssessmentCommand,
   type AssessmentDocument, type AssessmentGroupOption, type AssessmentHistoryEntry, type AssessmentKind,
-  type AssessmentOutcome, type AssessmentResult, type AssessmentSubjectOption, type AssessmentRecordBookMetadata,
+  type AssessmentOutcome, type AssessmentResult, type AssessmentSubjectOption, type AssessmentRecordBookMetadata, type AssessmentCommandContext,
 } from "./assessmentTypes";
+import { applyAssessmentCorrection, isAssessmentCorrectionCommand, validateAssessmentCorrections } from "./assessmentCorrections";
 
 export interface AssessmentDomainContext {
   accounts: PortalAccount[]; accountsRevision: number;
@@ -33,7 +34,7 @@ export const assessmentStartsAt = (attempt: Pick<AssessmentAttempt, "date" | "st
   if (!date(attempt.date) || !time(attempt.startsAt)) fail("Выберите корректные дату и время аттестации по Москве.");
   return Date.parse(`${attempt.date}T${attempt.startsAt}:00+03:00`);
 };
-export const canRecordAssessmentResults = (attempt: Pick<AssessmentAttempt, "date" | "startsAt">, now: string): boolean => timestamp(now) && Date.parse(now) >= assessmentStartsAt(attempt);
+export const canRecordAssessmentResults = (attempt: Pick<AssessmentAttempt, "date" | "startsAt"> & Partial<Pick<AssessmentAttempt, "state">>, now: string): boolean => attempt.state !== "cancelled" && timestamp(now) && Date.parse(now) >= assessmentStartsAt(attempt);
 const list = (value: unknown, max = 25_000): unknown[] => Array.isArray(value) && value.length <= max ? value : fail();
 const uniqueIds = (value: unknown, nonempty = false): string[] => {
   const items = list(value, 10_000);
@@ -78,17 +79,42 @@ export const validateAssessmentRecordBook = (value: unknown): AssessmentRecordBo
   return value as AssessmentRecordBookMetadata;
 };
 const sameRecordBook = (a: AssessmentRecordBookMetadata | null, b: AssessmentRecordBookMetadata | null) => a === null ? b === null : b !== null && a.semester === b.semester && a.hours === b.hours && a.category === b.category;
-export const emptyAssessmentDocument = (): AssessmentDocument => ({ version: 2, revision: 0, assessments: [], history: [] });
+export const emptyAssessmentDocument = (): AssessmentDocument => ({ version: 5, revision: 0, assessments: [], history: [], corrections: [], correctionHistory: [] });
+export const assessmentAttemptAssignment = (attempt: AssessmentAttemptDraft): AssessmentAttemptDraft => ({
+  date: attempt.date, startsAt: attempt.startsAt, ...(attempt.room !== undefined ? { room: attempt.room } : {}),
+  teacherId: attempt.teacherId, chairId: attempt.chairId, memberIds: [...attempt.memberIds], studentIds: [...attempt.studentIds],
+});
+const sameAssignment = (left: AssessmentAttemptDraft, right: AssessmentAttemptDraft): boolean => JSON.stringify(assessmentAttemptAssignment(left)) === JSON.stringify(assessmentAttemptAssignment(right));
+const historicalAssignment = (value: unknown, assessment: Assessment, attempt: AssessmentAttempt, supervisorId = assessment.supervisorId): AssessmentAttemptDraft => {
+  const draft = object(value, ["date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds", ...(Object.hasOwn(value ?? {}, "room") ? ["room"] : [])]) as unknown as AssessmentAttemptDraft;
+  assessmentStartsAt(draft);
+  if (!id(draft.teacherId) || (draft.room !== undefined && !string(draft.room)) || (supervisorId !== null && draft.teacherId !== supervisorId)) fail();
+  const members = uniqueIds(draft.memberIds);
+  if (attempt.kind === "commission" ? !id(draft.chairId) || !members.length || members.includes(draft.chairId) : draft.chairId !== null || members.length !== 0) fail();
+  const selected = uniqueIds(draft.studentIds, true);
+  if (selected.length !== attempt.studentIds.length || selected.some((studentId, index) => studentId !== attempt.studentIds[index])) fail("Правка назначения не может менять зафиксированный состав попытки.");
+  return draft;
+};
+export const manageableAssessmentAttemptIds = (state: AssessmentDocument): string[] => {
+  const recorded = new Set(state.history.filter((entry) => entry.results?.some((row) => row.outcome !== null)).map((entry) => entry.attemptId));
+  return state.assessments.flatMap((assessment) => assessment.attempts.filter((attempt) => attempt.state === "draft" && !recorded.has(attempt.id) && attempt.results.every((row) => row.outcome === null)).map((attempt) => attempt.id));
+};
+export const manageableSupervisorAssessmentIds = (state: AssessmentDocument): string[] => {
+  const recorded = new Set(state.history.filter((entry) => entry.results?.some((row) => row.outcome !== null)).map((entry) => entry.assessmentId));
+  return state.assessments.filter((assessment) => isSupervisedAssessment(assessment.kind) && assessment.attempts.at(-1)?.state === "draft" && !recorded.has(assessment.id)).map((assessment) => assessment.id);
+};
 
 /** The document is independently verifiable: each mutation has an immutable audit snapshot. */
-const validateDocument = (value: unknown): AssessmentDocument => {
+type BaseAssessmentDocument = Pick<AssessmentDocument, "revision" | "assessments" | "history"> & { version: 2 | 3 };
+const validateBaseDocument = (value: unknown, legacy = false, allowSupervisorChanges = false): BaseAssessmentDocument => {
   const root = object(value, ["version", "revision", "assessments", "history"]);
-  if (root.version !== 2 || !integer(root.revision)) fail();
+  if (root.version !== (legacy ? 2 : 3) || !integer(root.revision)) fail();
   const assessments = list(root.assessments, 5_000) as Assessment[];
   const history = list(root.history, 50_000) as AssessmentHistoryEntry[];
   if (root.revision !== history.length) fail();
   const assessmentIds = new Set<string>();
   const attempts = new Map<string, { assessment: Assessment; attempt: AssessmentAttempt }>();
+  const precedingStarts = new Map<string, number>();
   let itemCount = history.length;
   for (const assessment of assessments) {
     object(assessment, ["id", "title", "kind", "subjectId", "subjectName", "groupId", "groupName", "period", "supervisorId", "recordBook", "roster", "attempts"]);
@@ -108,33 +134,51 @@ const validateDocument = (value: unknown): AssessmentDocument => {
     const sequence = list(assessment.attempts, 1_000) as AssessmentAttempt[];
     if (!sequence.length) fail();
     itemCount += roster.length + sequence.length;
+    let lastPublished: AssessmentAttempt | undefined;
     for (const [index, attempt] of sequence.entries()) {
-      object(attempt, ["id", "number", "kind", "date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds", "results", "state", "createdAt", "createdBy", "publishedAt", "publishedBy", ...(Object.hasOwn(attempt, "room") ? ["room"] : [])]);
+      if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) fail();
+      object(attempt, ["id", "number", "kind", "date", "startsAt", "teacherId", "chairId", "memberIds", "studentIds", "results", "state", "createdAt", "createdBy", "publishedAt", "publishedBy", ...(Object.hasOwn(attempt, "room") ? ["room"] : []), ...(!legacy && attempt.state === "cancelled" ? ["cancellation"] : [])]);
       if (Object.hasOwn(attempt, "room") && !string(attempt.room)) fail();
-      if (!id(attempt.id) || attempts.has(attempt.id) || attempt.number !== index + 1 || !date(attempt.date) || !time(attempt.startsAt) || !id(attempt.teacherId) || !id(attempt.createdBy) || !timestamp(attempt.createdAt) || (assessment.supervisorId !== null && attempt.teacherId !== assessment.supervisorId)) fail();
-      if ((index === 0 && attempt.kind !== "primary") || (index > 0 && !["retake", "commission"].includes(attempt.kind))) fail();
+      if (!id(attempt.id) || attempts.has(attempt.id) || attempt.number !== index + 1 || !date(attempt.date) || !time(attempt.startsAt) || !id(attempt.teacherId) || !id(attempt.createdBy) || !timestamp(attempt.createdAt) || (!allowSupervisorChanges && assessment.supervisorId !== null && attempt.teacherId !== assessment.supervisorId)) fail();
+      const previous = sequence[index - 1];
+      if (index === 0 ? attempt.kind !== "primary" : previous.state === "cancelled" && !lastPublished ? attempt.kind !== "primary" : !["retake", "commission"].includes(attempt.kind)) fail();
       const memberIds = uniqueIds(attempt.memberIds);
       if (attempt.kind === "commission" ? !id(attempt.chairId) || !memberIds.length || memberIds.includes(attempt.chairId) : attempt.chairId !== null || memberIds.length !== 0) fail();
       const selected = uniqueIds(attempt.studentIds, true);
-      if (selected.some((studentId) => !students.has(studentId)) || (index === 0 && selected.length !== students.size)) fail();
+      if (selected.some((studentId) => !students.has(studentId)) || (attempt.kind === "primary" && selected.length !== students.size)) fail();
       const normalized = results(attempt.results, selected, assessment.kind);
       if (!equalResults(attempt.results, normalized)) fail();
       itemCount += normalized.length;
       if (itemCount > MAX_ITEMS) fail("Превышен безопасный размер данных аттестаций.");
       if (attempt.state === "published") {
         if (!timestamp(attempt.publishedAt) || !id(attempt.publishedBy) || attempt.publishedBy !== attempt.teacherId || Date.parse(attempt.publishedAt) < Date.parse(attempt.createdAt) || !canRecordAssessmentResults(attempt, attempt.publishedAt) || normalized.some((result) => result.outcome === null)) fail();
-      } else if (attempt.state !== "draft" || attempt.publishedAt !== null || attempt.publishedBy !== null) fail();
-      const previous = sequence[index - 1];
-      if (previous && (previous.state !== "published" || assessmentStartsAt(attempt) < assessmentStartsAt(previous) || Date.parse(attempt.createdAt) < Date.parse(previous.publishedAt!))) fail();
+      } else {
+        if ((attempt.state !== "draft" && (legacy || attempt.state !== "cancelled")) || attempt.publishedAt !== null || attempt.publishedBy !== null) fail();
+        if (attempt.state === "cancelled") {
+          const cancellation = object(attempt.cancellation, ["occurredAt", "actorId", "reason"]);
+          if (!timestamp(cancellation.occurredAt) || Date.parse(cancellation.occurredAt) < Date.parse(attempt.createdAt) || !id(cancellation.actorId) || !string(cancellation.reason, 2, 500) || normalized.some((row) => row.outcome !== null)) fail();
+        }
+      }
+      if (previous && ((previous.state !== "published" && previous.state !== "cancelled") || Date.parse(attempt.createdAt) < Date.parse(previous.state === "cancelled" ? previous.cancellation!.occurredAt : previous.publishedAt!))) fail();
+      if (lastPublished && assessmentStartsAt(attempt) < assessmentStartsAt(lastPublished)) fail();
+      precedingStarts.set(attempt.id, lastPublished ? assessmentStartsAt(lastPublished) : -Infinity);
+      if (attempt.state === "published") lastPublished = attempt;
       attempts.set(attempt.id, { assessment, attempt });
     }
   }
   const historyIds = new Set<string>();
-  const progression = new Map<string, { created: boolean; published: boolean; results: AssessmentResult[] }>();
+  const progression = new Map<string, { state: AssessmentAttempt["state"]; assignment: AssessmentAttemptDraft; recorded: boolean; results: AssessmentResult[]; cancellation?: AssessmentAttempt["cancellation"] }>();
   const recordBooks = new Map<string, AssessmentRecordBookMetadata | null>();
+  const supervisors = new Map<string, string | null>();
+  const recordedAssessments = new Set<string>();
   let previousTime = -Infinity;
   for (const entry of history) {
-    object(entry, ["id", "assessmentId", "attemptId", "actorId", "occurredAt", "action", "results", "recordBook"]);
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) fail();
+    if (entry.action === "supervisor-changed" && !allowSupervisorChanges) fail();
+    const hasAssignment = !legacy && ["created", "attempt-created", "attempt-updated", "supervisor-changed"].includes(entry.action);
+    const legacyOrigin = !legacy && Object.hasOwn(entry, "assignmentOrigin");
+    object(entry, ["id", "assessmentId", "attemptId", "actorId", "occurredAt", "action", "results", "recordBook", ...(hasAssignment ? ["assignment"] : []), ...(legacyOrigin ? ["assignmentOrigin"] : []), ...(!legacy && (entry.action === "attempt-cancelled" || entry.action === "supervisor-changed") ? ["reason"] : []), ...(entry.action === "supervisor-changed" ? ["previousSupervisorId"] : [])]);
+    if (legacyOrigin && (entry.assignmentOrigin !== "legacy-snapshot" || !["created", "attempt-created"].includes(entry.action))) fail();
     validateAssessmentRecordBook(entry.recordBook);
     const target = attempts.get(entry.attemptId);
     if (!id(entry.id) || historyIds.has(entry.id) || !target || target.assessment.id !== entry.assessmentId || !id(entry.actorId) || !timestamp(entry.occurredAt) || Date.parse(entry.occurredAt) < previousTime) fail();
@@ -143,7 +187,7 @@ const validateDocument = (value: unknown): AssessmentDocument => {
     const { assessment, attempt } = target!;
     const current = progression.get(attempt.id);
     if (entry.action === "record-book-updated") {
-      if (!recordBooks.has(assessment.id) || attempt.number !== 1 || entry.results !== null || entry.recordBook === null || sameRecordBook(recordBooks.get(assessment.id)!, entry.recordBook)) fail();
+      if (!current || !recordBooks.has(assessment.id) || attempt.number !== 1 || entry.results !== null || entry.recordBook === null || sameRecordBook(recordBooks.get(assessment.id)!, entry.recordBook)) fail();
       recordBooks.set(assessment.id, entry.recordBook);
       continue;
     }
@@ -151,24 +195,58 @@ const validateDocument = (value: unknown): AssessmentDocument => {
     else if (!recordBooks.has(assessment.id) || !sameRecordBook(recordBooks.get(assessment.id)!, entry.recordBook)) fail();
     if (entry.action === "created" || entry.action === "attempt-created") {
       const preceding = assessment.attempts[attempt.number - 2];
-      if (current || (entry.action === "created") !== (attempt.number === 1) || entry.actorId !== attempt.createdBy || entry.occurredAt !== attempt.createdAt || entry.results !== null || (preceding && !progression.get(preceding.id)?.published)) fail();
-      progression.set(attempt.id, { created: true, published: false, results: attempt.studentIds.map((studentId) => ({ studentId, outcome: null })) });
+      if (current || (entry.action === "created") !== (attempt.number === 1) || entry.actorId !== attempt.createdBy || entry.occurredAt !== attempt.createdAt || entry.results !== null || (preceding && !["published", "cancelled"].includes(progression.get(preceding.id)?.state ?? ""))) fail();
+      const assignment = legacy ? assessmentAttemptAssignment(attempt) : historicalAssignment(entry.assignment, assessment, attempt, entry.action === "created" ? null : supervisors.get(assessment.id));
+      if (entry.action === "created") supervisors.set(assessment.id, isSupervisedAssessment(assessment.kind) ? assignment.teacherId : null);
+      if (assessmentStartsAt(assignment) < precedingStarts.get(attempt.id)!) fail();
+      progression.set(attempt.id, { state: "draft", assignment, recorded: false, results: attempt.studentIds.map((studentId) => ({ studentId, outcome: null })) });
+    } else if (!legacy && entry.action === "attempt-updated") {
+      if (!current || current.state !== "draft" || current.recorded || entry.results !== null) fail();
+      const assignment = historicalAssignment(entry.assignment, assessment, attempt, supervisors.get(assessment.id));
+      if (sameAssignment(current.assignment, assignment) || assessmentStartsAt(assignment) < precedingStarts.get(attempt.id)!) fail();
+      itemCount += assignment.studentIds.length + assignment.memberIds.length;
+      if (itemCount > MAX_ITEMS) fail("Превышен безопасный размер истории аттестаций.");
+      progression.set(attempt.id, { ...current, assignment });
+    } else if (entry.action === "supervisor-changed") {
+      if (!current || current.state !== "draft" || current.recorded || recordedAssessments.has(assessment.id) || !isSupervisedAssessment(assessment.kind) || entry.results !== null || !string(entry.reason, 2, 500) || !id(entry.previousSupervisorId) || entry.previousSupervisorId !== supervisors.get(assessment.id)) fail();
+      const assignment = historicalAssignment(entry.assignment, assessment, attempt, null);
+      if (assignment.teacherId === entry.previousSupervisorId || !sameAssignment({ ...current.assignment, teacherId: assignment.teacherId }, assignment)) fail();
+      itemCount += assignment.studentIds.length + assignment.memberIds.length;
+      if (itemCount > MAX_ITEMS) fail("Превышен безопасный размер истории аттестаций.");
+      supervisors.set(assessment.id, assignment.teacherId);
+      progression.set(attempt.id, { ...current, assignment });
+    } else if (!legacy && entry.action === "attempt-cancelled") {
+      if (!current || current.state !== "draft" || current.recorded || entry.results !== null || !string(entry.reason, 2, 500)) fail();
+      progression.set(attempt.id, { ...current, state: "cancelled", cancellation: { actorId: entry.actorId, occurredAt: entry.occurredAt, reason: entry.reason } });
     } else if (entry.action === "results-saved" || entry.action === "published") {
-      if (!current || current.published || entry.actorId !== attempt.teacherId || entry.results === null || !canRecordAssessmentResults(attempt, entry.occurredAt)) fail();
+      if (!current || current.state !== "draft" || entry.actorId !== current.assignment.teacherId || entry.results === null || !canRecordAssessmentResults(current.assignment, entry.occurredAt)) fail();
       const snapshot = results(entry.results, attempt.studentIds, assessment.kind);
       if (!equalResults(entry.results!, snapshot)) fail();
+      if (snapshot.some((row) => row.outcome !== null)) recordedAssessments.add(assessment.id);
       itemCount += snapshot.length;
       if (itemCount > MAX_ITEMS) fail("Превышен безопасный размер истории аттестаций.");
       if (entry.action === "published" && (entry.occurredAt !== attempt.publishedAt || snapshot.some((row) => row.outcome === null) || !equalResults(snapshot, current!.results))) fail();
-      progression.set(attempt.id, { created: true, published: entry.action === "published", results: snapshot });
+      progression.set(attempt.id, { ...current, state: entry.action === "published" ? "published" : "draft", recorded: current.recorded || snapshot.some((row) => row.outcome !== null), results: snapshot });
     } else fail();
   }
   for (const { attempt } of attempts.values()) {
     const current = progression.get(attempt.id);
-    if (!current || current.published !== (attempt.state === "published") || !equalResults(current.results, attempt.results)) fail();
+    const cancellation = current?.cancellation;
+    if (!current || current.state !== attempt.state || !sameAssignment(current.assignment, attempt) || !equalResults(current.results, attempt.results)
+      || (cancellation ? !attempt.cancellation || cancellation.actorId !== attempt.cancellation.actorId || cancellation.occurredAt !== attempt.cancellation.occurredAt || cancellation.reason !== attempt.cancellation.reason : attempt.cancellation !== undefined)) fail();
   }
-  for (const assessment of assessments) if (!recordBooks.has(assessment.id) || !sameRecordBook(recordBooks.get(assessment.id)!, assessment.recordBook)) fail();
-  return value as AssessmentDocument;
+  for (const assessment of assessments) if (!recordBooks.has(assessment.id) || !sameRecordBook(recordBooks.get(assessment.id)!, assessment.recordBook) || supervisors.get(assessment.id) !== assessment.supervisorId) fail();
+  return value as BaseAssessmentDocument;
+};
+
+const validateDocument = (value: unknown): AssessmentDocument => {
+  const root = object(value, ["version", "revision", "assessments", "history", "corrections", "correctionHistory"]);
+  if (root.version !== 5 || !integer(root.revision)) fail();
+  const baseHistory = list(root.history, 50_000);
+  validateBaseDocument({ version: 3, revision: baseHistory.length, assessments: root.assessments, history: baseHistory }, false, true);
+  const state = value as AssessmentDocument;
+  validateAssessmentCorrections(state, results);
+  return state;
 };
 
 export const decodeAssessmentDocument = (raw: string): AssessmentDocument => {
@@ -179,7 +257,24 @@ export const decodeAssessmentDocument = (raw: string): AssessmentDocument => {
     const legacy = object(value, ["version", "revision", "assessments", "history"]);
     const assessments = list(legacy.assessments, 5_000).map((row) => ({ ...object(row, ["id", "title", "kind", "subjectId", "subjectName", "groupId", "groupName", "period", "supervisorId", "roster", "attempts"]), recordBook: null }));
     const history = list(legacy.history, 50_000).map((row) => ({ ...object(row, ["id", "assessmentId", "attemptId", "actorId", "occurredAt", "action", "results"]), recordBook: null }));
-    return validateDocument({ ...legacy, version: 2, assessments, history });
+    value = { ...legacy, version: 2, assessments, history };
+  }
+  if (value && typeof value === "object" && (value as { version?: unknown }).version === 2) {
+    // Legacy values are derived from the validated saved state, explicitly distinguished from recorded history.
+    const legacy = validateBaseDocument(value, true);
+    const assignments = new Map(legacy.assessments.flatMap((assessment) => assessment.attempts.map((attempt) => [attempt.id, assessmentAttemptAssignment(attempt)] as const)));
+    value = { ...legacy, version: 3, history: legacy.history.map((entry) => ["created", "attempt-created"].includes(entry.action) ? { ...entry, assignment: assignments.get(entry.attemptId), assignmentOrigin: "legacy-snapshot" } : entry) };
+  }
+  if (value && typeof value === "object" && (value as { version?: unknown }).version === 3) {
+    const legacy = validateBaseDocument(value);
+    return validateDocument({ ...legacy, version: 5, corrections: [], correctionHistory: [] });
+  }
+  if (value && typeof value === "object" && (value as { version?: unknown }).version === 4) {
+    const legacy = object(value, ["version", "revision", "assessments", "history", "corrections", "correctionHistory"]);
+    const history = list(legacy.history, 50_000);
+    validateBaseDocument({ version: 3, revision: history.length, assessments: legacy.assessments, history });
+    validateAssessmentCorrections(value as AssessmentDocument, results);
+    return validateDocument({ ...legacy, version: 5 });
   }
   return validateDocument(value);
 };
@@ -198,22 +293,30 @@ const validateAttemptDraft = (draft: AssessmentAttemptDraft, context: Assessment
   return studentIds;
 };
 
-export const applyAssessmentCommand = (state: AssessmentDocument, command: AssessmentCommand, context: AssessmentDomainContext, generated: AssessmentGeneratedValues): AssessmentDocument => {
-  validateDocument(state);
-  if (!command || !["create", "add-attempt", "save-results", "publish", "update-record-book"].includes(command.type)) fail("Неизвестное действие с аттестацией.");
-  const commonKeys = ["type", "actorId", "actorRevision", "expectedRevision", "accountsRevision", "groupRevision", "subjectRevision"];
-  object(command, [...commonKeys, ...(command.type === "create" ? ["draft"] : command.type === "add-attempt" ? ["assessmentId", "kind", "draft"] : command.type === "save-results" ? ["assessmentId", "attemptId", "results"] : command.type === "update-record-book" ? ["assessmentId", "recordBook"] : ["assessmentId", "attemptId"])]);
+export const requireAssessmentActor = (state: AssessmentDocument, command: AssessmentCommandContext, context: AssessmentDomainContext): PortalAccount => {
   if ([command.actorRevision, command.expectedRevision, command.accountsRevision, command.groupRevision, command.subjectRevision, context.accountsRevision, context.groupRevision, context.subjectRevision].some((value) => !integer(value))) fail("Проверьте версии данных аттестации.");
   if (command.expectedRevision !== state.revision || command.accountsRevision !== context.accountsRevision || command.groupRevision !== context.groupRevision || command.subjectRevision !== context.subjectRevision) fail("Данные изменились. Обновите страницу и повторите действие.");
   if (new Set(context.accounts.map((entry) => entry.id)).size !== context.accounts.length || new Set(context.groups.map((entry) => entry.id)).size !== context.groups.length || new Set(context.subjects.map((entry) => entry.id)).size !== context.subjects.length) fail("Справочники содержат повторяющиеся идентификаторы.");
   const actor = context.accounts.find((account) => account.id === command.actorId);
   if (!actor || !isAccountActive(actor) || actor.revision !== command.actorRevision) fail("Учётная запись недоступна или изменена. Обновите страницу.");
+  return actor;
+};
+
+export const applyAssessmentCommand = (state: AssessmentDocument, command: AssessmentCommand, context: AssessmentDomainContext, generated: AssessmentGeneratedValues): AssessmentDocument => {
+  validateDocument(state);
+  if (!command || !["create", "add-attempt", "save-results", "publish", "update-record-book", "update-attempt", "cancel-attempt", "change-supervisor", "open-correction", "save-correction", "publish-correction"].includes(command.type)) fail("Неизвестное действие с аттестацией.");
+  const commonKeys = ["type", "actorId", "actorRevision", "expectedRevision", "accountsRevision", "groupRevision", "subjectRevision"];
+  object(command, [...commonKeys, ...(command.type === "create" ? ["draft"] : command.type === "add-attempt" ? ["assessmentId", "kind", "draft"] : command.type === "change-supervisor" ? ["assessmentId", "teacherId", "reason"] : command.type === "update-attempt" ? ["assessmentId", "attemptId", "draft"] : command.type === "cancel-attempt" || command.type === "open-correction" ? ["assessmentId", "attemptId", "reason"] : command.type === "save-correction" ? ["assessmentId", "attemptId", "correctionId", "results"] : command.type === "publish-correction" ? ["assessmentId", "attemptId", "correctionId"] : command.type === "save-results" ? ["assessmentId", "attemptId", "results"] : command.type === "update-record-book" ? ["assessmentId", "recordBook"] : ["assessmentId", "attemptId"])]);
+  const actor = requireAssessmentActor(state, command, context);
   if (!id(generated.assessmentId) || !id(generated.attemptId) || !id(generated.historyId) || !timestamp(generated.occurredAt)) fail("Не удалось сформировать идентификаторы и дату изменения.");
-  if (state.history.some((entry) => entry.id === generated.historyId) || (state.history.length && Date.parse(generated.occurredAt) < Date.parse(state.history[state.history.length - 1].occurredAt))) fail("Изменение уже существует или нарушает порядок истории.");
+  const audit = [...state.history.slice(-1), ...state.correctionHistory.slice(-1)];
+  if (state.history.some((entry) => entry.id === generated.historyId) || state.correctionHistory.some((entry) => entry.id === generated.historyId) || audit.some((entry) => Date.parse(generated.occurredAt) < Date.parse(entry.occurredAt))) fail("Изменение уже существует или нарушает порядок истории.");
+  if (isAssessmentCorrectionCommand(command)) return validateDocument(applyAssessmentCorrection(state, command, actor, generated, results));
   const next = copy(state);
   let target: Assessment;
   let attempt: AssessmentAttempt;
   let action: AssessmentHistoryEntry["action"];
+  let previousSupervisorId: string | undefined;
   if (command.type === "create" || command.type === "add-attempt") {
     if (actor.role !== "configurator") fail("Создавать аттестации и пересдачи может только настройщик.");
     if (state.assessments.some((entry) => entry.attempts.some((item) => item.id === generated.attemptId))) fail("Идентификатор попытки уже существует.");
@@ -236,12 +339,13 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
       const found = next.assessments.find((entry) => entry.id === command.assessmentId);
       if (!found) fail("Аттестация не найдена.");
       target = found!;
-      if (command.kind !== "retake" && command.kind !== "commission") fail("Выберите вид пересдачи.");
       const previous = target.attempts[target.attempts.length - 1];
-      if (previous.state !== "published") fail("Сначала опубликуйте предыдущую ведомость.");
-      if (assessmentStartsAt(command.draft) < assessmentStartsAt(previous)) fail("Дата и время пересдачи не могут быть раньше предыдущей попытки.");
+      const preceding = [...target.attempts].reverse().find((entry) => entry.state === "published");
+      if (!["primary", "retake", "commission"].includes(command.kind) || (previous.state === "cancelled" && !preceding ? command.kind !== "primary" : command.kind === "primary")) fail("После отмены основной сдачи без опубликованной ведомости назначьте основную сдачу заново. Для пересдачи нужна предыдущая опубликованная ведомость.");
+      if (previous.state !== "published" && previous.state !== "cancelled") fail("Сначала опубликуйте предыдущую ведомость или отмените попытку без результатов.");
+      if (preceding && assessmentStartsAt(command.draft) < assessmentStartsAt(preceding)) fail("Дата и время пересдачи не могут быть раньше предыдущей опубликованной попытки.");
       if (target.supervisorId !== null && command.draft.teacherId !== target.supervisorId) fail("Ведомости ВКР и курсовых работ заполняет назначенный научный руководитель.");
-      validateAttemptDraft(command.draft, context, new Set(target.roster.map((row) => row.studentId)), false);
+      validateAttemptDraft(command.draft, context, new Set(target.roster.map((row) => row.studentId)), command.kind === "primary");
       action = "attempt-created";
     }
     const draft = command.type === "create" ? command.draft.attempt : command.draft;
@@ -250,6 +354,44 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
     if (attemptKind === "commission" ? draft.chairId === null || !draft.memberIds.length : draft.chairId !== null || draft.memberIds.length !== 0) fail("Для комиссионной попытки укажите председателя и хотя бы одного члена. У обычной попытки комиссии быть не должно.");
     attempt = { id: generated.attemptId, number: target!.attempts.length + 1, kind: attemptKind, date: draft.date, startsAt: draft.startsAt, ...(draft.room ? { room: draft.room } : {}), teacherId: draft.teacherId, chairId: draft.chairId, memberIds: [...draft.memberIds], studentIds: [...draft.studentIds], results: draft.studentIds.map((studentId) => ({ studentId, outcome: null })), state: "draft", createdAt: generated.occurredAt, createdBy: actor.id, publishedAt: null, publishedBy: null };
     target!.attempts.push(attempt);
+  } else if (command.type === "change-supervisor") {
+    if (actor.role !== "configurator") fail("Заменить научного руководителя может только настройщик.");
+    const found = next.assessments.find((entry) => entry.id === command.assessmentId);
+    if (!found || !isSupervisedAssessment(found.kind)) fail("Замена руководителя доступна только для ВКР и курсовой работы.");
+    if (!manageableSupervisorAssessmentIds(state).includes(found.id)) fail("Руководителя можно заменить только до первого сохранённого результата по всей аттестации и при наличии текущей попытки. Очистка отметки не открывает замену.");
+    if (!string(command.reason, 2, 500)) fail("Укажите причину замены от 2 до 500 символов одной строкой.");
+    const teacher = context.accounts.find((entry) => entry.id === command.teacherId && entry.role === "teacher" && isAccountActive(entry));
+    if (!teacher) fail("Выберите действующего преподавателя для замены руководителя.");
+    if (teacher.id === found.supervisorId) fail("Этот преподаватель уже является научным руководителем.");
+    target = found; attempt = found.attempts.at(-1)!;
+    previousSupervisorId = found.supervisorId!;
+    target.supervisorId = teacher.id; attempt.teacherId = teacher.id;
+    action = "supervisor-changed";
+  } else if (command.type === "update-attempt" || command.type === "cancel-attempt") {
+    if (actor.role !== "configurator") fail("Изменять назначение и отменять попытку может только настройщик.");
+    const found = next.assessments.find((entry) => entry.id === command.assessmentId);
+    const foundAttempt = found?.attempts.find((entry) => entry.id === command.attemptId);
+    if (!found || !foundAttempt) fail("Попытка аттестации не найдена.");
+    target = found; attempt = foundAttempt;
+    if (!manageableAssessmentAttemptIds(state).includes(attempt.id)) fail("Изменение и отмена доступны только до первого сохранённого результата. Очистка оценки не открывает попытку для изменения; опубликованная или отменённая попытка закрыта.");
+    if (command.type === "cancel-attempt") {
+      if (!string(command.reason, 2, 500)) fail("Укажите причину отмены от 2 до 500 символов одной строкой.");
+      attempt.state = "cancelled";
+      attempt.cancellation = { actorId: actor.id, occurredAt: generated.occurredAt, reason: command.reason };
+      action = "attempt-cancelled";
+    } else {
+      const draft = command.draft;
+      validateAttemptDraft(draft, context, new Set(target.roster.map((row) => row.studentId)), attempt.kind === "primary");
+      if (target.supervisorId !== null && draft.teacherId !== target.supervisorId) fail("Научный руководитель закреплён за аттестацией. Для замены используйте отдельное действие «Заменить руководителя» до первого результата по всей аттестации.");
+      historicalAssignment(draft, target, attempt);
+      if (attempt.kind !== "primary" && attempt.room !== undefined && !string(draft.room)) fail("Укажите аудиторию пересдачи.");
+      if (sameAssignment(attempt, draft)) fail("Назначение не изменилось.");
+      const preceding = target.attempts.slice(0, attempt.number - 1).reverse().find((entry) => entry.state === "published");
+      if (preceding && assessmentStartsAt(draft) < assessmentStartsAt(preceding)) fail("Дата и время пересдачи не могут быть раньше предыдущей опубликованной попытки.");
+      delete attempt.room;
+      Object.assign(attempt, assessmentAttemptAssignment(draft));
+      action = "attempt-updated";
+    }
   } else if (command.type === "update-record-book") {
     if (actor.role !== "configurator") fail("Реквизиты зачётки изменяет только настройщик.");
     const found = next.assessments.find((entry) => entry.id === command.assessmentId);
@@ -263,7 +405,7 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
     if (!found || !foundAttempt) fail("Ведомость не найдена.");
     target = found!; attempt = foundAttempt!;
     if (actor.role !== "teacher" || attempt.teacherId !== actor.id) fail("Заполнять ведомость может только назначенный преподаватель.");
-    if (attempt.state !== "draft") fail("Опубликованная ведомость закрыта для изменений.");
+    if (attempt.state !== "draft") fail("Опубликованная или отменённая ведомость закрыта для изменений.");
     if (!canRecordAssessmentResults(attempt, generated.occurredAt)) fail("Заполнять и публиковать результаты можно начиная с назначенных даты и времени аттестации по Москве.");
     if (command.type === "save-results") {
       attempt.results = copy(results(command.results, attempt.studentIds, target.kind));
@@ -275,7 +417,11 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
     }
   }
   next.revision += 1;
-  next.history.push({ id: generated.historyId, assessmentId: target!.id, attemptId: attempt!.id, actorId: actor.id, occurredAt: generated.occurredAt, action: action!, results: action! === "results-saved" || action! === "published" ? copy(attempt!.results) : null, recordBook: copy(target!.recordBook) });
+  next.history.push({ id: generated.historyId, assessmentId: target!.id, attemptId: attempt!.id, actorId: actor.id, occurredAt: generated.occurredAt, action: action!, results: action! === "results-saved" || action! === "published" ? copy(attempt!.results) : null, recordBook: copy(target!.recordBook),
+    ...(["created", "attempt-created", "attempt-updated", "supervisor-changed"].includes(action!) ? { assignment: assessmentAttemptAssignment(attempt!) } : {}),
+    ...(command.type === "cancel-attempt" || command.type === "change-supervisor" ? { reason: command.reason } : {}),
+    ...(action! === "supervisor-changed" ? { previousSupervisorId: previousSupervisorId! } : {}),
+  });
   return validateDocument(next);
 };
 
@@ -283,12 +429,16 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
 export const projectAssessments = (state: AssessmentDocument, actor: PortalAccount): Assessment[] => {
   validateDocument(state);
   if (!isAccountActive(actor)) fail("Учётная запись заблокирована.");
-  if (actor.role === "configurator") return copy(state.assessments);
-  if (actor.role !== "teacher" && actor.role !== "student") fail("Недостаточно прав для просмотра аттестаций.");
+  const correctedResults = new Map(state.corrections.filter((entry) => entry.state === "published").map((entry) => [entry.attemptId, entry.results]));
+  if (actor.role !== "configurator" && actor.role !== "teacher" && actor.role !== "student") fail("Недостаточно прав для просмотра аттестаций.");
   return state.assessments.flatMap((assessment) => {
-    const visible = assessment.attempts.filter((attempt) => actor.role === "teacher" ? attempt.teacherId === actor.id : attempt.studentIds.includes(actor.id));
+    const visible = assessment.attempts.filter((attempt) => actor.role === "configurator" || (actor.role === "teacher" ? attempt.teacherId === actor.id : attempt.studentIds.includes(actor.id)));
     if (!visible.length) return [];
     const students = actor.role === "student" ? new Set([actor.id]) : new Set(visible.flatMap((attempt) => attempt.studentIds));
-    return [copy({ ...assessment, roster: assessment.roster.filter((student) => students.has(student.studentId)), attempts: visible.map((attempt) => ({ ...attempt, studentIds: attempt.studentIds.filter((studentId) => students.has(studentId)), results: actor.role === "student" && attempt.state === "draft" ? [] : attempt.results.filter((result) => students.has(result.studentId)) })) })];
+    return [copy({ ...assessment, roster: assessment.roster.filter((student) => students.has(student.studentId)), attempts: visible.map((attempt) => {
+      const { cancellation, ...fields } = attempt;
+      const effective = attempt.state === "published" ? correctedResults.get(attempt.id) ?? attempt.results : attempt.results;
+      return { ...fields, ...(actor.role !== "student" && cancellation ? { cancellation } : {}), studentIds: attempt.studentIds.filter((studentId) => students.has(studentId)), results: actor.role === "student" && attempt.state !== "published" ? [] : effective.filter((result) => students.has(result.studentId)) };
+    }) })];
   });
 };

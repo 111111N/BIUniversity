@@ -14,6 +14,8 @@ import { getUncheckedScheduleDocuments } from "../../domain/backupScheduleCompar
 import JournalComparisonReview from "./JournalComparisonReview";
 import RestoreAdmissionReview from "./RestoreAdmissionReview";
 import NotificationComparisonReview from "./NotificationComparisonReview";
+import AssessmentComparisonReview from "./AssessmentComparisonReview";
+import { getUncheckedAssessmentDocuments } from "../../domain/backupAssessmentComparison";
 
 export interface InspectionPanelProps {
   file: File | null; busy: boolean; progress: string; error: string; result: BackupInspection | null; unavailable: boolean;
@@ -36,6 +38,7 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
     { count: result?.scheduleComparison ? getUncheckedScheduleDocuments(result.scheduleComparison) : 0, label: "Документы расписания не сравнены" },
     { count: result?.journalComparison?.counts.uncheckedDocuments ?? 0, label: "Источники истории журналов не сравнены" },
     { count: result?.notificationComparison?.counts.uncheckedDocuments ?? 0, label: "Списки уведомлений не сравнены" },
+    { count: result?.assessmentComparison ? getUncheckedAssessmentDocuments(result.assessmentComparison) : 0, label: "Документы аттестаций не сравнены" },
   ].filter(({ count }) => count > 0).map(({ count, label }) => `${label}: ${count}.`).join(" ");
   const completedStatus = result ? `Проверка завершена. Ошибки в документах: ${result.documents.counts.errors}. Требуют проверки: ${result.documents.counts.reviews}. Сравнение с браузером готово.${incompleteStatus ? ` ${incompleteStatus}` : ""}` : "";
   return <section className={styles.card} aria-labelledby="inspection-title">
@@ -81,6 +84,7 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
       {result.scheduleComparison && <ScheduleComparisonReview key={`schedule:${result.sha256}:${result.inspectedAt}`} review={result.scheduleComparison} />}
       {result.journalComparison && <JournalComparisonReview key={`journal:${result.sha256}:${result.inspectedAt}`} review={result.journalComparison} />}
       {result.notificationComparison && <NotificationComparisonReview key={`notifications:${result.sha256}:${result.inspectedAt}`} review={result.notificationComparison} />}
+      {result.assessmentComparison && <AssessmentComparisonReview key={`assessments:${result.sha256}:${result.inspectedAt}`} review={result.assessmentComparison} />}
       <details className={styles.details}><summary>Что проверено и какие есть ограничения</summary><div>
         {result.warnings.map((warning) => <p key={warning}>{warning}</p>)}
         <p>Источник: {result.source.origin}{result.source.basePath}. Сравнение выполнено {when(result.inspectedAt)}. Если данные изменились после проверки, результат нужно получить заново.</p>

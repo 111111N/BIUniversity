@@ -9,11 +9,12 @@ import { compareBackupJournalRecords, getJournalBackupDefinition } from "./backu
 import { BACKUP_LIMITS, checkBackupAbort } from "./localBackup";
 import { isBackupVisualPreferenceKey, readBackupVisualPreferencePreview } from "./backupVisualPreferences";
 import { compareBackupNotificationRecords, getNotificationBackupDefinition } from "./backupNotificationComparison";
+import { ASSESSMENT_COMPARISON_LABELS, getAssessmentBackupDefinition } from "./backupAssessmentComparison";
 
 type RecordPreviewReference = Extract<BackupDifferenceReference, { storage: "localStorage-record" | "localStorage-child-record" | "localStorage-journal-record" }>;
 export type BackupPreviewReference = RecordPreviewReference | Extract<BackupDifferenceReference, { storage: "localStorage" }>;
 export interface BackupRecordPreview { reference: BackupPreviewReference; collectionLabel: string; rows: { field: string; label: string; archive: string; browser: string }[]; hasUnpreviewedFields: boolean }
-const definitionFor = (collection: string) => getPlannerBackupDefinition(collection) ?? getAccountBackupDefinition(collection) ?? getCatalogBackupDefinition(collection) ?? getLearningBackupDefinition(collection) ?? getScheduleBackupDefinition(collection) ?? getJournalBackupDefinition(collection) ?? getNotificationBackupDefinition(collection);
+const definitionFor = (collection: string) => getPlannerBackupDefinition(collection) ?? getAccountBackupDefinition(collection) ?? getCatalogBackupDefinition(collection) ?? getLearningBackupDefinition(collection) ?? getScheduleBackupDefinition(collection) ?? getJournalBackupDefinition(collection) ?? getNotificationBackupDefinition(collection) ?? getAssessmentBackupDefinition(collection);
 export const canPreviewBackupDifference = (difference: BackupDifference): difference is BackupDifference & { reference: BackupPreviewReference } => {
   const reference = difference.reference;
   if (difference.kind !== "different" || !reference) return false;
@@ -61,7 +62,8 @@ export const readBackupRecordPreview = async (archive: BackupRecordEntries, brow
     return definition.collection === "submission-attempts" ? definition.project(rows[0]) : rows[0];
   };
   const before = read(archive, "archive"), after = read(browser, "browser");
-  const labels = definition.collection === "notifications" ? NOTIFICATION_LABELS : LABELS;
+  const labels: Record<string, string> = definition.collection === "notifications" ? NOTIFICATION_LABELS
+    : getAssessmentBackupDefinition(definition.collection) ? { ...ASSESSMENT_COMPARISON_LABELS, ...(definition.collection.startsWith("assessment-correction") ? { reason: "Причина исправления" } : {}) } : LABELS;
   const rows = confirmed.fields.filter(field => field !== "other").map(field => ({ field, label: labels[field] ?? "Реквизиты", archive: text(before, field), browser: text(after, field) }));
   if (JSON.stringify(rows).length * 2 > 128 * 1024) throw new Error("Значения слишком велики для просмотра. Частичный текст не показан; сохраните исходный архив для отдельного разбора.");
   checkBackupAbort(signal);

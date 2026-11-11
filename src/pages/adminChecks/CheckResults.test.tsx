@@ -5,10 +5,18 @@ import type { AdministrationChecksResult, AdministrationIssue } from "../../doma
 import CheckResults from "./CheckResults";
 import { CHECKS_RETURN_PARAM, readCheckResultAnchor } from "../../domain/administrationChecksNavigation";
 
-const snapshot = (rows: AdministrationIssue[] = []): AdministrationChecksResult => ({ rows, total: rows.length, page: 1, pages: 1, checkedAt: "2026-10-27T09:00:00Z", counts: { action: rows.length, review: 0 }, kinds: { "empty-group": 0, "unassigned-subject": 0, "student-number": 0, "published-lesson": 0 } });
+const snapshot = (rows: AdministrationIssue[] = []): AdministrationChecksResult => ({ rows, total: rows.length, page: 1, pages: 1, checkedAt: "2026-10-27T09:00:00Z", counts: { action: rows.length, review: 0 }, kinds: { "empty-group": 0, "unassigned-subject": 0, "student-number": 0, "published-lesson": 0, "assessment-dependency": 0 } });
 const render = (result: AdministrationChecksResult | null, error = "", loading = false, filtered = false) => renderToStaticMarkup(<MemoryRouter><CheckResults snapshot={result} error={error} loading={loading} filtered={filtered} onPage={() => {}} /></MemoryRouter>);
 
 describe("data check result safety and corrective navigation", () => {
+  it("opens the exact assessment and its responsible account, preserving report filters instead of a schedule fallback", () => {
+    const result = snapshot([{ id: "assessment:one", kind: "assessment-dependency", level: "action", title: "Ведомость", detail: "Преподаватель заблокирован", assessmentId: "assessment & one", accountId: "teacher & one", groupId: "group-1", groupArchived: true }]);
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={["/admin/checks?kind=assessment-dependency&level=action"]}><CheckResults snapshot={result} error="" loading={false} filtered onPage={() => undefined} /></MemoryRouter>);
+    expect(html).toContain("/assessments/assessment%20%26%20one?checksReturn=");
+    expect(html).toContain("Открыть аттестацию"); expect(html).toContain("/admin/accounts?account=teacher+%26+one");
+    expect(html).not.toContain("/admin/schedule"); expect(html).not.toContain("/admin/groups?");
+    expect(html).toContain("kind%3Dassessment-dependency");
+  });
   it("does not show old rows or a false clean result during an error or a new request", () => {
     const stale = snapshot([{ id: "old", kind: "empty-group", level: "review", groupId: "old", title: "Старая строка", detail: "Данные предыдущего запроса" }]);
     const failed = render(stale, "Источник недоступен");

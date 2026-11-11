@@ -1,14 +1,17 @@
 import { createAccount, decodeAccountsDocument, getStudentGroupId, isAccountActive } from "../domain/accounts";
 import { isStudyingStudent } from "../domain/studentEnrollment";
-import { applyAssessmentCommand, decodeAssessmentDocument, emptyAssessmentDocument, projectAssessments } from "../domain/assessments";
+import { applyAssessmentCommand, decodeAssessmentDocument, emptyAssessmentDocument, manageableAssessmentAttemptIds, manageableSupervisorAssessmentIds, projectAssessments } from "../domain/assessments";
 import type { AssessmentCommand, AssessmentDocument, AssessmentService, AssessmentSnapshot } from "../domain/assessmentTypes";
+import { ASSESSMENTS_STORAGE_KEY } from "../domain/assessmentTypes";
 import { ACCOUNTS_STORAGE_KEY, createInitialAccountsDocument, readAccountsState, subscribeAccounts } from "./accountStore";
 import { appendAssessmentDemo, repairAssessmentDemoText } from "./demo/assessments";
 import { ACADEMIC_GROUPS, refreshAcademicCatalog, readSubjectCatalogDocument, SUBJECT_CATALOG_CHANGE_EVENT, SUBJECT_CATALOG_STORAGE_KEY } from "./academicCatalog";
 import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY, readGroupCatalogDocument } from "./groupCatalogRead";
 import { executeAdministrationWrite } from "./administrationWrite";
+import { createAssessmentStatement } from "../domain/assessmentExport";
+import { readAssessmentAttemptHistory } from "../domain/assessmentHistory";
 
-export const ASSESSMENTS_STORAGE_KEY = "bi-university-assessments-v1";
+export { ASSESSMENTS_STORAGE_KEY };
 export const ASSESSMENTS_CHANGE_EVENT = "bi-university-assessments-change";
 
 const readDocument = (): AssessmentDocument => {
@@ -87,6 +90,26 @@ export const appendAssessmentDemoRecords = (): Promise<{ assessments: number; as
 
 /** The UI depends on this asynchronous boundary, rather than local storage or account documents. */
 export const assessmentService: AssessmentService = {
+  async readAttemptHistory(request) {
+    try {
+      const input = structuredClone(request);
+      const { context } = readContext(input.actorId);
+      return readAssessmentAttemptHistory(readDocument(), input, context);
+    } catch (error) {
+      console.error("Не удалось прочитать историю назначения аттестации:", error);
+      throw error instanceof Error ? error : new Error("Не удалось загрузить историю назначения. Повторите попытку.");
+    }
+  },
+  async exportStatement(request) {
+    try {
+      const input = structuredClone(request);
+      const { context } = readContext(input.actorId);
+      return createAssessmentStatement(readDocument(), input, context);
+    } catch (error) {
+      console.error("Не удалось подготовить ведомость для скачивания:", error);
+      throw error instanceof Error ? error : new Error("Не удалось подготовить ведомость. Обновите данные и повторите попытку.");
+    }
+  },
   async read(actorId): Promise<AssessmentSnapshot> {
     try {
       const { actor, context } = readContext(actorId);
@@ -99,10 +122,14 @@ export const assessmentService: AssessmentService = {
       ]));
       const groupIds = new Set(assessments.map((assessment) => assessment.groupId));
       const subjectIds = new Set(assessments.map((assessment) => assessment.subjectId));
+      const visibleAttempts = new Set(assessments.flatMap((assessment) => assessment.attempts.map((attempt) => attempt.id)));
+      const corrections = actor.role === "student" ? [] : state.corrections.filter((entry) => visibleAttempts.has(entry.attemptId));
       return {
         revision: state.revision, actorRevision: actor.revision,
         accountsRevision: context.accountsRevision, groupRevision: context.groupRevision, subjectRevision: context.subjectRevision,
         assessments,
+        ...(configure ? { manageableAttemptIds: manageableAssessmentAttemptIds(state), manageableSupervisorAssessmentIds: manageableSupervisorAssessmentIds(state) } : {}),
+        ...(actor.role === "student" ? {} : { corrections: structuredClone(corrections.filter((entry) => entry.state === "draft")), correctionPublications: corrections.filter((entry) => entry.state === "published").map(({ results: _results, ...entry }) => ({ ...entry })) }),
         groups: context.groups.filter((group) => configure || groupIds.has(group.id)),
         subjects: context.subjects.filter((subject) => configure || subjectIds.has(subject.id)),
         teachers: context.accounts.filter((account) => account.role === "teacher" && (configure ? isAccountActive(account) : teacherIds.has(account.id))).map(({ id, name }) => ({ id, name })),

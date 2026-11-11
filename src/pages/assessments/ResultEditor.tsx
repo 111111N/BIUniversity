@@ -13,8 +13,8 @@ import useAssessmentClock from "./useAssessmentClock";
 import { reconcileAssessmentResults } from "./resultReconciliation";
 import styles from "./index.module.scss";
 
-interface Props { actorId: string; snapshot: AssessmentSnapshot; assessment: Assessment; attempt: AssessmentAttempt; blocked: boolean; onClose(): void; onSaved(message: string): void; refresh(): void }
-export default function ResultEditor({ actorId, snapshot, assessment, attempt, blocked, onClose, onSaved, refresh }: Props) {
+interface Props { actorId: string; snapshot: AssessmentSnapshot; assessment: Assessment; attempt: AssessmentAttempt; correctionId?: string; blocked: boolean; onClose(): void; onSaved(message: string): void; refresh(): void }
+export default function ResultEditor({ actorId, snapshot, assessment, attempt, correctionId, blocked, onClose, onSaved, refresh }: Props) {
   const [context, setContext] = useState(() => assessmentContext(snapshot, actorId));
   const [original, setOriginal] = useState(attempt);
   const [results, setResults] = useState(attempt.results);
@@ -29,7 +29,8 @@ export default function ResultEditor({ actorId, snapshot, assessment, attempt, b
   const stale = assessmentContextChanged(context, snapshot, actorId);
   const dirty = results.some((entry) => outcomeValue(entry.outcome) !== outcomeValue(original.results.find((item) => item.studentId === entry.studentId)?.outcome ?? null));
   useUnsavedChangesWarning(dirty || busy);
-  const locked = busy || blocked || stale || !opened || original.state !== "draft";
+  const correctionClosed = Boolean(correctionId && !snapshot.corrections?.some((entry) => entry.id === correctionId && entry.state === "draft"));
+  const locked = busy || blocked || stale || !opened || original.state !== "draft" || correctionClosed;
   const students = assessment.roster.filter((student) => original.studentIds.includes(student.studentId));
   const view = paginate(students.filter((student) => (!conflictsOnly || !conflicts.length || conflicts.some((entry) => entry.studentId === student.studentId)) && matchesSearchText(`${student.name} ${student.studentNumber ?? ""}`, query)), page);
   const completed = results.filter((entry) => entry.outcome !== null).length;
@@ -38,7 +39,12 @@ export default function ResultEditor({ actorId, snapshot, assessment, attempt, b
     setBusy(true); setError("");
     try {
       const latest = await assessmentService.read(actorId);
-      const next = latest.assessments.find((item) => item.id === assessment.id)?.attempts.find((item) => item.id === original.id);
+      let next = latest.assessments.find((item) => item.id === assessment.id)?.attempts.find((item) => item.id === original.id);
+      if (correctionId) {
+        const correction = latest.corrections?.find((entry) => entry.id === correctionId && entry.assessmentId === assessment.id && entry.attemptId === original.id && entry.state === "draft");
+        if (!next || next.state !== "published" || !correction) throw new Error("Исправление больше недоступно. Ввод сохранён; проверьте состояние аттестации.");
+        next = { ...next, state: "draft", results: correction.results };
+      }
       if (!next || next.teacherId !== actorId || next.state !== "draft") throw new Error("Ведомость больше недоступна для редактирования. Ввод сохранён; вернитесь к аттестации и проверьте её состояние.");
       const merged = reconcileAssessmentResults(original.results, results, next.results);
       // A repeated refresh must not silently accept an unresolved conflict from an earlier refresh.
@@ -57,11 +63,13 @@ export default function ResultEditor({ actorId, snapshot, assessment, attempt, b
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (locked || !dirty || conflicts.length) return;
     setBusy(true); setError("");
-    try { await assessmentService.execute({ ...context, type: "save-results", assessmentId: assessment.id, attemptId: original.id, results }); onSaved("Черновик ведомости сохранён. Студенты увидят результаты после публикации."); }
+    try { await assessmentService.execute({ ...context, ...(correctionId ? { type: "save-correction", correctionId } as const : { type: "save-results" } as const), assessmentId: assessment.id, attemptId: original.id, results }); onSaved("Черновик ведомости сохранён. Студенты увидят результаты после публикации."); }
     catch (failure) { console.error("Не удалось сохранить результаты аттестации:", failure); setError(failure instanceof Error ? failure.message : "Не удалось сохранить ведомость. Ввод остался в форме."); }
     finally { setBusy(false); }
   };
-  return <RecordEditor title="Заполнение ведомости" context={`${assessment.title} · ${ATTEMPT_KIND_LABELS[original.kind]} № ${original.number} · ${displayDate(original.date)}, ${original.startsAt} (Москва)`} dirty={dirty} busy={busy} onClose={close} closeLabel="К аттестации">
+  return <RecordEditor title={correctionId ? "Исправление опубликованной ведомости" : "Заполнение ведомости"} context={`${assessment.title} · ${ATTEMPT_KIND_LABELS[original.kind]} № ${original.number} · ${displayDate(original.date)}, ${original.startsAt} (Москва)`} dirty={dirty} busy={busy} onClose={close} closeLabel="К аттестации">
+    {correctionId && <p className={styles.note}>До публикации исправления студенты видят прежние результаты. Дата сдачи, состав и назначенный преподаватель сохраняются.</p>}
+    {correctionClosed && <p className={styles.warning} role="alert">Исправление закрыто или недоступно. Ваш ввод не сохранён; вернитесь к аттестации для проверки.</p>}
     {!opened && <p className={styles.warning} role="status">Внесение результатов откроется {displayDate(original.date)} в {original.startsAt} по московскому времени. Сейчас доступен просмотр.</p>}
     {stale && <div className={styles.warning} role="alert"><p>Ведомость или справочники изменились. Ввод сохранён; перед сохранением требуется перепроверка.</p><button type="button" disabled={busy} onClick={() => void review()}>Обновить данные для проверки</button></div>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}

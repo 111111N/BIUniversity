@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import Link from "../../components/ChecksContextLink";
 import Card from "../../components/Card";
 import { ASSESSMENT_KIND_LABELS, type Assessment } from "../../domain/assessmentTypes";
 import OutcomeBadge from "./OutcomeBadge";
@@ -10,7 +10,7 @@ import styles from "./index.module.scss";
 export default function AssessmentCatalogCard({ assessment, actorId, student = false, example = false }: { assessment: Assessment; actorId: string; student?: boolean; example?: boolean }) {
   const now = useAssessmentClock();
   const last = assessment.attempts.at(-1);
-  const upcoming = last && last.state !== "published" && assessmentStartsAt(last) > Date.parse(now);
+  const upcoming = last && last.state === "draft" && assessmentStartsAt(last) > Date.parse(now);
   const result = last?.results.find((item) => item.studentId === actorId)?.outcome ?? null;
   const href = `/assessments/${encodeURIComponent(assessment.id)}${example ? "?example=1" : ""}`;
   return <Card as="article" className={styles.catalogCard}>
@@ -26,7 +26,7 @@ export default function AssessmentCatalogCard({ assessment, actorId, student = f
       </dl>
     </div>
     <div className={styles.catalogStatus}>
-      {student && last?.state === "published" ? <OutcomeBadge outcome={result} as="strong" /> : <span className={last?.state === "published" ? styles.published : styles.badge}>{last?.state === "published" ? "Опубликовано" : upcoming ? "Предстоит" : student ? "Ожидается результат" : "Черновик"}</span>}
+      {student && last?.state === "published" ? <OutcomeBadge outcome={result} as="strong" /> : <span className={last?.state === "published" ? styles.published : styles.badge}>{last?.state === "cancelled" ? "Отменено" : last?.state === "published" ? "Опубликовано" : upcoming ? "Предстоит" : student ? "Ожидается результат" : "Черновик"}</span>}
       <Link className={styles.openLink} to={href}>{student ? "Результаты и попытки" : "Открыть ведомости"}<span aria-hidden="true"> →</span><span className={styles.visuallyHidden}>: {assessment.title}</span></Link>
     </div>
   </Card>;
