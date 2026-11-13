@@ -1,4 +1,4 @@
-import { decodeSubjectCatalog, type SubjectCatalogDocument } from "../domain/subjectCatalog";
+import { decodeSubjectCatalog, subjectNameKey, type SubjectCatalogDocument, type SubjectDefinition } from "../domain/subjectCatalog";
 import { groupNameKey, type GroupCatalogDocument, type GroupStatus, type GroupChange } from "../domain/groupCatalog";
 import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY, readGroupCatalogDocument } from "./groupCatalogRead";
 
@@ -13,13 +13,7 @@ export interface AcademicGroup {
   previousNames?: string[];
 }
 
-export interface AcademicSubjectDefinition {
-  id: string;
-  name: string;
-  shortName: string;
-  semester: string;
-  color: "red" | "purple" | "orange" | "green";
-}
+export type AcademicSubjectDefinition = SubjectDefinition;
 
 export interface AcademicSubject extends AcademicSubjectDefinition {
   groups: Array<AcademicGroup & { attendance: number }>;
@@ -151,7 +145,7 @@ export const getAcademicGroupNameAt = (groupId: string, occurredAt: string) => {
   return name;
 };
 export const getAcademicSubjectDefinition = (subjectId?: string) => { refreshAcademicCatalog(); return SUBJECTS.find((subject) => subject.id === subjectId); };
-export const getAcademicSubjectByName = (name?: string) => { refreshAcademicCatalog(); return SUBJECTS.find((subject) => subject.name === name); };
+export const getAcademicSubjectByName = (name?: string) => { refreshAcademicCatalog(); return name ? SUBJECTS.find(subject => [subject.name, ...(subject.previousNames ?? [])].some(value => subjectNameKey(value) === subjectNameKey(name))) : undefined; };
 export const getSubjectGroups = (subjectId: string) => { refreshAcademicCatalog(); return ACADEMIC_SUBJECTS.find((subject) => subject.id === subjectId)?.groups.map((group) => ({ ...group })) ?? []; };
 
 export const getAcademicSubject = (subjectId?: string) => { refreshAcademicCatalog(); return ACADEMIC_SUBJECTS.find((subject) => subject.id === subjectId); };

@@ -3,8 +3,8 @@ import { decodeAssessmentDocument } from "./assessments";
 import { isBackupAssessmentKey } from "./backupAssessmentDocuments";
 import { assertCompleteBackupRecordComparison, compareBackupRecords, type BackupRecordComparison, type BackupRecordDefinition, type BackupRecordEntries } from "./backupRecordComparison";
 
-const ASSESSMENT_FIELDS = ["title", "kind", "subjectId", "subjectName", "groupId", "groupName", "period", "supervisorId", "recordBook", "roster", "attempts"] as const;
-const HISTORY_FIELDS = ["assessmentId", "attemptId", "actorId", "occurredAt", "action", "results", "recordBook", "assignment", "assignmentOrigin", "reason", "previousSupervisorId"] as const;
+const ASSESSMENT_FIELDS = ["title", "kind", "subjectId", "subjectName", "groupId", "groupName", "period", "academicPeriod", "supervisorId", "recordBook", "roster", "attempts"] as const;
+const HISTORY_FIELDS = ["assessmentId", "attemptId", "actorId", "occurredAt", "action", "results", "recordBook", "assignment", "assignmentOrigin", "reason", "previousSupervisorId", "academicPeriod"] as const;
 export type AssessmentComparedField = typeof ASSESSMENT_FIELDS[number] | "other";
 export type AssessmentHistoryComparedField = typeof HISTORY_FIELDS[number] | "other";
 const CORRECTION_FIELDS = ["assessmentId", "attemptId", "version", "reason", "openedAt", "openedBy", "state", "results", "publishedAt", "publishedBy"] as const;
@@ -61,4 +61,5 @@ export const ASSESSMENT_COMPARISON_LABELS: Record<AssessmentComparedField | Asse
   results: "Снимок результатов", assignment: "Снимок назначения", assignmentOrigin: "Происхождение назначения", reason: "Причина изменения", other: "Дополнительные поля",
   version: "Версия ведомости", openedAt: "Разрешено исправление", openedBy: "ID разрешившего исправление", state: "Состояние исправления", publishedAt: "Время публикации", publishedBy: "ID опубликовавшего", correctionId: "ID исправления",
   previousSupervisorId: "ID прежнего научного руководителя",
+  academicPeriod: "Сохранённый учебный год и семестр",
 };

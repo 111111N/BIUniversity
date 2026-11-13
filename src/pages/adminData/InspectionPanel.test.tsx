@@ -33,6 +33,9 @@ describe("backup file preview", () => {
     const html = render({ result: { ...result, assessmentComparison } });
     expect(html).toContain("Аттестации и история по ID"); expect(html).toContain("История аттестаций по ID");
     expect(html).toContain("Название аттестации"); expect(html).not.toContain("PRIVATE");
+    expect(html).toContain("Проверить выбранные аттестации");
+    expect(html).toContain("Записи только из браузера сохраняются в проверяемом наборе");
+    expect(html).not.toContain("Выбранные аттестации согласованы со своей историей");
   });
   it("announces an unreadable assessment source once for cards and audit", async () => {
     const assessmentComparison = await compareBackupAssessmentRecords([{ key: ASSESSMENTS_STORAGE_KEY, raw: "PRIVATE damaged" }], []);

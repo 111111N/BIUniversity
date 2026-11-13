@@ -63,7 +63,7 @@ export const readBackupRecordPreview = async (archive: BackupRecordEntries, brow
   };
   const before = read(archive, "archive"), after = read(browser, "browser");
   const labels: Record<string, string> = definition.collection === "notifications" ? NOTIFICATION_LABELS
-    : getAssessmentBackupDefinition(definition.collection) ? { ...ASSESSMENT_COMPARISON_LABELS, ...(definition.collection.startsWith("assessment-correction") ? { reason: "Причина исправления" } : {}) } : LABELS;
+    : getAssessmentBackupDefinition(definition.collection) ? { ...ASSESSMENT_COMPARISON_LABELS, ...(definition.collection.startsWith("assessment-correction") ? { reason: "Причина исправления" } : {}) } : definition.collection === "subject-history" ? { ...LABELS, origin: "Происхождение снимка" } : LABELS;
   const rows = confirmed.fields.filter(field => field !== "other").map(field => ({ field, label: labels[field] ?? "Реквизиты", archive: text(before, field), browser: text(after, field) }));
   if (JSON.stringify(rows).length * 2 > 128 * 1024) throw new Error("Значения слишком велики для просмотра. Частичный текст не показан; сохраните исходный архив для отдельного разбора.");
   checkBackupAbort(signal);

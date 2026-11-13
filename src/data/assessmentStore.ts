@@ -10,6 +10,9 @@ import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY, readGroupCatalog
 import { executeAdministrationWrite } from "./administrationWrite";
 import { createAssessmentStatement } from "../domain/assessmentExport";
 import { readAssessmentAttemptHistory } from "../domain/assessmentHistory";
+import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument, emptyAcademicPeriodsDocument } from "../domain/academicPeriods";
+import { ACADEMIC_PERIODS_CHANGE_EVENT } from "./academicPeriodsStore";
+import type { AssessmentDomainContext } from "../domain/assessments";
 
 export { ASSESSMENTS_STORAGE_KEY };
 export const ASSESSMENTS_CHANGE_EVENT = "bi-university-assessments-change";
@@ -17,6 +20,14 @@ export const ASSESSMENTS_CHANGE_EVENT = "bi-university-assessments-change";
 const readDocument = (): AssessmentDocument => {
   const raw = localStorage.getItem(ASSESSMENTS_STORAGE_KEY);
   return raw === null ? emptyAssessmentDocument() : repairAssessmentDemoText(decodeAssessmentDocument(raw));
+};
+const readAcademicPeriods = () => {
+  const raw = localStorage.getItem(ACADEMIC_PERIODS_STORAGE_KEY);
+  return raw === null ? emptyAcademicPeriodsDocument() : decodeAcademicPeriodsDocument(raw);
+};
+const periodOptions = (): NonNullable<AssessmentSnapshot["academicPeriods"]> => {
+  try { const { revision, years, terms } = readAcademicPeriods(); return { revision, years, terms }; }
+  catch (error) { console.error("Не удалось прочитать периоды для новой аттестации:", error); return { revision: 0, years: [], terms: [], error: "Учебные периоды недоступны. Создание новых аттестаций приостановлено; существующие ведомости доступны." }; }
 };
 
 const readContext = (actorId: string) => {
@@ -33,18 +44,18 @@ const readContext = (actorId: string) => {
     context: {
       accounts: accounts.accounts, accountsRevision: accounts.revision,
       groups: ACADEMIC_GROUPS.map(({ id, name, status }) => ({ id, name, status })), groupRevision: groups.revision,
-      subjects: subjects.subjects.map(({ id, name }) => ({ id, name })), subjectRevision: subjects.revision,
+      subjects: subjects.subjects.map(({ id, name, status }) => ({ id, name, ...(status ? { status } : {}) })), subjectRevision: subjects.revision,
     },
   };
 };
 
 const subscribe = (listener: () => void): (() => void) => {
   if (typeof window === "undefined") return () => undefined;
-  const keys = new Set([ASSESSMENTS_STORAGE_KEY, GROUP_CATALOG_STORAGE_KEY, SUBJECT_CATALOG_STORAGE_KEY]);
+  const keys = new Set([ASSESSMENTS_STORAGE_KEY, GROUP_CATALOG_STORAGE_KEY, SUBJECT_CATALOG_STORAGE_KEY, ACADEMIC_PERIODS_STORAGE_KEY]);
   // The account subscription already handles storage.clear(), so notify that shared event only once.
   const storage = (event: StorageEvent) => { if (event.key !== null && keys.has(event.key)) listener(); };
   const visibility = () => { if (typeof document === "undefined" || document.visibilityState === "visible") listener(); };
-  const events = [ASSESSMENTS_CHANGE_EVENT, GROUP_CATALOG_CHANGE_EVENT, SUBJECT_CATALOG_CHANGE_EVENT, "focus"];
+  const events = [ASSESSMENTS_CHANGE_EVENT, GROUP_CATALOG_CHANGE_EVENT, SUBJECT_CATALOG_CHANGE_EVENT, ACADEMIC_PERIODS_CHANGE_EVENT, "focus"];
   const stopAccounts = subscribeAccounts(listener);
   window.addEventListener("storage", storage);
   for (const event of events) window.addEventListener(event, listener);
@@ -128,6 +139,7 @@ export const assessmentService: AssessmentService = {
         revision: state.revision, actorRevision: actor.revision,
         accountsRevision: context.accountsRevision, groupRevision: context.groupRevision, subjectRevision: context.subjectRevision,
         assessments,
+        ...(configure ? { academicPeriods: periodOptions() } : {}),
         ...(configure ? { manageableAttemptIds: manageableAssessmentAttemptIds(state), manageableSupervisorAssessmentIds: manageableSupervisorAssessmentIds(state) } : {}),
         ...(actor.role === "student" ? {} : { corrections: structuredClone(corrections.filter((entry) => entry.state === "draft")), correctionPublications: corrections.filter((entry) => entry.state === "published").map(({ results: _results, ...entry }) => ({ ...entry })) }),
         groups: context.groups.filter((group) => configure || groupIds.has(group.id)),
@@ -149,7 +161,8 @@ export const assessmentService: AssessmentService = {
       // Copy before entering the shared asynchronous queue: form edits must not change an accepted command.
       const input = structuredClone(command);
       await executeAdministrationWrite(() => {
-        const { context } = readContext(input.actorId);
+        const { context: sourceContext } = readContext(input.actorId);
+        const context: AssessmentDomainContext = input.type === "create" ? { ...sourceContext, academicPeriods: readAcademicPeriods() } : sourceContext;
         const state = readDocument();
         const next = applyAssessmentCommand(state, input, context, {
           assessmentId: crypto.randomUUID(), attemptId: crypto.randomUUID(), historyId: crypto.randomUUID(), occurredAt: new Date().toISOString(),

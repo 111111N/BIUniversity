@@ -88,12 +88,13 @@ export default function Nav() {
     { to: "/admin/students", activePath: "/admin/students", label: "Студенты", Icon: CabinetIcon },
     { to: "/admin/teachers", label: "Преподаватели", Icon: CabinetIcon },
     { to: "/admin/subjects", label: "Дисциплины", Icon: JournalIcon },
+    { to: "/admin/periods", label: "Учебные периоды", Icon: ScheduleIcon },
     { to: "/assessments", activePath: "/assessments", label: "Аттестации", Icon: AssessmentsIcon },
     { to: "/admin/accounts", activePath: "/admin/accounts", label: "Учётные записи", Icon: CabinetIcon },
     { to: "/admin/checks", label: "Проверка данных", Icon: StatsIcon },
   ];
   const navItems = isConfigurator ? configuratorItems : role === "student" ? studentItems : teacherItems;
-  const mobileItems = isConfigurator ? configuratorItems.filter((item) => !["/admin/accounts", "/admin/teachers", "/admin/checks", "/assessments"].includes(item.to)) : studentItems.filter((item) => item.to !== "/assessments");
+  const mobileItems = isConfigurator ? configuratorItems.filter((item) => !["/admin/accounts", "/admin/teachers", "/admin/checks", "/admin/periods", "/assessments"].includes(item.to)) : studentItems.filter((item) => item.to !== "/assessments");
   const extraItems = navItems.filter((item) => !mobileItems.some((mobile) => mobile.to === item.to));
   const cabinetItem = { to: "/cabinet", label: role === "student" ? "Профиль" : "Кабинет", Icon: CabinetIcon };
   const moreActive = location.pathname === "/cabinet" || location.pathname === "/notifications" || (isConfigurator && location.pathname === "/admin/data") || extraItems.some((item) => location.pathname === item.to || ("activePath" in item && typeof item.activePath === "string" && location.pathname.startsWith(item.activePath)));

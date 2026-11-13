@@ -10,6 +10,7 @@ import type { StudentImportReceipt } from "../domain/studentImportReceipt";
 import { readGroupCatalogDocument } from "./groupCatalogRead";
 import { MAX_IMPORT_ROWS } from "../domain/importTable";
 import { isGroupActive } from "../domain/groupCatalog";
+import { isSubjectActive } from "../domain/subjectCatalog";
 import { isStudyingStudent } from "../domain/studentEnrollment";
 import { queryStudentRegistry, type StudentRegistryQuery, type StudentRegistryResult } from "../domain/studentRegistry";
 import { queryTeacherRegistry, type TeacherRegistryQuery, type TeacherRegistryResult } from "../domain/teacherRegistry";
@@ -47,6 +48,7 @@ export const registerTeachingAssignmentGuard = (guard: (account: PortalAccount, 
 const validateAssignments = (memberships: AcademicMembership[], retained: AcademicMembership[] = []) => {
   const catalog = refreshAcademicCatalog();
   if (catalog.error) throw new Error(catalog.error);
+  if (memberships.some(entry => !catalog.subjects.some(subject => subject.id === entry.subjectId && (isSubjectActive(subject) || entry.groupIds.every(groupId => retained.some(previous => previous.subjectId === entry.subjectId && previous.groupIds.includes(groupId))))))) throw new Error("Архивная дисциплина недоступна для новых назначений. Сначала восстановите дисциплину.");
   if (memberships.some((entry) => entry.groupIds.some((groupId) => !ACADEMIC_GROUPS.some((group) => group.id === groupId && (isGroupActive(group) || retained.some((previous) => previous.subjectId === entry.subjectId && previous.groupIds.includes(groupId)))) || !SUBJECT_GROUP_OFFERINGS.some((offering) => offering.subjectId === entry.subjectId && offering.groupId === groupId)))) throw new Error("Выбрано недоступное сочетание предмета и группы. Архивные группы недоступны для назначений.");
 };
 const saveDocument = (state: AccountsDocument) => { localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(state)); window.dispatchEvent(new Event(CHANGE_EVENT)); };

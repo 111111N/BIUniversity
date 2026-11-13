@@ -2,6 +2,8 @@ import { ASSESSMENTS_STORAGE_KEY, type AssessmentDocument } from "./assessmentTy
 import { decodeAssessmentDocument } from "./assessments";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import type { AcademicPeriodsDocument } from "./academicPeriods";
+import { createAssessmentPeriodHistoryLookup } from "./assessmentPeriods";
 
 export const BACKUP_ASSESSMENT_DOCUMENTS = {
   assessments: { key: ASSESSMENTS_STORAGE_KEY, prefix: "bi-university-assessments-", label: "Аттестации и ведомости" },
@@ -11,6 +13,7 @@ export interface BackupAssessmentSources {
   accountIds?: ReadonlySet<string>;
   groupIds?: ReadonlySet<string>;
   subjectIds?: ReadonlySet<string>;
+  periods?: AcademicPeriodsDocument;
 }
 
 /** Check archived IDs, never today's role, membership or name as proof of historical access. */
@@ -63,12 +66,17 @@ export async function inspectBackupAssessments(
     }
   }
   if (document) {
+    const periodExists = sources.periods ? createAssessmentPeriodHistoryLookup(sources.periods) : undefined;
     if (document.assessments.length && !Number.isFinite(cutoff)) issue({ level: "review", code: "unchecked-assessment-cutoff",
       message: "Не удалось подтвердить время завершения архива для проверки дат сохранённых действий." });
     for (const assessment of document.assessments) {
       await step();
       reference("group", assessment.groupId, assessment.id);
       if (assessment.subjectId !== null) reference("subject", assessment.subjectId, assessment.id);
+      if (assessment.academicPeriod) {
+        if (!sources.periods) issue({ level: "review", code: "unchecked-assessment-period", recordId: assessment.id, message: "Связь с учебным периодом не проверена: справочник периодов отсутствует или не читается в том же архиве." });
+        else if (!periodExists!(assessment.academicPeriod, assessment.attempts[0].createdAt)) issue({ level: "error", code: "missing-assessment-period-snapshot", recordId: assessment.id, referenceId: assessment.academicPeriod.term.id, message: "Сохранённый снимок учебного года и семестра не подтверждён историей справочника на указанной ревизии. Имена и сегодняшние даты не подставлялись." });
+      }
       if (assessment.supervisorId !== null) reference("account", assessment.supervisorId, assessment.id);
       for (const student of assessment.roster) { await step(); reference("account", student.studentId, assessment.id); }
       for (const attempt of assessment.attempts) {
@@ -81,11 +89,11 @@ export async function inspectBackupAssessments(
         timestamp(attempt.createdAt, attempt.id);
         if (attempt.publishedAt !== null) timestamp(attempt.publishedAt, attempt.id);
       }
-      // The current document has no independent historical authority or academic-period source.
+      // Period history does not establish the historical authority or the academic program.
       issue({ level: "review", code: "unconfirmed-assessment-authority", recordId: assessment.id,
         message: "Найденные ID и внутренняя история ведомости не подтверждают исторические полномочия и состав группы по независимому источнику. Текущие роли, блокировки и назначения не использованы вместо него." });
       issue({ level: "review", code: "unconfirmed-assessment-period", recordId: assessment.id,
-        message: "Учебная область аттестации не подтверждена независимым источником: текст периода и номер семестра не заменяют связь с учебным периодом и программой." });
+        message: assessment.academicPeriod ? "Связь с календарём не подтверждает учебную программу группы и исторические полномочия. Учебная область требует независимого подтверждения." : "Учебная область аттестации не подтверждена независимым источником: текст периода и номер семестра не заменяют связь с учебным периодом и программой." });
     }
     for (const entry of document.history) {
       await step(); reference("account", entry.actorId, entry.id); timestamp(entry.occurredAt, entry.id);

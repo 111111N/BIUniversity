@@ -3,6 +3,7 @@ import { ACADEMIC_GROUPS, getAcademicGroupByName, getAcademicSubjectByName, refr
 import { readAccountsState } from "./accountStore";
 import { createDemoWeekSchedule } from "./demoSchedule";
 import { parseCalendarDate } from "../domain/calendar";
+import { getAcademicSubjectDefinition } from "./academicCatalog";
 import { executeAdministrationWrite } from "./administrationWrite";
 import { isAccountActive } from "../domain/accounts";
 import { isGroupActive } from "../domain/groupCatalog";
@@ -131,6 +132,7 @@ const updateSnapshot = async (command: ScheduleCommand, mutate: (snapshot: Manag
 };
 const validateWeek = (week: ManagedScheduleWeek, snapshot: ManagedScheduleSnapshot, publishing: boolean) => {
   const errors = week.lessons.flatMap((lesson) => validateManagedLesson(lesson));
+  if (week.lessons.some(lesson => getAcademicSubjectDefinition(lesson.subjectId)?.status === "archived")) errors.push("Архивная дисциплина недоступна для новых занятий. Сначала восстановите дисциплину.");
   if (week.lessons.some((lesson) => !SUBJECT_GROUP_OFFERINGS.some((offering) => offering.subjectId === lesson.subjectId && offering.groupId === lesson.groupId))) errors.push("Предмет не назначен выбранной группе.");
   if (week.lessons.some((lesson) => lesson.groupId !== week.groupId || getManagedWeekKey(lesson.date) !== week.weekStart)) errors.push("Все занятия должны относиться к выбранной неделе и группе.");
   const teachers = getManagedScheduleTeachers();

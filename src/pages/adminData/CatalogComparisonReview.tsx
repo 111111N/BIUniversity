@@ -3,9 +3,9 @@ import RecordComparisonReview from "./RecordComparisonReview";
 import styles from "./index.module.scss";
 
 const GROUP_FIELDS: Record<GroupComparedField, string> = { name: "название", course: "курс", campus: "корпус", admissionYear: "год набора", status: "состояние", previousNames: "прежние названия", revision: "ревизия карточки", createdAt: "дата создания", createdBy: "автор создания", updatedAt: "дата изменения", source: "происхождение", other: "дополнительные поля" };
-const SUBJECT_FIELDS: Record<SubjectComparedField, string> = { name: "название", shortName: "сокращение", semester: "семестр", color: "цвет", other: "дополнительные поля" };
+const SUBJECT_FIELDS: Record<SubjectComparedField, string> = { name: "название", shortName: "сокращение", semester: "семестр", color: "цвет", revision: "ревизия", status: "состояние", previousNames: "прежние названия", other: "дополнительные поля" };
 const GROUP_HISTORY_FIELDS: Record<GroupHistoryComparedField, string> = { groupId: "ID группы", actorId: "ID автора", occurredAt: "дата события", action: "действие", before: "прежние реквизиты", after: "новые реквизиты", other: "дополнительные поля" };
-const SUBJECT_HISTORY_FIELDS: Record<SubjectHistoryComparedField, string> = { subjectId: "ID дисциплины", actorId: "ID автора", occurredAt: "дата события", action: "действие", other: "дополнительные поля" };
+const SUBJECT_HISTORY_FIELDS: Record<SubjectHistoryComparedField, string> = { subjectId: "ID дисциплины", actorId: "ID автора", occurredAt: "дата события", action: "действие", before: "прежние реквизиты", after: "новые реквизиты", origin: "происхождение снимка", other: "дополнительные поля" };
 
 export default function CatalogComparisonReview({ review }: { review: BackupCatalogComparison }) {
   const documents = review.groups.counts.documents + review.subjects.counts.documents;

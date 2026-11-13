@@ -33,6 +33,7 @@ const AdminSchedule = lazy(() => import("./pages/adminSchedule"));
 const AdminAccounts = lazy(() => import("./pages/adminAccounts"));
 const AdminSubjects = lazy(() => import("./pages/adminSubjects"));
 const AdminGroups = lazy(() => import("./pages/adminGroups"));
+const AdminPeriods = lazy(() => import("./pages/adminPeriods"));
 const StudentImport = lazy(() => import("./pages/studentImport"));
 const StudentEducation = lazy(() => import("./pages/studentEducation"));
 const AdminStudents = lazy(() => import("./pages/adminStudents"));
@@ -75,6 +76,7 @@ const LayoutWithNav = () => {
                     <Route path="/admin/accounts/import" element={<RoleRoute allow="configurator"><StudentImport /></RoleRoute>} />
                     <Route path="/admin/subjects" element={<RoleRoute allow="configurator"><AdminSubjects /></RoleRoute>} />
                     <Route path="/admin/groups" element={<RoleRoute allow="configurator"><AdminGroups /></RoleRoute>} />
+                    <Route path="/admin/periods" element={<RoleRoute allow="configurator"><AdminPeriods /></RoleRoute>} />
                     <Route path="/admin/students/:accountId/education" element={<RoleRoute allow="configurator"><StudentEducation /></RoleRoute>} />
                     <Route path="/admin/students" element={<RoleRoute allow="configurator"><AdminStudents /></RoleRoute>} />
                     <Route path="/admin/teachers" element={<RoleRoute allow="configurator"><AdminTeachers /></RoleRoute>} />

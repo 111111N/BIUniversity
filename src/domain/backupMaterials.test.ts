@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectArchivedMaterials } from "./backupMaterials";
-import { BACKUP_CORE_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_CORE_DOCUMENTS, BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { coreBackupFixture, materialBackupFixture } from "../testSupport/localBackupDocuments";
 import type { BackupValue } from "./localBackup";
 
@@ -21,7 +21,7 @@ describe("archived materials", () => {
   it("reads a current material and its declared owner without exposing names, descriptions or bytes", async () => {
     const fixture = await materialBackupFixture(); const before = JSON.stringify(fixture.archive);
     const review = await inspectBackupDocuments(fixture.archive, "configurator-demo");
-    expect(review.counts).toMatchObject({ valid: 5, invalid: 0, absent: 8, errors: 0, reviews: 0 });
+    expect(review.counts).toMatchObject({ valid: 5, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 5, errors: 0, reviews: 0 });
     expect(review.checks.find((check) => check.kind === "materials")).toMatchObject({ status: "valid", records: 1 });
     expect(review.checks.find((check) => check.kind === "materials")!.message).toContain("Областей с найденными ID архива: 1; не подтверждено: 0");
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(review)).not.toContain("base64"); expect(JSON.stringify(fixture.archive)).toBe(before);

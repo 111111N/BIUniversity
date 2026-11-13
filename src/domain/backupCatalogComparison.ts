@@ -3,11 +3,11 @@ import { decodeSubjectCatalog } from "./subjectCatalog";
 import { assertCompleteBackupRecordComparison, compareBackupRecords, type BackupRecordComparison, type BackupRecordDefinition, type BackupRecordEntries } from "./backupRecordComparison";
 
 const GROUP_FIELDS = ["name", "course", "campus", "admissionYear", "status", "previousNames", "revision", "createdAt", "createdBy", "updatedAt", "source"] as const;
-const SUBJECT_FIELDS = ["name", "shortName", "semester", "color"] as const;
+const SUBJECT_FIELDS = ["name", "shortName", "semester", "color", "revision", "status", "previousNames"] as const;
 export type GroupComparedField = typeof GROUP_FIELDS[number] | "other";
 export type SubjectComparedField = typeof SUBJECT_FIELDS[number] | "other";
 const GROUP_HISTORY_FIELDS = ["groupId", "actorId", "occurredAt", "action", "before", "after"] as const;
-const SUBJECT_HISTORY_FIELDS = ["subjectId", "actorId", "occurredAt", "action"] as const;
+const SUBJECT_HISTORY_FIELDS = ["subjectId", "actorId", "occurredAt", "action", "before", "after", "origin"] as const;
 export type GroupHistoryComparedField = typeof GROUP_HISTORY_FIELDS[number] | "other";
 export type SubjectHistoryComparedField = typeof SUBJECT_HISTORY_FIELDS[number] | "other";
 export interface BackupCatalogComparison {

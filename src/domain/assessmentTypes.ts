@@ -1,4 +1,7 @@
+import type { AcademicYear, AcademicTerm } from "./academicPeriods";
 export const ASSESSMENTS_STORAGE_KEY = "bi-university-assessments-v1";
+export interface AssessmentAcademicPeriod { catalogRevision: number; year: AcademicYear; term: AcademicTerm }
+export interface AssessmentPeriodSelection { termId: string; expectedRevision: number }
 export const ASSESSMENT_KIND_LABELS = {
   exam: "Экзамен", pass: "Зачёт", gradedPass: "Зачёт с оценкой", internship: "Практика", thesis: "ВКР", coursework: "Курсовая работа",
 } as const;
@@ -19,6 +22,7 @@ export interface AssessmentAttempt {
 export interface Assessment {
   id: string; title: string; kind: AssessmentKind; subjectId: string | null; subjectName: string | null;
   groupId: string; groupName: string; period: string; supervisorId: string | null; recordBook: AssessmentRecordBookMetadata | null; roster: AssessmentStudent[]; attempts: AssessmentAttempt[];
+  academicPeriod?: AssessmentAcademicPeriod;
 }
 export interface AssessmentHistoryEntry {
   id: string; assessmentId: string; attemptId: string; actorId: string; occurredAt: string;
@@ -29,6 +33,7 @@ export interface AssessmentHistoryEntry {
   assignmentOrigin?: "legacy-snapshot";
   reason?: string;
   previousSupervisorId?: string;
+  academicPeriod?: AssessmentAcademicPeriod;
 }
 export interface AssessmentCorrection {
   id: string; assessmentId: string; attemptId: string; version: number; reason: string; openedAt: string; openedBy: string;
@@ -39,7 +44,7 @@ export interface AssessmentCorrectionEvent {
   id: string; correctionId: string; actorId: string; occurredAt: string;
   action: "opened" | "results-saved" | "published"; results: AssessmentResult[]; reason?: string;
 }
-export interface AssessmentDocument { version: 5; revision: number; assessments: Assessment[]; history: AssessmentHistoryEntry[]; corrections: AssessmentCorrection[]; correctionHistory: AssessmentCorrectionEvent[] }
+export interface AssessmentDocument { version: 5 | 6; revision: number; assessments: Assessment[]; history: AssessmentHistoryEntry[]; corrections: AssessmentCorrection[]; correctionHistory: AssessmentCorrectionEvent[] }
 export interface AssessmentCommandContext {
   actorId: string; actorRevision: number; expectedRevision: number;
   accountsRevision: number; groupRevision: number; subjectRevision: number;
@@ -51,6 +56,7 @@ export interface AssessmentDraft {
   title: string; kind: AssessmentKind; subjectId: string | null; groupId: string; period: string;
   attempt: AssessmentAttemptDraft;
   recordBook?: AssessmentRecordBookMetadata;
+  academicPeriod?: AssessmentPeriodSelection;
 }
 export type AssessmentCommand = AssessmentCommandContext & (
   | { type: "create"; draft: AssessmentDraft }
@@ -66,7 +72,7 @@ export type AssessmentCommand = AssessmentCommandContext & (
   | { type: "update-record-book"; assessmentId: string; recordBook: AssessmentRecordBookMetadata }
 );
 export interface AssessmentGroupOption { id: string; name: string; status?: "active" | "archived" }
-export interface AssessmentSubjectOption { id: string; name: string }
+export interface AssessmentSubjectOption { id: string; name: string; status?: "active" | "archived" }
 export interface AssessmentTeacherOption { id: string; name: string }
 export interface AssessmentStudentOption extends AssessmentStudent { groupId: string }
 /** Read projections must already exclude other students' records and unpublished results. */
@@ -78,6 +84,7 @@ export interface AssessmentSnapshot {
   manageableSupervisorAssessmentIds?: string[];
   corrections?: AssessmentCorrection[];
   correctionPublications?: AssessmentCorrectionSummary[];
+  academicPeriods?: { revision: number; years: AcademicYear[]; terms: AcademicTerm[]; error?: string };
 }
 export interface AssessmentAttemptHistoryRequest extends AssessmentCommandContext { assessmentId: string; attemptId: string; page: number }
 /** Assignment audit excludes grades and the full student roster. */

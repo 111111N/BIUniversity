@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { coreBackupFixture } from "../testSupport/localBackupDocuments";
 import { backupFixture } from "../testSupport/localBackup";
-import { BACKUP_CORE_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_CORE_DOCUMENTS, BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 
 const forbidden = vi.fn(() => { throw new Error("Archive checks must not access live storage"); });
 beforeEach(() => { forbidden.mockClear(); vi.stubGlobal("localStorage", { getItem: forbidden, setItem: forbidden }); });
@@ -11,7 +11,7 @@ describe("archived core document checks", () => {
   it("uses existing schemas and archived references without mutating raw documents or reading live storage", async () => {
     const state = coreBackupFixture(); const before = JSON.stringify(state.archive);
     const result = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(result.counts).toEqual({ valid: 4, invalid: 0, absent: 10, unchecked: 0, errors: 0, reviews: 0 });
+    expect(result.counts).toEqual({ valid: 4, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 4, unchecked: 0, errors: 0, reviews: 0 });
     expect(result.checks.slice(0, 4).every((check) => check.status === "valid" && check.revision === 1)).toBe(true);
     expect(result.checks.slice(4).every((check) => check.status === "absent")).toBe(true);
     expect(forbidden).not.toHaveBeenCalled(); expect(JSON.stringify(state.archive)).toBe(before);
@@ -19,7 +19,7 @@ describe("archived core document checks", () => {
   });
   it("does not infer demo documents, an empty successful account list or a usable login for absent sources", async () => {
     const result = await inspectBackupDocuments(backupFixture(), "configurator-demo");
-    expect(result.counts).toMatchObject({ absent: 14, valid: 0, errors: 0, reviews: 1 });
+    expect(result.counts).toMatchObject({ absent: Object.keys(BACKUP_DOCUMENTS).length, valid: 0, errors: 0, reviews: 1 });
     expect(result.checks.every((check) => check.status === "absent")).toBe(true);
     expect(result.issues).toContainEqual(expect.objectContaining({ code: "unchecked-access", level: "review" })); expect(forbidden).not.toHaveBeenCalled();
   });
@@ -27,7 +27,7 @@ describe("archived core document checks", () => {
     const state = coreBackupFixture(); const row = state.archive.localStorage.find((entry) => entry.key === BACKUP_CORE_DOCUMENTS[kind].key)!;
     row.raw = JSON.stringify({ ...JSON.parse(row.raw), version: 99 });
     const result = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(result.checks.find((check) => check.kind === kind)).toMatchObject({ status: "invalid", message: expect.stringContaining("Поддерживается только документ версии 1.") });
+    expect(result.checks.find((check) => check.kind === kind)).toMatchObject({ status: "invalid", message: expect.stringContaining(kind === "subjects" ? "Поддерживаются документы дисциплин версий 1 и 2." : "Поддерживается только документ версии 1.") });
     expect(result.counts.invalid).toBe(1);
   });
   it("keeps malformed inner JSON as a finding without exposing SyntaxError snippets or aborting other document checks", async () => {

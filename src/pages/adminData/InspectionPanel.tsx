@@ -84,7 +84,7 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
       {result.scheduleComparison && <ScheduleComparisonReview key={`schedule:${result.sha256}:${result.inspectedAt}`} review={result.scheduleComparison} />}
       {result.journalComparison && <JournalComparisonReview key={`journal:${result.sha256}:${result.inspectedAt}`} review={result.journalComparison} />}
       {result.notificationComparison && <NotificationComparisonReview key={`notifications:${result.sha256}:${result.inspectedAt}`} review={result.notificationComparison} />}
-      {result.assessmentComparison && <AssessmentComparisonReview key={`assessments:${result.sha256}:${result.inspectedAt}`} review={result.assessmentComparison} />}
+      {result.assessmentComparison && <AssessmentComparisonReview key={`assessments:${result.sha256}:${result.inspectedAt}`} review={result.assessmentComparison} inspection={result} />}
       <details className={styles.details}><summary>Что проверено и какие есть ограничения</summary><div>
         {result.warnings.map((warning) => <p key={warning}>{warning}</p>)}
         <p>Источник: {result.source.origin}{result.source.basePath}. Сравнение выполнено {when(result.inspectedAt)}. Если данные изменились после проверки, результат нужно получить заново.</p>

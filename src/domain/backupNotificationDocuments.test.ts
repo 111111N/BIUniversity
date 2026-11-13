@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectBackupNotifications } from "./backupNotificationDocuments";
-import { inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { notificationBackupFixture } from "../testSupport/localBackupDocuments";
 
 const forbidden = vi.fn(() => { throw new Error("Archive checks must not read live data or write notifications"); });
@@ -12,7 +12,7 @@ describe("archived notifications", () => {
   it("checks the current document and archived recipient without exposing text or opening links", async () => {
     const state = notificationBackupFixture(); const before = JSON.stringify(state.archive);
     const review = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 10, invalid: 0, absent: 3, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 10, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 10, unchecked: 0, errors: 0, reviews: 0 });
     expect(review.checks).toContainEqual(expect.objectContaining({ kind: "notifications", status: "valid", records: 1, documents: 1 }));
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(review)).not.toContain("/schedule?date");
     expect(JSON.stringify(state.archive)).toBe(before); expect(forbidden).not.toHaveBeenCalled();

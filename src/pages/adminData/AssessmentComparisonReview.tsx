@@ -1,8 +1,10 @@
 import { ASSESSMENT_COMPARISON_LABELS, getUncheckedAssessmentDocuments, type AssessmentComparedField, type AssessmentHistoryComparedField, type AssessmentCorrectionComparedField, type BackupAssessmentComparison } from "../../domain/backupAssessmentComparison";
 import RecordComparisonReview from "./RecordComparisonReview";
 import styles from "./index.module.scss";
+import type { BackupInspection } from "../../data/localBackupInspectionService";
+import AssessmentSelectionReview from "./AssessmentSelectionReview";
 
-export default function AssessmentComparisonReview({ review }: { review: BackupAssessmentComparison }) {
+export default function AssessmentComparisonReview({ review, inspection }: { review: BackupAssessmentComparison; inspection: BackupInspection }) {
   if (!review.assessments.counts.documents) return null;
   const unchecked = getUncheckedAssessmentDocuments(review);
   return <details className={styles.details}><summary>Аттестации и история по ID · документов {review.assessments.counts.documents}{unchecked ? ` · не сравнено ${unchecked}` : ""}</summary><div className={styles.catalogComparisonBody}>
@@ -11,5 +13,6 @@ export default function AssessmentComparisonReview({ review }: { review: BackupA
     <RecordComparisonReview<AssessmentHistoryComparedField> review={review.history} fieldLabels={ASSESSMENT_COMPARISON_LABELS} title="История аттестаций по ID" recordName="События" documentName="Документы" documentsCountLabel="документов" description="Сопоставляются сохранённые события и их снимки. Разные значения одного ID требуют ручного выбора; ревизия документа и более поздняя дата не дают автоматического приоритета. Выбор карточки и её истории ещё требует проверки итогового набора." noChanges="В сравнимых документах различий истории не найдено." unavailable="Нет сравнимой истории аттестаций." listLabel="Различия истории аттестаций" skippedLabel="Несравнённая история аттестаций" />
     {review.corrections && <RecordComparisonReview<AssessmentCorrectionComparedField> review={review.corrections} fieldLabels={{ ...ASSESSMENT_COMPARISON_LABELS, reason: "Причина исправления" }} title="Исправления ведомостей по ID" recordName="Исправления" documentName="Документы" documentsCountLabel="документов" description="Черновики исправлений и опубликованные версии сравниваются отдельно от первоначальных ведомостей. Выбор не применяется к данным." noChanges="Различий исправлений не найдено." unavailable="Нет сравнимых исправлений." listLabel="Различия исправлений ведомостей" skippedLabel="Несравнённые исправления" />}
     {review.correctionHistory && <RecordComparisonReview<AssessmentCorrectionComparedField> review={review.correctionHistory} fieldLabels={{ ...ASSESSMENT_COMPARISON_LABELS, reason: "Причина исправления" }} title="История исправлений по ID" recordName="События" documentName="Документы" documentsCountLabel="документов" description="Сравниваются разрешение настройщика, сохранения преподавателя и публикации исправленных версий. Права и итоговый набор требуют отдельного подтверждения." noChanges="Различий истории исправлений не найдено." unavailable="Нет сравнимой истории исправлений." listLabel="Различия истории исправлений" skippedLabel="Несравнённая история исправлений" />}
+    <AssessmentSelectionReview inspection={inspection} />
   </div></details>;
 }

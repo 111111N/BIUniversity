@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectBackupSettings, isBackupSettingKey } from "./backupSettingsDocuments";
-import { inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { settingsBackupFixture } from "../testSupport/localBackupDocuments";
 
 const forbidden = vi.fn(() => { throw new Error("Inspection must not read live accounts, change settings or select users"); });
@@ -12,7 +12,7 @@ describe("archived scalar browser preferences", () => {
   it("checks known plain strings and archived account links without applying or rewriting them", async () => {
     const state = settingsBackupFixture(); const before = JSON.stringify(state.archive);
     const review = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 11, invalid: 0, absent: 2, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 11, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 11, unchecked: 0, errors: 0, reviews: 0 });
     expect(review.checks).toContainEqual(expect.objectContaining({ kind: "settings", status: "valid", keys: 6 }));
     expect(JSON.stringify(state.archive)).toBe(before); expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(forbidden).not.toHaveBeenCalled();
   });

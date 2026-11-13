@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectBackupJournals } from "./backupJournalDocuments";
-import { inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { journalBackupFixture } from "../testSupport/localBackupDocuments";
 
 const forbidden = vi.fn(() => { throw new Error("Archive inspection must not use live stores"); });
@@ -11,7 +11,7 @@ describe("archived journals and change history", () => {
   it("validates schemas and saved lesson identities as-is, keeping private names out of the report", async () => {
     const state = journalBackupFixture(); const before = JSON.stringify(state.archive);
     const review = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 8, invalid: 0, absent: 5, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 8, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 8, unchecked: 0, errors: 0, reviews: 0 });
     for (const kind of ["journals", "journalHistory"]) expect(review.checks).toContainEqual(expect.objectContaining({ kind, documents: 1, records: 1, status: "valid" }));
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(state.archive)).toBe(before);
     expect(forbidden).not.toHaveBeenCalled();

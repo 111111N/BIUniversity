@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectArchivedMessageAttachments, type ArchivedMessageAttachmentReference } from "./backupMessageAttachments";
-import { inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { inspectBackupMessaging } from "./backupMessagingDocuments";
 import { messageFileBackupFixture } from "../testSupport/localBackupDocuments";
 import type { BackupValue } from "./localBackup";
@@ -27,7 +27,7 @@ describe("archived message attachment links", () => {
   it("checks actual encoded files, separate sender/recipient IDs and scope without decoding binary or changing archives", async () => {
     const f = await fixture(); const before = JSON.stringify(f.archive);
     const review = await inspectBackupDocuments(f.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 12, invalid: 0, absent: 1, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 12, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 12, unchecked: 0, errors: 0, reviews: 0 });
     expect(review.checks.find((check) => check.kind === "messaging")?.message).toContain("Файловых записей: 2; ссылок из читаемых сообщений: 2; записей без такой ссылки: 0");
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(review)).not.toContain("base64"); expect(JSON.stringify(f.archive)).toBe(before); expect(forbidden).not.toHaveBeenCalled();
   });

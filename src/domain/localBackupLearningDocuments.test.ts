@@ -10,7 +10,7 @@ describe("archived assignments and attempt histories", () => {
   it("validates both lists and their archived references without normalization, live reads or private text in the report", async () => {
     const state = learningBackupFixture(); const before = JSON.stringify(state.archive);
     const review = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 6, invalid: 0, absent: 7, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 6, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 6, unchecked: 0, errors: 0, reviews: 0 });
     expect(review.checks.find((check) => check.kind === "assignments")).toMatchObject({ status: "valid", records: 1 });
     expect(review.checks.find((check) => check.kind === "submissions")).toMatchObject({ status: "valid", records: 1 });
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(state.archive)).toBe(before);
@@ -20,7 +20,7 @@ describe("archived assignments and attempt histories", () => {
   it("distinguishes saved empty lists from missing data without inserting demonstration work", async () => {
     const state = learningBackupFixture(); state.assignments.length = 0; state.submissions.length = 0; state.save();
     const review = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(review.counts.valid).toBe(6); expect(review.counts.absent).toBe(7);
+    expect(review.counts.valid).toBe(6); expect(review.counts.absent).toBe(Object.keys(BACKUP_DOCUMENTS).length - 6);
     expect(review.checks.filter((check) => check.records === 0)).toHaveLength(2);
     expect(review.issues).toEqual([]);
   });

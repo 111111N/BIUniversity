@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useRole } from "../../components/RoleContext";
 import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
+import { isSubjectActive } from "../../domain/subjectCatalog";
 import { inheritChecksReturn } from "../../domain/administrationChecksNavigation";
 import WeekPicker from "../../components/WeekPicker";
 import Dropdown from "../../components/Dropdown";
@@ -29,7 +30,7 @@ import { changesLocation, type UnsavedNavigationCheck } from "../../domain/unsav
 
 const freshLesson = (date: string, groupId: string): ManagedLesson => ({
   id: `managed:${crypto.randomUUID()}`, scheduleId: Date.now() * 1000 + Math.floor(Math.random() * 1000),
-  subjectId: SUBJECTS.find((subject) => getSubjectGroups(subject.id).some((group) => group.id === groupId))?.id ?? SUBJECTS[0]?.id ?? "",
+  subjectId: SUBJECTS.find((subject) => isSubjectActive(subject) && getSubjectGroups(subject.id).some((group) => group.id === groupId))?.id ?? SUBJECTS.find(isSubjectActive)?.id ?? "",
   groupId, teacherId: "", teacherName: "", date, startsAt: "08:30", endsAt: "10:00", type: "lecture", room: "",
 });
 const sortLessons = (lessons: ManagedLesson[]) => [...lessons].sort((a, b) => a.date.localeCompare(b.date) || a.startsAt.localeCompare(b.startsAt));
@@ -207,7 +208,7 @@ const AdminSchedulePage = () => {
       })}</ul><p>Черновик можно сохранить с конфликтами. При публикации проверяются преподаватели, группы и аудитории.</p>
     </details>}
     <div className={`${styles.workspace} ${editor ? styles.withEditor : ""}`}>
-      {editor && <LessonEditor key={editor.id} value={editor} groupName={selectedGroup?.name ?? groupId} weekStart={weekStart} editing={lessons.some((lesson) => lesson.id === editor.id)} blocked={blocked} busy={busy} blockedMessage={blocked ? actionState.hint : ""} subjects={subjects.filter((subject) => getSubjectGroups(subject.id).some((group) => group.id === groupId)).map((subject) => ({ value: subject.id, label: subject.name, searchText: subject.shortName }))} teachers={teachers} onChange={setEditor} onApply={submitLesson} onCancel={cancelLesson} onConfigureAssignment={configureAssignment} />}
+      {editor && <LessonEditor key={editor.id} value={editor} groupName={selectedGroup?.name ?? groupId} weekStart={weekStart} editing={lessons.some((lesson) => lesson.id === editor.id)} blocked={blocked} busy={busy} blockedMessage={blocked ? actionState.hint : ""} subjects={subjects.filter((subject) => isSubjectActive(subject) && getSubjectGroups(subject.id).some((group) => group.id === groupId)).map((subject) => ({ value: subject.id, label: subject.name, searchText: subject.shortName }))} teachers={teachers} onChange={setEditor} onApply={submitLesson} onCancel={cancelLesson} onConfigureAssignment={configureAssignment} />}
       <section aria-label="Занятия недели" className={styles.lessons}>
         <div ref={listHeadingRef} tabIndex={-1} className={styles.listHeading}><strong>{formatCount(lessons.length, ["занятие", "занятия", "занятий"])}</strong><button type="button" disabled={blocked || Boolean(editor)} onClick={() => startEditing()}>Добавить пару</button></div>
         {lessons.length === 0 ? <div className={styles.empty}><strong>В этой неделе пока нет пар</strong><p>Добавьте первую пару кнопкой выше или перенесите расписание через «Действия недели».</p></div> : days.map((day) => <section key={day.date} className={styles.day} aria-label={parseCalendarDate(day.date)?.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}>

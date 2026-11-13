@@ -1,6 +1,7 @@
 import { decodeAccountsDocument, getStudentGroupId, isAccountActive, type AccountsDocument } from "./accounts";
 import { decodeGroupCatalog, type GroupCatalogDocument } from "./groupCatalog";
 import { decodeSubjectCatalog, type SubjectCatalogDocument } from "./subjectCatalog";
+import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument } from "./academicPeriods";
 import { decodeManagedSchedule, MANAGED_SCHEDULE_KEY, type ManagedScheduleSnapshot } from "./scheduleManagement";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
@@ -31,7 +32,10 @@ export const BACKUP_LEARNING_DOCUMENTS = {
   assignments: { key: "bi-university-demo-assignments", prefix: "bi-university-demo-assignments", label: "Задания" },
   submissions: { key: "bi-university-demo-submissions", prefix: "bi-university-demo-submissions", label: "Ответы и попытки" },
 } as const;
-const STATIC_BACKUP_DOCUMENTS = { ...BACKUP_CORE_DOCUMENTS, ...BACKUP_LEARNING_DOCUMENTS };
+export const BACKUP_PERIOD_DOCUMENTS = {
+  periods: { key: ACADEMIC_PERIODS_STORAGE_KEY, prefix: "bi-university-academic-periods-", label: "Учебные годы и семестры" },
+} as const;
+const STATIC_BACKUP_DOCUMENTS = { ...BACKUP_CORE_DOCUMENTS, ...BACKUP_LEARNING_DOCUMENTS, ...BACKUP_PERIOD_DOCUMENTS };
 export const BACKUP_DOCUMENTS = { ...STATIC_BACKUP_DOCUMENTS, ...BACKUP_JOURNAL_DOCUMENTS, ...BACKUP_PLANNER_DOCUMENTS, ...BACKUP_NOTIFICATION_DOCUMENTS, ...BACKUP_SETTINGS_DOCUMENTS, ...BACKUP_MESSAGING_DOCUMENTS, ...BACKUP_MATERIAL_DOCUMENTS, ...BACKUP_ASSESSMENT_DOCUMENTS };
 export type BackupDocumentKind = keyof typeof BACKUP_DOCUMENTS;
 export interface BackupDocumentBaseline { groupIds: readonly string[]; requiredSubjectIds: readonly string[] }
@@ -73,7 +77,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     }
     try {
       const header: unknown = versioned ? JSON.parse(raw) : null;
-      if (versioned && (!header || typeof header !== "object" || Array.isArray(header) || !("version" in header) || header.version !== 1)) throw new Error("Поддерживается только документ версии 1.");
+      if (versioned && (!header || typeof header !== "object" || Array.isArray(header) || !("version" in header) || (kind === "subjects" ? header.version !== 1 && header.version !== 2 : header.version !== 1))) throw new Error(kind === "subjects" ? "Поддерживаются документы дисциплин версий 1 и 2." : "Поддерживается только документ версии 1.");
       const document = decode(raw);
       const revision = header && typeof header === "object" && "revision" in header && typeof header.revision === "number" ? header.revision : undefined;
       result.checks.push({ kind, key: definition.key, label: definition.label, status: "valid", revision, ...(Array.isArray(document) ? { records: document.length } : {}), message: "Схема прочитана текущей версией приложения. Это не разрешение на восстановление." }); result.counts.valid++;
@@ -105,8 +109,10 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     if (!document) throw new Error("Некорректная схема расписания, повторяющиеся идентификаторы или нарушена связь опубликованных занятий с журналом.");
     return document;
   });
+  for (const event of subjects?.history ?? []) if (event.origin === "saved-snapshot") issue({ kind: "subjects", level: "review", code: "legacy-subject-snapshot", recordId: event.id, referenceId: event.subjectId, message: "Реквизиты до первого изменения сохранены снимком прежнего каталога. История ранних изменений не создавалась и требует независимого подтверждения." });
   const assignments = await read("assignments", decodeBackupAssignments, false);
   const submissions = await read("submissions", decodeBackupSubmissions, false);
+  const periods = await read("periods", decodeAcademicPeriodsDocument);
   if (accounts) {
     const history = await indexArchivedAccountHistory(accounts.history, signal);
     const studentNumbers = await inspectArchivedStudentNumbers(accounts, signal);
@@ -137,7 +143,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const groupIds = groups ? new Set([...baseline.groupIds, ...groups.groups.map((group) => group.id)]) : undefined;
   const savedGroupIds = new Set(groups?.groups.map((group) => group.id) ?? []);
   const subjectIds = subjects ? new Set(subjects.subjects.map((subject) => subject.id)) : undefined;
-  addReview(await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds }, archive.completedAt, signal));
+  addReview(await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, periods }, archive.completedAt, signal));
   addReview(await inspectBackupJournals(archive.localStorage, signal, {
     groupIds: groups ? savedGroupIds : undefined, subjectIds, lessonSource: { schedule }, peopleSource: { accountIds },
   }));
@@ -148,6 +154,20 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   addReview(await inspectArchivedMaterials(archive.databases, { accountIds, subjectIds, groupIds: groups ? savedGroupIds : undefined }, signal));
   let builtInGroups = false; let count = 0;
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  if (periods) {
+    const check = result.checks.find(row => row.kind === "periods")!;
+    check.records = periods.years.length + periods.terms.length;
+    for (const event of periods.history) {
+      await step();
+      if (!accountIds) issue({ kind: "periods", level: "review", code: "unchecked-period-author", recordId: event.id, referenceId: event.actorId, message: "Автор изменения учебного периода не проверен: учётные записи отсутствуют или не читаются в архиве." });
+      else if (!accountIds.has(event.actorId)) issue({ kind: "periods", level: "error", code: "missing-period-author", recordId: event.id, referenceId: event.actorId, message: "В архиве отсутствует учётная запись автора изменения учебного периода. Сопоставление по имени не выполнялось." });
+      if (Date.parse(event.occurredAt) > Date.parse(archive.completedAt)) issue({ kind: "periods", level: "error", code: "period-event-after-backup", recordId: event.id, message: "Изменение учебного периода датировано позже завершения архива." });
+    }
+    if (periods.history.length) {
+      if (!Number.isFinite(Date.parse(archive.completedAt))) issue({ kind: "periods", level: "review", code: "unchecked-period-cutoff", message: "Время завершения архива не подтверждено для проверки истории учебных периодов." });
+      issue({ kind: "periods", level: "review", code: "unconfirmed-period-authority", message: "Схема и найденные ID авторов не подтверждают их исторические полномочия. Сегодняшние роли не подставлялись; применение архива требует отдельной проверки." });
+    }
+  }
   const reference = (kind: BackupDocumentKind, target: "group" | "subject" | "teacher", id: string) => {
     const ids = target === "group" ? groupIds : target === "subject" ? subjectIds : accountIds;
     if (!ids) {

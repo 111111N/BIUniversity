@@ -5,6 +5,7 @@ import { matchesSearchText } from "./search";
 import type { ManagedScheduleWeek } from "./scheduleManagement";
 import type { AssessmentDocument } from "./assessmentTypes";
 import { inspectAssessmentDependencies } from "./assessmentDependencies";
+import { isSubjectActive } from "./subjectCatalog";
 
 export const ADMINISTRATION_CHECK_LABELS = {
   "empty-group": "Группы без внесённых учащихся",
@@ -41,7 +42,7 @@ export interface AdministrationChecksResult {
   kinds: Record<AdministrationIssueKind, number>;
 }
 interface CheckGroup { id: string; name: string; status?: GroupStatus }
-interface CheckSubject { id: string; name: string; shortName: string }
+interface CheckSubject { id: string; name: string; shortName: string; status?: "active" | "archived" }
 export const ADMINISTRATION_CHECK_PAGE_SIZE = 20;
 const collator = new Intl.Collator("ru", { numeric: true, sensitivity: "base" });
 
@@ -73,7 +74,7 @@ export const queryAdministrationChecks = (
     assignments.set(account.id, teaching);
   }
   for (const group of groups) if (isGroupActive(group) && !populatedGroups.has(group.id)) issues.push({ id: `empty-group:${group.id}`, kind: "empty-group", level: "review", title: group.name, detail: "Нет внесённых студентов в состоянии «Учится». Проверьте состав группы или добавьте учащихся.", groupId: group.id });
-  for (const subject of subjects) if (!assignedSubjects.has(subject.id)) issues.push({ id: `unassigned-subject:${subject.id}`, kind: "unassigned-subject", level: "review", title: subject.name, detail: `${subject.shortName} · Нет активного преподавателя с назначением на действующую группу. Проверьте назначения, если дисциплина используется.`, subjectId: subject.id });
+  for (const subject of subjects) if (isSubjectActive(subject) && !assignedSubjects.has(subject.id)) issues.push({ id: `unassigned-subject:${subject.id}`, kind: "unassigned-subject", level: "review", title: subject.name, detail: `${subject.shortName} · Нет активного преподавателя с назначением на действующую группу. Проверьте назначения, если дисциплина используется.`, subjectId: subject.id });
   for (const week of published) for (const lesson of week.lessons) {
     // Published lesson times are interpreted in the university's Moscow timezone.
     if (Date.parse(`${lesson.date}T${lesson.endsAt}:00+03:00`) <= instant) continue;

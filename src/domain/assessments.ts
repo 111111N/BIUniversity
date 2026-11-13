@@ -6,11 +6,14 @@ import {
   type AssessmentOutcome, type AssessmentResult, type AssessmentSubjectOption, type AssessmentRecordBookMetadata, type AssessmentCommandContext,
 } from "./assessmentTypes";
 import { applyAssessmentCorrection, isAssessmentCorrectionCommand, validateAssessmentCorrections } from "./assessmentCorrections";
+import type { AcademicPeriodsDocument } from "./academicPeriods";
+import { assessmentPeriodLabel, resolveAssessmentAcademicPeriod, sameAssessmentAcademicPeriod, validateAssessmentAcademicPeriod } from "./assessmentPeriods";
 
 export interface AssessmentDomainContext {
   accounts: PortalAccount[]; accountsRevision: number;
   groups: AssessmentGroupOption[]; groupRevision: number;
   subjects: AssessmentSubjectOption[]; subjectRevision: number;
+  academicPeriods?: AcademicPeriodsDocument;
 }
 export interface AssessmentGeneratedValues { assessmentId: string; attemptId: string; historyId: string; occurredAt: string }
 
@@ -106,7 +109,7 @@ export const manageableSupervisorAssessmentIds = (state: AssessmentDocument): st
 
 /** The document is independently verifiable: each mutation has an immutable audit snapshot. */
 type BaseAssessmentDocument = Pick<AssessmentDocument, "revision" | "assessments" | "history"> & { version: 2 | 3 };
-const validateBaseDocument = (value: unknown, legacy = false, allowSupervisorChanges = false): BaseAssessmentDocument => {
+const validateBaseDocument = (value: unknown, legacy = false, allowSupervisorChanges = false, periodLimit = 120): BaseAssessmentDocument => {
   const root = object(value, ["version", "revision", "assessments", "history"]);
   if (root.version !== (legacy ? 2 : 3) || !integer(root.revision)) fail();
   const assessments = list(root.assessments, 5_000) as Assessment[];
@@ -119,7 +122,7 @@ const validateBaseDocument = (value: unknown, legacy = false, allowSupervisorCha
   for (const assessment of assessments) {
     object(assessment, ["id", "title", "kind", "subjectId", "subjectName", "groupId", "groupName", "period", "supervisorId", "recordBook", "roster", "attempts"]);
     validateAssessmentRecordBook(assessment.recordBook);
-    if (!id(assessment.id) || assessmentIds.has(assessment.id) || !string(assessment.title, 2, 160) || !kind(assessment.kind) || !id(assessment.groupId) || !string(assessment.groupName) || !string(assessment.period, 1, 120)) fail();
+    if (!id(assessment.id) || assessmentIds.has(assessment.id) || !string(assessment.title, 2, 160) || !kind(assessment.kind) || !id(assessment.groupId) || !string(assessment.groupName) || !string(assessment.period, 1, periodLimit)) fail();
     assessmentIds.add(assessment.id);
     if (isSupervisedAssessment(assessment.kind) ? !id(assessment.supervisorId) : assessment.supervisorId !== null) fail();
     if ((assessment.subjectId === null) !== (assessment.subjectName === null) || (assessment.subjectId !== null && (!id(assessment.subjectId) || !string(assessment.subjectName))) || (["exam", "pass", "gradedPass"].includes(assessment.kind) && assessment.subjectId === null)) fail();
@@ -241,9 +244,33 @@ const validateBaseDocument = (value: unknown, legacy = false, allowSupervisorCha
 
 const validateDocument = (value: unknown): AssessmentDocument => {
   const root = object(value, ["version", "revision", "assessments", "history", "corrections", "correctionHistory"]);
-  if (root.version !== 5 || !integer(root.revision)) fail();
+  if (root.version !== 5 && root.version !== 6 || !integer(root.revision)) fail();
   const baseHistory = list(root.history, 50_000);
-  validateBaseDocument({ version: 3, revision: baseHistory.length, assessments: root.assessments, history: baseHistory }, false, true);
+  if (root.version === 6) {
+    const assessments = list(root.assessments, 5_000) as Assessment[], history = baseHistory as AssessmentHistoryEntry[];
+    const periods = new Map<string, Assessment["academicPeriod"]>();
+    const strip = (row: unknown) => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) return fail();
+      const { academicPeriod: _period, ...base } = row as Record<string, unknown>; return base;
+    };
+    for (const assessment of assessments) {
+      if (!assessment || typeof assessment !== "object") fail();
+      if (Object.hasOwn(assessment, "academicPeriod")) {
+        const period = validateAssessmentAcademicPeriod(assessment.academicPeriod);
+        if (assessment.period !== assessmentPeriodLabel(period)) fail();
+        periods.set(assessment.id, period);
+      }
+    }
+    for (const event of history) {
+      if (!event || typeof event !== "object") fail();
+      if (Object.hasOwn(event, "academicPeriod")) {
+        validateAssessmentAcademicPeriod(event.academicPeriod);
+        if (event.action !== "created") fail();
+      }
+      if (event.action === "created" && !sameAssessmentAcademicPeriod(event.academicPeriod, periods.get(event.assessmentId))) fail();
+    }
+    validateBaseDocument({ version: 3, revision: history.length, assessments: assessments.map(strip), history: history.map(strip) }, false, true, 323);
+  } else validateBaseDocument({ version: 3, revision: baseHistory.length, assessments: root.assessments, history: baseHistory }, false, true);
   const state = value as AssessmentDocument;
   validateAssessmentCorrections(state, results);
   return state;
@@ -322,23 +349,29 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
     if (state.assessments.some((entry) => entry.attempts.some((item) => item.id === generated.attemptId))) fail("Идентификатор попытки уже существует.");
     if (command.type === "create") {
       const draft = command.draft;
-      object(draft, ["title", "kind", "subjectId", "groupId", "period", "attempt", ...(Object.hasOwn(draft, "recordBook") ? ["recordBook"] : [])]);
+      object(draft, ["title", "kind", "subjectId", "groupId", "period", "attempt", ...(Object.hasOwn(draft, "recordBook") ? ["recordBook"] : []), ...(Object.hasOwn(draft, "academicPeriod") ? ["academicPeriod"] : [])]);
+      const academicPeriod = context.academicPeriods ? resolveAssessmentAcademicPeriod(context.academicPeriods, draft.academicPeriod, generated.occurredAt) : undefined;
+      if (Object.hasOwn(draft, "academicPeriod") && !academicPeriod) fail("Справочник учебных периодов недоступен. Создание остановлено.");
+      if (academicPeriod) next.version = 6;
+      const period = academicPeriod ? assessmentPeriodLabel(academicPeriod) : draft.period;
       const recordBook = validateAssessmentRecordBook(draft.recordBook ?? null);
-      if (!string(draft.title, 2, 160) || !string(draft.period, 1, 120) || !kind(draft.kind)) fail("Укажите название аттестации, вид контроля и учебный период.");
+      if (!string(draft.title, 2, 160) || !string(period, 1, academicPeriod ? 323 : 120) || !kind(draft.kind)) fail("Укажите название аттестации, вид контроля и учебный период.");
       const group = context.groups.find((entry) => entry.id === draft.groupId && entry.status !== "archived");
       if (!group || !string(group.name)) fail("Выберите действующую учебную группу.");
       const subject = draft.subjectId === null ? null : context.subjects.find((entry) => entry.id === draft.subjectId);
       if (subject === undefined || (subject && !string(subject.name)) || (["exam", "pass", "gradedPass"].includes(draft.kind) && subject === null)) fail("Выберите дисциплину аттестации.");
+      if (subject?.status === "archived") fail("Архивная дисциплина недоступна для новой аттестации. Сначала восстановите дисциплину.");
       if (state.assessments.some((entry) => entry.id === generated.assessmentId)) fail("Идентификатор аттестации уже существует.");
       const eligible = new Map(context.accounts.filter((account) => account.role === "student" && (account.enrollmentStatus ?? "studying") === "studying" && getStudentGroupId(account) === group.id).map((account) => [account.id, account]));
       const studentIds = validateAttemptDraft(draft.attempt, context, new Set(eligible.keys()), false);
-      target = { id: generated.assessmentId, title: draft.title, kind: draft.kind, subjectId: subject?.id ?? null, subjectName: subject?.name ?? null, groupId: group.id, groupName: group.name, period: draft.period, supervisorId: isSupervisedAssessment(draft.kind) ? draft.attempt.teacherId : null, recordBook, roster: studentIds.map((studentId) => { const student = eligible.get(studentId)!; return { studentId, name: student.name, studentNumber: student.studentRecord?.number ?? null }; }), attempts: [] };
+      target = { id: generated.assessmentId, title: draft.title, kind: draft.kind, subjectId: subject?.id ?? null, subjectName: subject?.name ?? null, groupId: group.id, groupName: group.name, period, ...(academicPeriod ? { academicPeriod } : {}), supervisorId: isSupervisedAssessment(draft.kind) ? draft.attempt.teacherId : null, recordBook, roster: studentIds.map((studentId) => { const student = eligible.get(studentId)!; return { studentId, name: student.name, studentNumber: student.studentRecord?.number ?? null }; }), attempts: [] };
       next.assessments.push(target);
       action = "created";
     } else {
       const found = next.assessments.find((entry) => entry.id === command.assessmentId);
       if (!found) fail("Аттестация не найдена.");
       target = found!;
+      if (context.subjects.some(subject => subject.id === target.subjectId && subject.status === "archived")) fail("Сначала восстановите дисциплину из архива для назначения новой попытки.");
       const previous = target.attempts[target.attempts.length - 1];
       const preceding = [...target.attempts].reverse().find((entry) => entry.state === "published");
       if (!["primary", "retake", "commission"].includes(command.kind) || (previous.state === "cancelled" && !preceding ? command.kind !== "primary" : command.kind === "primary")) fail("После отмены основной сдачи без опубликованной ведомости назначьте основную сдачу заново. Для пересдачи нужна предыдущая опубликованная ведомость.");
@@ -418,6 +451,7 @@ export const applyAssessmentCommand = (state: AssessmentDocument, command: Asses
   }
   next.revision += 1;
   next.history.push({ id: generated.historyId, assessmentId: target!.id, attemptId: attempt!.id, actorId: actor.id, occurredAt: generated.occurredAt, action: action!, results: action! === "results-saved" || action! === "published" ? copy(attempt!.results) : null, recordBook: copy(target!.recordBook),
+    ...(action! === "created" && target!.academicPeriod ? { academicPeriod: copy(target!.academicPeriod) } : {}),
     ...(["created", "attempt-created", "attempt-updated", "supervisor-changed"].includes(action!) ? { assignment: assessmentAttemptAssignment(attempt!) } : {}),
     ...(command.type === "cancel-attempt" || command.type === "change-supervisor" ? { reason: command.reason } : {}),
     ...(action! === "supervisor-changed" ? { previousSupervisorId: previousSupervisorId! } : {}),

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectBackupPlanners } from "./backupPlannerDocuments";
-import { inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { getPlannerStorageKey, getPlannerStorageOwner, LEGACY_PLANNER_OWNER_ID, PLANNER_STORAGE_KEY } from "./plannerStorage";
 import { plannerBackupFixture } from "../testSupport/localBackupDocuments";
 
@@ -13,7 +13,7 @@ describe("archived planner lists", () => {
   it("validates the archived owner and tasks without leaking title/text or modifying original strings", async () => {
     const state = plannerBackupFixture(); const before = JSON.stringify(state.archive);
     const review = await inspectBackupDocuments(state.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 9, invalid: 0, absent: 4, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 9, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 9, unchecked: 0, errors: 0, reviews: 0 });
     expect(review.checks).toContainEqual(expect.objectContaining({ kind: "planners", status: "valid", documents: 1, records: 1 }));
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(state.archive)).toBe(before); expect(forbidden).not.toHaveBeenCalled();
   });

@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import Dropdown from "../../components/Dropdown";
 import RecordEditor, { RecordEditorActions } from "../../components/RecordEditor";
 import { useUnsavedChangesGuard } from "../../components/UnsavedChangesProvider";
@@ -10,6 +11,8 @@ import SelectionList from "./SelectionList";
 import RecordBookFields, { parseRecordBookDraft, recordBookDraft } from "./RecordBookFields";
 import { assessmentContext, assessmentContextChanged, todayDate } from "./model";
 import { requireUnchangedAttemptSource } from "./attemptRefresh";
+import { assessmentPeriodLabel } from "../../domain/assessmentPeriods";
+import { reviewAssessmentPeriodSelection } from "./periodSelection";
 import styles from "./index.module.scss";
 
 interface Props { actorId: string; snapshot: AssessmentSnapshot; assessment?: Assessment; editingAttempt?: AssessmentAttempt; attemptKind?: AssessmentAttemptKind; blocked?: boolean; onClose(): void; onSaved(message: string): void; refresh(): void }
@@ -18,18 +21,19 @@ export default function AssessmentForm({ actorId, snapshot, assessment, editingA
   const [context, setContext] = useState<AssessmentCommandContext>(() => assessmentContext(snapshot, actorId));
   const [initial] = useState<AssessmentDraft>(() => ({ title: "", kind: "exam", subjectId: null, groupId: "", period: "", attempt: editingAttempt ? assessmentAttemptAssignment(editingAttempt) : { date: todayDate(), startsAt: "", room: "", teacherId: assessment?.supervisorId ?? "", chairId: null, memberIds: [], studentIds: [] } }));
   const [draft, setDraft] = useState(initial);
+  const [periodYearId, setPeriodYearId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [bookDraft, setBookDraft] = useState(() => recordBookDraft(null));
   const bookMetadata = parseRecordBookDraft(bookDraft);
   const { requestAction } = useUnsavedChangesGuard();
-  const titleId = useId(); const periodId = useId(); const dateId = useId(); const timeId = useId(); const roomId = useId();
-  const stale = assessmentContextChanged(context, snapshot, actorId);
+  const titleId = useId(); const dateId = useId(); const timeId = useId(); const roomId = useId();
+  const stale = assessmentContextChanged(context, snapshot, actorId) || (!assessment && (base.academicPeriods?.revision !== snapshot.academicPeriods?.revision || Boolean(base.academicPeriods?.error) !== Boolean(snapshot.academicPeriods?.error)));
   const noLongerManageable = Boolean(editingAttempt && !snapshot.manageableAttemptIds?.includes(editingAttempt.id));
-  const locked = busy || stale || blocked || noLongerManageable;
+  const locked = busy || stale || blocked || noLongerManageable || Boolean(!assessment && snapshot.academicPeriods?.error);
   const supervised = isSupervisedAssessment(assessment?.kind ?? draft.kind);
   const fixedSupervisor = assessment?.supervisorId ?? null;
-  const dirty = editingAttempt ? JSON.stringify(draft.attempt) !== JSON.stringify(initial.attempt) : Boolean(draft.title || draft.period || draft.subjectId || draft.groupId || draft.attempt.teacherId !== (fixedSupervisor ?? "") || draft.attempt.startsAt || draft.attempt.room || draft.attempt.studentIds.length || draft.attempt.memberIds.length || draft.attempt.chairId || draft.kind !== "exam" || draft.attempt.date !== todayDate());
+  const dirty = editingAttempt ? JSON.stringify(draft.attempt) !== JSON.stringify(initial.attempt) : Boolean(draft.title || draft.period || periodYearId || draft.subjectId || draft.groupId || draft.attempt.teacherId !== (fixedSupervisor ?? "") || draft.attempt.startsAt || draft.attempt.room || draft.attempt.studentIds.length || draft.attempt.memberIds.length || draft.attempt.chairId || draft.kind !== "exam" || draft.attempt.date !== todayDate());
   useUnsavedChangesWarning(dirty || busy || Boolean(bookDraft.semester || bookDraft.hours || bookDraft.category !== "required"));
   const close = () => { if (!busy) requestAction(onClose); };
   const students = assessment ? assessment.roster.map((entry) => ({ id: entry.studentId, name: entry.name, detail: entry.studentNumber ?? "Номер зачётки не указан" }))
@@ -40,7 +44,7 @@ export default function AssessmentForm({ actorId, snapshot, assessment, editingA
   const commission = Boolean(assessment && (editingAttempt?.kind ?? attemptKind) === "commission");
   const requiresRoom = Boolean(assessment && (editingAttempt?.kind ?? attemptKind) !== "primary" && (!editingAttempt || editingAttempt.room !== undefined));
   const requiresSubject = !assessment && ["exam", "pass", "gradedPass"].includes(draft.kind);
-  const valid = Boolean((assessment || (draft.title.trim().length >= 2 && draft.period.trim() && base.groups.some((entry) => entry.id === draft.groupId && entry.status !== "archived") && (!requiresSubject || draft.subjectId) && (!draft.subjectId || base.subjects.some((entry) => entry.id === draft.subjectId)))) && draft.attempt.date && draft.attempt.startsAt && draft.attempt.teacherId
+  const valid = Boolean((assessment || (draft.title.trim().length >= 2 && draft.academicPeriod && !base.academicPeriods?.error && base.academicPeriods?.terms.some(term => term.id === draft.academicPeriod?.termId && term.yearId === periodYearId) && base.groups.some((entry) => entry.id === draft.groupId && entry.status !== "archived") && (!requiresSubject || draft.subjectId) && (!draft.subjectId || base.subjects.some((entry) => entry.id === draft.subjectId)))) && draft.attempt.date && draft.attempt.startsAt && draft.attempt.teacherId
     && (!requiresRoom || draft.attempt.room?.trim()) && (draft.attempt.room?.trim().length ?? 0) <= 256
     && base.teachers.some((entry) => entry.id === draft.attempt.teacherId) && draft.attempt.studentIds.length && draft.attempt.studentIds.every((id) => students.some((entry) => entry.id === id))
     && (!commission || (draft.attempt.chairId && draft.attempt.memberIds.length && draft.attempt.memberIds.every((id) => base.teachers.some((entry) => entry.id === id)) && base.teachers.some((entry) => entry.id === draft.attempt.chairId))));
@@ -50,6 +54,10 @@ export default function AssessmentForm({ actorId, snapshot, assessment, editingA
       const latest = await assessmentService.read(actorId);
       if (editingAttempt && !latest.manageableAttemptIds?.includes(editingAttempt.id)) throw new Error("В попытке уже сохранялся результат либо она закрыта. Правка назначения недоступна; ввод сохранён.");
       if (assessment) requireUnchangedAttemptSource(base.assessments.find((entry) => entry.id === assessment.id), latest.assessments.find((entry) => entry.id === assessment.id));
+      if (!assessment) {
+        const reviewed = reviewAssessmentPeriodSelection(draft, periodYearId, latest.academicPeriods);
+        setDraft(reviewed.draft); setPeriodYearId(reviewed.yearId); setError(reviewed.warning);
+      }
       setBase(latest); setContext(assessmentContext(latest, actorId)); refresh();
     }
     catch (failure) { console.error("Не удалось перепроверить аттестацию:", failure); setError(failure instanceof Error ? failure.message : "Не удалось обновить данные. Ввод сохранён."); }
@@ -77,9 +85,16 @@ export default function AssessmentForm({ actorId, snapshot, assessment, editingA
           <label className={styles.field} htmlFor={titleId}>Название<input id={titleId} required minLength={2} maxLength={160} value={draft.title} onChange={(event) => patch({ title: event.target.value })} /></label>
           <Dropdown label="Вид аттестации" value={draft.kind} disabled={locked} options={Object.entries(ASSESSMENT_KIND_LABELS).map(([value, label]) => ({ value, label }))} onChange={(kind) => patch({ kind: kind as AssessmentKind })} />
           <Dropdown label="Группа" value={draft.groupId} disabled={locked} options={base.groups.filter((group) => group.status !== "archived").map((entry) => ({ value: entry.id, label: entry.name }))} searchable placeholder="" onChange={(groupId) => { patch({ groupId }); patchAttempt({ studentIds: base.students.filter((entry) => entry.groupId === groupId).map((entry) => entry.studentId) }); }} />
-          <Dropdown label={requiresSubject ? "Дисциплина" : "Дисциплина (необязательно)"} value={draft.subjectId ?? ""} disabled={locked} options={[...(!requiresSubject ? [{ value: "", label: "Без дисциплины" }] : []), ...base.subjects.map((entry) => ({ value: entry.id, label: entry.name }))]} searchable placeholder="" onChange={(subjectId) => patch({ subjectId: subjectId || null })} />
-          <label className={styles.field} htmlFor={periodId}>Учебный период<input id={periodId} required maxLength={120} value={draft.period} onChange={(event) => patch({ period: event.target.value })} /><small>Учебный год и семестр в принятом у вас формате.</small></label>
+          <Dropdown label={requiresSubject ? "Дисциплина" : "Дисциплина (необязательно)"} value={draft.subjectId ?? ""} disabled={locked} options={[...(!requiresSubject ? [{ value: "", label: "Без дисциплины" }] : []), ...base.subjects.filter(entry => entry.status !== "archived").map((entry) => ({ value: entry.id, label: entry.name }))]} searchable placeholder="" onChange={(subjectId) => patch({ subjectId: subjectId || null })} />
+          <Dropdown label="Учебный год" value={periodYearId} disabled={locked} searchable placeholder="Выберите год" options={(base.academicPeriods?.years ?? []).map(year => ({ value: year.id, label: year.name }))} onChange={yearId => { setPeriodYearId(yearId); patch({ period: "", academicPeriod: undefined }); }} />
+          <Dropdown label="Учебный семестр" value={draft.academicPeriod?.termId ?? ""} disabled={locked || !periodYearId} searchable placeholder="Выберите семестр" options={(base.academicPeriods?.terms ?? []).filter(term => term.yearId === periodYearId).map(term => ({ value: term.id, label: `${term.name} · ${term.startsOn} — ${term.endsOn}` }))} onChange={termId => {
+            const periods = base.academicPeriods, term = periods?.terms.find(row => row.id === termId), year = periods?.years.find(row => row.id === term?.yearId);
+            if (!periods || !term || !year) { setError("Учебный период недоступен. Обновите проверку."); return; }
+            patch({ academicPeriod: { termId, expectedRevision: periods.revision }, period: assessmentPeriodLabel({ catalogRevision: periods.revision, year, term }) });
+          }} />
         </div>}
+        {!assessment && <p className={styles.note}>Год и семестр выбираются из общего справочника. <Link to="/admin/periods">Открыть учебные периоды</Link>. Номер семестра в зачётке задаётся отдельно; дата пересдачи может выходить за границы семестра.</p>}
+        {!assessment && snapshot.academicPeriods?.error && <div className={styles.error} role="alert"><p>{snapshot.academicPeriods.error}</p><button type="button" disabled={busy} onClick={() => void review()}>Повторить чтение периодов</button></div>}
         {!assessment && <RecordBookFields value={bookDraft} onChange={setBookDraft} disabled={locked} />}
         <div className={styles.fields}>
           <label className={styles.field} htmlFor={dateId}>Дата сдачи<input id={dateId} required type="date" value={draft.attempt.date} onChange={(event) => patchAttempt({ date: event.target.value })} /></label>

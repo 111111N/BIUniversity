@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inspectBackupMessaging } from "./backupMessagingDocuments";
-import { inspectBackupDocuments } from "./localBackupDocuments";
+import { BACKUP_DOCUMENTS, inspectBackupDocuments } from "./localBackupDocuments";
 import { messagingBackupFixture } from "../testSupport/localBackupDocuments";
 
 const database = "bi-university-messages-v3";
@@ -16,7 +16,7 @@ describe("archived messaging documents", () => {
   it("checks the full archive without reading live state, changing sources or revealing message text", async () => {
     const fixture = messagingBackupFixture(); const before = JSON.stringify(fixture.archive);
     const review = await inspectBackupDocuments(fixture.archive, "configurator-demo");
-    expect(review.counts).toEqual({ valid: 12, invalid: 0, absent: 1, unchecked: 0, errors: 0, reviews: 0 });
+    expect(review.counts).toEqual({ valid: 12, invalid: 0, absent: Object.keys(BACKUP_DOCUMENTS).length - 12, unchecked: 0, errors: 0, reviews: 0 });
     expect(review.checks).toContainEqual(expect.objectContaining({ kind: "messaging", documents: 1, records: 2, status: "valid" }));
     expect(JSON.stringify(review)).not.toContain("PRIVATE"); expect(JSON.stringify(fixture.archive)).toBe(before); expect(forbidden).not.toHaveBeenCalled();
   });

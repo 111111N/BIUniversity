@@ -29,9 +29,10 @@ interface Props {
   draft: Draft; subjects: SubjectDefinition[]; disabled: boolean; stale: boolean; busy: boolean;
   formRef: RefObject<HTMLFormElement | null>;
   onChange(draft: Draft): void; onSubmit(event: FormEvent): void; onCancel(): void;
+  editing?: boolean;
 }
 
-export default function SubjectCreationForm({ draft, subjects, disabled, stale, busy, formRef, onChange, onSubmit, onCancel }: Props) {
+export default function SubjectCreationForm({ draft, subjects, disabled, stale, busy, formRef, onChange, onSubmit, onCancel, editing = false }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<SubjectIdentityField, boolean>>>({});
   const problems = useMemo(() => getSubjectDraftErrors(draft, subjects), [draft, subjects]);
@@ -43,10 +44,10 @@ export default function SubjectCreationForm({ draft, subjects, disabled, stale, 
     if (problems.length) { requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()); return; }
     onSubmit(event);
   };
-  const hint = busy ? "Создаём дисциплину…" : disabled ? "Сначала восстановите чтение данных кнопкой «Повторить чтение»." : stale ? "Сначала обновите проверку каталога и прав; введённые поля сохранятся." : "После создания можно назначить преподавателей и группы.";
-  return <form ref={formRef} className={styles.form} aria-label="Новая дисциплина" noValidate onSubmit={submit}>
-    {submitted && problems.length > 0 && <p className={styles.summaryError} role="alert">Проверьте отмеченные поля. Дисциплина ещё не создана.</p>}
+  const hint = busy ? (editing ? "Сохраняем дисциплину…" : "Создаём дисциплину…") : disabled ? "Сначала восстановите чтение данных кнопкой «Повторить чтение»." : stale ? "Сначала обновите проверку каталога и прав; введённые поля сохранятся." : editing ? "ID и связанные записи сохранятся. Прежнее название останется в истории." : "После создания можно назначить преподавателей и группы.";
+  return <form ref={formRef} className={styles.form} aria-label={editing ? "Редактирование дисциплины" : "Новая дисциплина"} noValidate onSubmit={submit}>
+    {submitted && problems.length > 0 && <p className={styles.summaryError} role="alert">{editing ? "Проверьте отмеченные поля. Изменения ещё не сохранены." : "Проверьте отмеченные поля. Дисциплина ещё не создана."}</p>}
     <SubjectCreationFields draft={draft} errors={errors} disabled={disabled || busy} onChange={onChange} onBlur={(field) => setTouched((previous) => ({ ...previous, [field]: true }))} />
-    <RecordEditorActions label="Создать дисциплину" busyLabel="Создаём…" disabled={disabled || stale || busy} busy={busy} onCancel={onCancel} hint={hint} />
+    <RecordEditorActions label={editing ? "Сохранить изменения" : "Создать дисциплину"} busyLabel={editing ? "Сохраняем…" : "Создаём…"} disabled={disabled || stale || busy} busy={busy} onCancel={onCancel} hint={hint} />
   </form>;
 }

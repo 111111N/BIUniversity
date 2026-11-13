@@ -28,6 +28,8 @@ import AssignmentTeacher from "./AssignmentTeacher";
 import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
 import { isAssignmentEditorStale, makeAssignmentEditor, type AssignmentEditor } from "./assignmentEditorModel";
 import SubjectCreationForm from "./SubjectCreationForm";
+import SubjectManagement from "./SubjectManagement";
+import { isSubjectActive } from "../../domain/subjectCatalog";
 
 type SubjectEditor = { name: string; shortName: string; revision: number; actorId: string; actorRevision: number };
 const TEACHERS_PER_PAGE = 12;
@@ -61,6 +63,7 @@ const AdminSubjectsPage = () => {
   const [choosingTeacher, setChoosingTeacher] = useState(false);
   const [editorState, setEditor] = useState<AssignmentEditor | null>(null);
   const [subjectEditor, setSubjectEditor] = useState<SubjectEditor | null>(null);
+  const [managementDirty, setManagementDirty] = useState(false);
   const creatingSubject = Boolean(subjectEditor);
   const editorRef = useRef<HTMLFormElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -92,7 +95,7 @@ const AdminSubjectsPage = () => {
   const actor = accountsState.accounts.find((entry) => entry.id === currentUser.id);
   const subjectStale = Boolean(subjectEditor && (subjectEditor.actorId !== currentUser.id || subjectEditor.actorRevision !== actor?.revision || subjectEditor.revision !== catalogRevision || actor?.role !== "configurator" || !isAccountActive(actor)));
   // Local form actions keep the suspended pair; only this form's edits need confirmation.
-  const requestAction = (action: () => void) => { if (dirty || subjectDirty || busy) guardAction(action); else action(); };
+  const requestAction = (action: () => void) => { if (dirty || subjectDirty || busy || managementDirty) guardAction(action); else action(); };
   useUnsavedChangesWarning(dirty || subjectDirty || busy, changesAdminSubject);
   useEffect(() => {
     if (formOpen || creatingSubject) editorRef.current?.querySelector<HTMLInputElement>("input")?.focus();
@@ -203,7 +206,7 @@ const AdminSubjectsPage = () => {
     </section>}
     {params.has(SCHEDULE_RETURN_PARAM) && !scheduleContext && <p className={styles.error} role="status">Временный ввод пары недоступен после перезагрузки или смены пользователя. Назначения можно изменить здесь; расписание затем нужно открыть заново.</p>}
     <div hidden={formOpen || creatingSubject} className={styles.catalog}>
-      <Dropdown label="Поиск дисциплины" placeholder="" searchable value={subject?.id ?? ""} options={subjects.map((item) => ({ value: item.id, label: item.name, searchText: item.shortName }))} onChange={selectSubject} disabled={busy || Boolean(catalogError)} />
+      <Dropdown label="Поиск дисциплины" placeholder="" searchable value={subject?.id ?? ""} options={subjects.map((item) => ({ value: item.id, label: `${item.name}${isSubjectActive(item) ? "" : " · архив"}`, searchText: `${item.shortName} ${(item.previousNames ?? []).join(" ")}` }))} onChange={selectSubject} disabled={busy || Boolean(catalogError)} />
       <button type="button" className={styles.primary} disabled={busy || unavailable} onClick={openSubjectCreation}>Создать дисциплину</button>
     </div>
     {teacherId && <section hidden={formOpen || creatingSubject} className={`${styles.editor} ${styles.teacherScope}`} aria-label="Выбранный преподаватель">
@@ -219,7 +222,8 @@ const AdminSubjectsPage = () => {
       <SubjectCreationForm formRef={editorRef} draft={subjectEditor} subjects={subjects} disabled={unavailable} stale={subjectStale} busy={busy} onChange={(draft) => { setSubjectEditor((previous) => previous ? { ...previous, ...draft } : previous); setError(""); setMessage(""); }} onSubmit={(event) => void createSubject(event)} onCancel={closeEditor} />
     </RecordEditor>}
     {subject && !subjectEditor ? <section className={styles.content} aria-label={`Преподаватели: ${subject.name}`}>
-      <div hidden={formOpen} className={styles.header}><div><h2>{subject.name}</h2><p>Преподавателей: {assignedTeachers.length} · Групп: {assignedGroups.size}</p></div><button type="button" className={styles.primary} disabled={busy || unavailable || !teachers.length || Boolean(teacherId && !selectedTeacher)} onClick={() => selectedTeacher ? editTeacher(selectedTeacher.id) : openNew()}>{selectedTeacher ? "Изменить назначения" : "Назначить преподавателя"}</button></div>
+      <div hidden={formOpen} className={styles.header}><div><h2>{subject.name}</h2><p>Преподавателей: {assignedTeachers.length} · Групп: {assignedGroups.size}</p></div><button type="button" className={styles.primary} disabled={busy || unavailable || !isSubjectActive(subject) || !teachers.length || Boolean(teacherId && !selectedTeacher)} onClick={() => selectedTeacher ? editTeacher(selectedTeacher.id) : openNew()}>{selectedTeacher ? "Изменить назначения" : "Назначить преподавателя"}</button></div>
+      {!formOpen && <SubjectManagement key={`${currentUser.id}:${subject.id}`} subject={subject} revision={catalogRevision} disabled={busy || unavailable} onDirtyChange={setManagementDirty} onSaved={refreshCatalog} />}
       {formOpen && <RecordEditor title="Назначения преподавателя" context={subject.name} dirty={dirty} busy={busy} closeLabel="К назначениям" onClose={closeEditor}>
         {assignmentStale && <div className={styles.sourceNotice} role="alert"><p>Назначения, справочники или права изменились. Текущий выбор групп оставлен в форме. Перед сохранением загрузите актуальные назначения; отказ от изменённого выбора потребует подтверждения.</p><button type="button" disabled={busy || unavailable} onClick={() => editor && editTeacher(editor.account.id)}>Загрузить актуальные назначения</button></div>}
         <form ref={editorRef} aria-label="Назначение преподавателя на дисциплину" onSubmit={submit}>

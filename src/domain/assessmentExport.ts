@@ -35,9 +35,12 @@ export const createAssessmentStatement = (state: AssessmentDocument, request: As
     const student = roster.get(studentId);
     const outcome = results.get(studentId);
     if (!student || !outcome) throw new Error("В опубликованной ведомости не хватает участника или результата. Обновите данные.");
-    return [index + 1, student.name, student.studentNumber, outcome.status === "graded" ? outcome.grade : assessmentOutcomeLabel(outcome), ...metadata, studentId];
+    const period = assessment.academicPeriod;
+    return [index + 1, student.name, student.studentNumber, outcome.status === "graded" ? outcome.grade : assessmentOutcomeLabel(outcome), ...metadata, studentId,
+      ...(period ? [period.year.id, period.year.name, period.year.startsOn, period.year.endsOn, period.year.revision, period.term.id, period.term.name, period.term.startsOn, period.term.endsOn, period.term.revision, period.catalogRevision] : [])];
   });
   const header = ["№", "ФИО студента", "Номер зачётки", "Результат", "Аттестация", "Форма контроля", "Дисциплина", "Группа", "Учебный период", "Семестр", "Часы", "Раздел", "Вид попытки", "Номер попытки", "Дата сдачи", "Время сдачи (Москва)", "Аудитория", "Преподаватель / научный руководитель", "Председатель комиссии", "Члены комиссии", "Опубликовано (Москва)", "ID аттестации", "ID попытки", "ID студента"];
+  if (assessment.academicPeriod) header.push("ID учебного года", "Учебный год", "Начало года", "Окончание года", "Ревизия года", "ID учебного семестра", "Учебный семестр", "Начало семестра", "Окончание семестра", "Ревизия семестра", "Ревизия справочника периодов");
   const filenameId = assessment.id.replace(/[^\p{L}\p{N}._-]/gu, "_").slice(0, 100);
   return { filename: `assessment-${filenameId}-${attempt.number}-${attempt.date}${publication.version > 1 || request.version !== undefined ? `-v${publication.version}` : ""}.csv`, csv: createCsv([header, ...rows]) };
 };

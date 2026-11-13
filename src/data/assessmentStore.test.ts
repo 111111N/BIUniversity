@@ -7,6 +7,9 @@ import { GROUP_CATALOG_CHANGE_EVENT, GROUP_CATALOG_STORAGE_KEY } from "./groupCa
 import { emptyGroupCatalog } from "../domain/groupCatalog";
 import { ASSESSMENT_KIND_LABELS, type AssessmentCommand, type AssessmentSnapshot } from "../domain/assessmentTypes";
 import { assessmentAttemptAssignment, decodeAssessmentDocument } from "../domain/assessments";
+import { ACADEMIC_PERIODS_STORAGE_KEY } from "../domain/academicPeriods";
+import { academicPeriodsFixture } from "../testSupport/academicPeriods";
+import { academicPeriodsService, ACADEMIC_PERIODS_CHANGE_EVENT } from "./academicPeriodsStore";
 
 let values: Map<string, string>;
 let write: ReturnType<typeof vi.fn>;
@@ -17,6 +20,7 @@ const context = { actorId, actorRevision: 1, expectedRevision: 0, accountsRevisi
 const createCommand = (): AssessmentCommand => ({
   ...context, type: "create", draft: {
     title: "Экзамен по теории вероятностей", kind: "exam", groupId: "112-mko", subjectId: "theory-of-probability", period: "2026/2027 · осенний семестр",
+    academicPeriod: { termId: "term-autumn", expectedRevision: 2 },
     attempt: { date: "2026-11-06", startsAt: "12:00", teacherId, chairId: null, memberIds: [], studentIds: [studentId] },
   },
 });
@@ -36,6 +40,7 @@ const publishedStatement = async () => {
 
 beforeEach(() => {
   values = new Map();
+  values.set(ACADEMIC_PERIODS_STORAGE_KEY, JSON.stringify(academicPeriodsFixture()));
   write = vi.fn((key: string, value: string) => { values.set(key, value); });
   vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: write });
   vi.stubGlobal("window", new EventTarget());
@@ -234,7 +239,7 @@ describe("ordinary assessment demo import", () => {
     const brokenTitle = (label: string, published: boolean) => `${label} В· ${published ? "РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅС‹Р№ РїСЂРёРјРµСЂ" : "С‡РµСЂРЅРѕРІРёРє"}`;
     for (const item of saved.assessments) {
       item.title = brokenTitle(ASSESSMENT_KIND_LABELS[item.kind], item.id.endsWith(":published"));
-      item.period = brokenPeriod;
+      if (!item.academicPeriod) item.period = brokenPeriod;
     }
     const customTitle = saved.assessments.find((item) => item.id === "demo-assessment-v1:pass:draft")!;
     customTitle.title = "Мой зачёт · изменённый черновик";
@@ -313,8 +318,8 @@ describe("assessment persistence boundary", () => {
     const persisted = JSON.parse(values.get(ASSESSMENTS_STORAGE_KEY)!);
     persisted.version = 1;
     delete persisted.corrections; delete persisted.correctionHistory;
-    for (const item of persisted.assessments) delete item.recordBook;
-    for (const item of persisted.history) { delete item.recordBook; delete item.assignment; }
+    for (const item of persisted.assessments) { delete item.recordBook; delete item.academicPeriod; }
+    for (const item of persisted.history) { delete item.recordBook; delete item.assignment; delete item.academicPeriod; }
     const legacyRaw = JSON.stringify(persisted);
     values.set(ASSESSMENTS_STORAGE_KEY, legacyRaw); write.mockClear();
     const migrated = await assessmentService.read(actorId);
@@ -582,5 +587,51 @@ describe("assessment change subscriptions", () => {
     Object.assign(document, { visibilityState: "visible" });
     document.dispatchEvent(new Event("visibilitychange"));
     expect(listener).toHaveBeenCalledTimes(11);
+  });
+});
+
+describe("assessment period persistence", () => {
+  it("offers the shared calendar only for configuration and does not seed missing periods", async () => {
+    values.delete(ACADEMIC_PERIODS_STORAGE_KEY);
+    const snapshot = await assessmentService.read(actorId);
+    expect(snapshot.academicPeriods).toEqual({ revision: 0, years: [], terms: [] }); expect(write).not.toHaveBeenCalled();
+    expect((await assessmentService.read(teacherId)).academicPeriods).toBeUndefined(); expect((await assessmentService.read(studentId)).academicPeriods).toBeUndefined();
+    expect(values.has(ACADEMIC_PERIODS_STORAGE_KEY)).toBe(false);
+  });
+  it("requires an explicit term even when the typed legacy period matches a saved name", async () => {
+    const input = createCommand(); if (input.type !== "create") throw new Error("Expected creation"); delete input.draft.academicPeriod;
+    await expect(assessmentService.execute(input)).rejects.toThrow("Выберите учебный год"); expect(values.has(ASSESSMENTS_STORAGE_KEY)).toBe(false); expect(write).not.toHaveBeenCalled();
+  });
+  it("saves current IDs, dates and revisions rather than accepting the client's period label", async () => {
+    const input = createCommand(); if (input.type !== "create") throw new Error("Expected creation"); input.draft.period = "Client-controlled label";
+    await assessmentService.execute(input); const state = decodeAssessmentDocument(values.get(ASSESSMENTS_STORAGE_KEY)!);
+    expect(state.version).toBe(6); expect(state.assessments[0].period).toBe("2026/2027 · осенний семестр"); expect(state.assessments[0].academicPeriod?.term.id).toBe("term-autumn"); expect(state.history[0].academicPeriod).toEqual(state.assessments[0].academicPeriod);
+  });
+  it("rechecks the calendar revision inside the shared write queue", async () => {
+    const rename = academicPeriodsService.execute({ actorId, actorRevision: 1, expectedRevision: 2, type: "update-term", termId: "term-autumn", entityRevision: 1, draft: { name: "Новый осенний семестр", startsOn: "2026-09-01", endsOn: "2027-01-31" } });
+    const results = await Promise.allSettled([rename, assessmentService.execute(createCommand())]);
+    expect(results.map(row => row.status)).toEqual(["fulfilled", "rejected"]); expect(values.has(ASSESSMENTS_STORAGE_KEY)).toBe(false); expect(write).toHaveBeenCalledTimes(1);
+  });
+  it("keeps existing statements unchanged after a calendar rename", async () => {
+    const assessment = await create(), raw = values.get(ASSESSMENTS_STORAGE_KEY);
+    await academicPeriodsService.execute({ actorId, actorRevision: 1, expectedRevision: 2, type: "update-term", termId: "term-autumn", entityRevision: 1, draft: { name: "Переименованный семестр", startsOn: "2026-09-01", endsOn: "2027-02-10" } });
+    const current = await assessmentService.read(actorId); expect(current.assessments[0]).toEqual(assessment); expect(current.academicPeriods?.terms[0].name).toBe("Переименованный семестр"); expect(values.get(ASSESSMENTS_STORAGE_KEY)).toBe(raw);
+  });
+  it("isolates a damaged calendar from existing results and exports", async () => {
+    const assessment = await create(); values.set(ACADEMIC_PERIODS_STORAGE_KEY, "damaged calendar");
+    let snapshot = await assessmentService.read(teacherId);
+    await assessmentService.execute({ ...commandContext(snapshot, teacherId), type: "save-results", assessmentId: assessment.id, attemptId: assessment.attempts[0].id, results: [{ studentId, outcome: { status: "graded", grade: 5 } }] });
+    snapshot = await assessmentService.read(teacherId);
+    await assessmentService.execute({ ...commandContext(snapshot, teacherId), type: "publish", assessmentId: assessment.id, attemptId: assessment.attempts[0].id });
+    snapshot = await assessmentService.read(teacherId);
+    expect((await assessmentService.exportStatement({ ...commandContext(snapshot, teacherId), assessmentId: assessment.id, attemptId: assessment.attempts[0].id })).csv).toContain("term-autumn");
+    const admin = await assessmentService.read(actorId); expect(admin.academicPeriods?.error).toBeTruthy(); expect(admin.assessments).toHaveLength(1);
+    const before = values.get(ASSESSMENTS_STORAGE_KEY); await expect(assessmentService.execute({ ...createCommand(), ...commandContext(admin, actorId) })).rejects.toThrow(); expect(values.get(ASSESSMENTS_STORAGE_KEY)).toBe(before);
+  });
+  it("notifies calendar changes in this tab and other tabs without duplicating storage.clear", () => {
+    const listener = vi.fn(), stop = assessmentService.subscribe(listener);
+    window.dispatchEvent(new Event(ACADEMIC_PERIODS_CHANGE_EVENT)); const event = new Event("storage"); Object.assign(event, { key: ACADEMIC_PERIODS_STORAGE_KEY }); window.dispatchEvent(event);
+    const cleared = new Event("storage"); Object.assign(cleared, { key: null }); window.dispatchEvent(cleared); expect(listener).toHaveBeenCalledTimes(3);
+    stop(); window.dispatchEvent(new Event(ACADEMIC_PERIODS_CHANGE_EVENT)); expect(listener).toHaveBeenCalledTimes(3);
   });
 });
