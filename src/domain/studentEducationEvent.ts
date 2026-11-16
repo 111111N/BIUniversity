@@ -2,8 +2,8 @@ import { isStudentEnrollmentStatus, type StudentEnrollmentStatus } from "./stude
 
 export interface EducationEventDetails { effectiveDate: string; basis: string; documentNumber?: string; documentDate?: string }
 export interface EducationState { groupId: string; groupName: string; enrollment: StudentEnrollmentStatus }
-export type EducationEventKind = "admitted" | "transferred" | "graduated" | "withdrawn" | "reinstated";
-export const EDUCATION_EVENT_LABELS: Record<EducationEventKind, string> = { admitted: "Зачисление подтверждено", transferred: "Перевод", graduated: "Выпуск", withdrawn: "Отчисление", reinstated: "Обучение возобновлено" };
+export type EducationEventKind = "admitted" | "transferred" | "academicLeave" | "graduated" | "withdrawn" | "reinstated";
+export const EDUCATION_EVENT_LABELS: Record<EducationEventKind, string> = { admitted: "Зачисление подтверждено", transferred: "Перевод", academicLeave: "Академический отпуск", graduated: "Выпуск", withdrawn: "Отчисление", reinstated: "Обучение возобновлено" };
 export interface StudentEducationEvent extends EducationEventDetails { id: string; accountId: string; actorId: string; registeredAt: string; accountRevisionAfter: number; kind: EducationEventKind; before?: EducationState; after: EducationState; auditId: string; batchId?: string }
 export const getMoscowDateKey = (instant = new Date().toISOString()) => {
   const parts = new Intl.DateTimeFormat("en", { timeZone: "Europe/Moscow", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(instant));
@@ -47,6 +47,7 @@ export const isStudentEducationEvent = (value: unknown): value is StudentEducati
   if (value.kind === "transferred") return value.before.enrollment === "studying" && value.after.enrollment === "studying" && value.before.groupId !== value.after.groupId;
   if (value.before.groupId !== value.after.groupId) return false;
   if (value.kind === "reinstated") return value.before.enrollment !== "studying" && value.after.enrollment === "studying";
+  if (value.kind === "academicLeave") return value.before.enrollment === "studying" && value.after.enrollment === "academicLeave";
   return value.after.enrollment === value.kind && value.before.enrollment !== value.after.enrollment;
 };
 export interface EducationPeriod { from: string; until: string | null; state: EducationState; eventId: string }

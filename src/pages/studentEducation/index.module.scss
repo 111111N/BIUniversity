@@ -4,7 +4,7 @@
 .page a { color: $color-link; text-decoration: none; font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; overflow-wrap: anywhere; }
 .page :where(.links, .card, .timeline, .error) > button { @include admin.button; }.page button.primary { @include admin.primary; }
 .links { display: flex; gap: 12px 24px; align-items: center; flex-wrap: wrap; }.header h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }.header p { margin: 8px 0 0; color: $color-text-secondary; font-size: 13px; overflow-wrap: anywhere; }
-.card { min-width: 0; display: grid; gap: 14px; padding: 20px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; scroll-margin-top: 100px; h3, h4 { margin: 0; font-size: 16px; } > p { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; } }
+.card { @include admin.surface; display: grid; gap: 14px; scroll-margin-top: 100px; h3, h4 { margin: 0; font-size: 16px; } > p { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; } }
 .page .note { color: $color-text-secondary; font-size: 13px; line-height: 1.7; margin: 0; }.error, .message { margin: 0; padding: 14px; border: 1px solid $color-border; border-radius: 8px; line-height: 1.6; font-size: 13px; }.page .error { color: $color-danger-text; }.message { color: $color-success; }
 .error > p { margin: 0 0 12px; }
 .page > .sectionTabs { margin-bottom: 0; }
@@ -19,3 +19,6 @@
 @media(max-width: 760px) { .page > .header { grid-template-columns: minmax(0, 1fr); gap: 14px; } .currentState { border-left: 0; border-top: 1px solid $color-border; padding: 14px 0 0; } }
 
 .page .error { @include admin.notice($color-error); }.page .message { @include admin.notice($color-success); }
+
+.header { @include admin.surface; }
+.help { @include admin.surface; }

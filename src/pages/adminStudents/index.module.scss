@@ -4,15 +4,15 @@
 .page :where(.topline, .actions, .pagination, .empty, .error) > button, .actions > a, .accountLink > a, .reviewRow > a { @include admin.button; }
 .page button.primary { @include admin.primary; }
 .topline, .actions, .resultLine { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }.topline, .resultLine { justify-content: space-between; }.topline p { margin: 0; font-size: 16px; font-weight: 600; }
-.search { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 14px; align-items: end; }.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 14px; }
-.selection { display: grid; gap: 16px; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; min-width: 0; > div:first-child { display: grid; gap: 6px; } strong { font-size: 14px; } p { margin: 0; font-size: 12px; line-height: 1.6; color: $color-text-secondary; } }
+.search { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 14px; align-items: end; min-width: 0; margin: 0; padding: 0; border: 0; }.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 14px; }
+.selection { @include admin.surface; display: grid; gap: 16px; > div:first-child { display: grid; gap: 6px; } strong { font-size: 14px; } p { margin: 0; font-size: 12px; line-height: 1.6; color: $color-text-secondary; } }
 .note, .resultLine p { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }.pagination { display: flex; align-items: center; gap: 12px; font-size: 13px; }
-.rows { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; min-width: 0; }.student, .reviewRow { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .8fr) auto; align-items: center; min-width: 0; gap: 18px; padding: 18px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; > div { min-width: 0; display: grid; gap: 6px; } strong { font-size: 14px; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; } div > a { color: $color-link; font-size: 13px; text-decoration: none; overflow-wrap: anywhere; min-height: 30px; display: flex; align-items: center; } }
+.rows { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; min-width: 0; }.student, .reviewRow { @include admin.surface; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .8fr) auto; align-items: center; gap: 18px; > div { min-width: 0; display: grid; gap: 6px; } strong { font-size: 14px; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; } div > a { color: $color-link; font-size: 13px; text-decoration: none; overflow-wrap: anywhere; min-height: 30px; display: flex; align-items: center; } }
 .identity { position: relative; padding-left: 40px; > label:first-child { position: absolute; top: -8px; left: -8px; width: 44px; min-height: 44px; justify-content: center; gap: 0; > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } } }
 .reviewRow { grid-template-columns: repeat(3, minmax(0, 1fr)); > a { grid-column: 1 / -1; justify-self: start; } }.invalidRow { border-color: theme-alpha($color-error, .6); }.issues { grid-column: 1 / -1; margin: 0; padding-left: 20px; color: $color-danger-text; font-size: 13px; line-height: 1.6; }
 .header h2 { margin: 0; font-size: clamp(20px, 3vw, 26px); &:focus { outline: none; } }.header p { margin: 8px 0 0; max-width: 850px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; }
 .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; > div { display: grid; gap: 8px; padding: 16px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; } span { color: $color-text-secondary; font-size: 12px; } strong { font-size: 24px; } }
-.empty { border: 1px dashed $color-border; border-radius: 12px; padding: 28px 18px; color: $color-text-secondary; text-align: center; font-size: 13px; line-height: 1.7; strong { color: $color-text-light; } }
+.empty { @include admin.surface; color: $color-text-secondary; text-align: center; font-size: 13px; line-height: 1.7; strong { color: $color-text-light; } }
 .error { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid theme-alpha($color-error, .5); border-radius: 10px; color: $color-danger-text; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; > p { margin: 0; } > button { justify-self: start; max-width: 100%; } }
 .history { min-width: 0; summary { width: fit-content; min-height: 44px; padding: 10px 0; box-sizing: border-box; cursor: pointer; color: $color-text-secondary; font-size: 13px; } ul { display: grid; gap: 8px; max-height: 360px; overflow: auto; padding: 0; list-style: none; margin: 10px 0 0; } a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid $color-border; border-radius: 8px; color: $color-text-light; text-decoration: none; font-size: 13px; line-height: 1.6; } }
 @media(max-width: 1050px) { .student { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); > a { justify-self: start; } } }
@@ -27,10 +27,27 @@
 .student > .accountLink { padding: 0; border: 0; background: transparent; gap: 4px; align-content: center; > a { min-height: 44px; } }
 
 .page .error { @include admin.notice($color-error); }.page .message { @include admin.notice($color-success); }
-.filtersBox { min-width: 0; border: 0; padding: 0; margin: 0; display: grid; gap: 16px; input:disabled { color: $color-text-secondary; background: $color-panel-muted; } }
+.filtersBox { @include admin.surface; margin: 0; display: grid; gap: 16px; input:disabled { color: $color-text-secondary; background: $color-panel-muted; } }
 .selectionTools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: end; > button { @include admin.button; } }
 .unlockFilters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border-top: 1px solid $color-border; padding-top: 14px; > p { flex: 1 1 260px; } > button { @include admin.button; } }
 .notice { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; background: $color-panel; color: $color-text-secondary; font-size: 13px; line-height: 1.7; }
 .selection p, .note, .resultLine p { font-size: 13px; line-height: 1.7; }
 .header h2:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 @media(max-width: 600px) { .selectionTools { grid-template-columns: minmax(0, 1fr); } .unlockFilters > button { width: 100%; } .summary span { font-size: 12px; } }
+
+.topline { @include admin.surface; }
+.history { @include admin.surface; }
+.registry { display: grid; gap: 20px; min-width: 0; }
+.registryControls { @include admin.surface; display: grid; gap: 16px; min-width: 0; }
+.filterDisclosure { min-width: 0; > summary { @include admin.button; display: flex; justify-content: flex-start; gap: 10px; width: fit-content; min-width: 145px; padding: 10px 14px; list-style: none; border-radius: 10px; background: $color-panel-muted; font-weight: 600; user-select: none; } > summary::-webkit-details-marker { display: none; } > summary::marker { content: ""; } > .note { margin-top: 14px; } }
+.filterChevron { margin-left: auto; }
+.filterDisclosure[open] .filterChevron { transform: rotate(180deg); }
+.filterDisclosure[open] > summary, .filterDisclosure[data-active="true"] > summary { border-color: theme-alpha($color-accent-primary, .6); background: $color-accent-background-hover; color: $color-text-light; }
+.filterCount { display: grid; place-items: center; min-width: 22px; height: 22px; padding-inline: 4px; box-sizing: border-box; border-radius: 6px; color: $color-text-light; background: theme-alpha($color-accent-primary, .14); font-size: 12px; font-variant-numeric: tabular-nums; }
+.filterDisclosure > .filtersBox { padding: 0; margin-top: 18px; border: 0; box-shadow: none; background: transparent; }
+.page { padding-bottom: 120px; }
+.page.operationDialog { width: min(960px, 100%); padding: 24px; border: 1px solid $color-border; border-radius: 16px; }
+.selectionBar { @include admin.surface; position: fixed; z-index: 40; left: 50%; bottom: 20px; transform: translateX(-50%); box-sizing: border-box; width: min(760px, calc(100% - 32px)); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; box-shadow: 0 8px 28px theme-alpha($color-shadow, .3); > div:first-child { display: grid; gap: 5px; } strong { font-size: 14px; } span { color: $color-text-secondary; font-size: 12px; } }
+.selectionBar[hidden] { display: none; }
+.student[data-selected="true"] { border-color: theme-alpha($color-accent-primary, .55); background: color-mix(in srgb, $color-accent-primary 4%, $color-panel); }
+@media(max-width: 600px) { .page { padding-bottom: 150px; } .page.operationDialog { padding: 16px; } .selectionBar { bottom: 12px; padding: 14px; } .selectionBar > .actions { flex-direction: row; width: auto; } }

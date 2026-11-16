@@ -9,6 +9,7 @@ export const educationStateFor = (account: PortalAccount, groups: RegistryGroup[
 };
 export const appendEducationChange = (state: AccountsDocument, accountId: string, before: EducationState, after: EducationState, details: EducationEventDetails | undefined, auditId: string, registeredAt: string, batchId?: string): AccountsDocument => {
   if (sameEducationState(before, after)) return state;
+  if (after.enrollment === "academicLeave" && before.enrollment !== "studying") throw new Error("Академический отпуск оформляется учащемуся. Сначала возобновите обучение.");
   const events = state.educationEvents ?? []; const own = events.filter((event) => event.accountId === accountId);
   if (!details) { if (own.length) throw new Error("Для изменения группы или состояния укажите дату действия и основание события обучения."); return state; }
   const normalized = normalizeEducationDetails(details, registeredAt);

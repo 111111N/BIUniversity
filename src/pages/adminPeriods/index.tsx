@@ -13,6 +13,7 @@ import PeriodHistory from "./PeriodHistory";
 import { refreshPeriodEditor, type PeriodEditor } from "./editorModel";
 import styles from "../assessments/index.module.scss";
 import fields from "../adminGroups/GroupDetailsForm.module.scss";
+import periodStyles from "./index.module.scss";
 
 function PeriodsWorkspace({ actorId }: { actorId: string }) {
   const { requestAction } = useUnsavedChangesGuard();
@@ -74,8 +75,8 @@ function PeriodsWorkspace({ actorId }: { actorId: string }) {
       if (writeGeneration.current === generation) { setError(failure instanceof Error ? failure.message : "Не удалось сохранить. Ввод остался в форме."); refresh(); }
     } finally { if (writeGeneration.current === generation) { pending.current = false; setBusy(false); } }
   };
-  return <div className={styles.page}>
-    <header className={styles.pageHeader}><div><p className={styles.eyebrow}>Общий справочник вуза</p><h1>Учебные периоды</h1><p className={styles.note}>Учебные годы и семестры с датами, которые задаёт настройщик. Номер семестра в зачётке хранится отдельно.</p></div><div className={styles.actions}><button className={styles.primary} type="button" disabled={blocked} onClick={() => open("year")}>Добавить учебный год</button></div></header>
+  return <div className={`pageContainer ${styles.page} ${periodStyles.page}`}>
+    <Card className={`${styles.pageHeader} ${periodStyles.header}`}><div><p className={styles.eyebrow}>Общий справочник вуза</p><h1>Учебные периоды</h1><p className={styles.note}>Учебные годы и семестры с датами, которые задаёт настройщик. Номер семестра в зачётке хранится отдельно.</p></div><div className={styles.actions}><button className={styles.primary} type="button" disabled={blocked} onClick={() => open("year")}>Добавить учебный год</button></div></Card>
     {state.error && <div className={styles.error} role="alert"><p>{state.error}</p><button type="button" disabled={busy || state.loading} onClick={refresh}>Повторить чтение</button></div>}
     {state.loading && <p className={styles.note} role="status">Обновляем учебные периоды…</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}{message && <p className={styles.note} role="status">{message}</p>}
@@ -91,10 +92,11 @@ function PeriodsWorkspace({ actorId }: { actorId: string }) {
       </form>
     </RecordEditor> : snapshot && !state.error && <>
       {!years.length ? <Card><p className={styles.note}>Учебных годов пока нет. Добавьте год с явными датами, затем создайте его семестры.</p></Card> : <>
-        <Dropdown label="Учебный год" value={selected?.id ?? ""} placeholder="Выберите год" options={years.map(row => ({ value: row.id, label: `${row.name} · ${row.startsOn} — ${row.endsOn}` }))} disabled={blocked} onChange={value => { setYearId(value); setPage(1); setQuery(""); setHistory(null); }} />
-        {selected ? <><Card className={styles.card}><div className={styles.cardHeader}><div><h2>{selected.name}</h2><p>{selected.startsOn} — {selected.endsOn} включительно</p></div><div className={styles.actions}><button type="button" disabled={blocked} onClick={() => open("year", selected)}>Изменить год</button><button type="button" disabled={blocked} onClick={() => setHistory({ entity: "year", id: selected.id })}>История года</button><button type="button" disabled={blocked} className={styles.primary} onClick={() => open("term")}>Добавить семестр</button></div></div></Card>
-          <SearchField label="Поиск семестров" value={query} onChange={value => { setQuery(value); setPage(1); }} />
-          <p className={styles.note} role="status">Семестров: {terms.length}</p>
+        <Card as="section" className={periodStyles.controlPanel} aria-label="Выбор года и поиск семестров">
+          <Dropdown label="Учебный год" value={selected?.id ?? ""} placeholder="Выберите год" options={years.map(row => ({ value: row.id, label: `${row.name} · ${row.startsOn} — ${row.endsOn}` }))} disabled={blocked} onChange={value => { setYearId(value); setPage(1); setQuery(""); setHistory(null); }} />
+          {selected && <><SearchField label="Поиск семестров" value={query} onChange={value => { setQuery(value); setPage(1); }} /><p className={styles.note} role="status">Семестров: {terms.length}</p></>}
+        </Card>
+        {selected ? <><Card className={styles.card}><div className={`${styles.cardHeader} ${periodStyles.yearHeader}`}><div><h2>{selected.name}</h2><p>{selected.startsOn} — {selected.endsOn} включительно</p></div><div className={styles.actions}><button type="button" disabled={blocked} onClick={() => open("year", selected)}>Изменить год</button><button type="button" disabled={blocked} onClick={() => setHistory({ entity: "year", id: selected.id })}>История года</button><button type="button" disabled={blocked} className={styles.primary} onClick={() => open("term")}>Добавить семестр</button></div></div></Card>
           {!terms.length && <p className={styles.note}>{query ? "По запросу ничего не найдено." : "В этом учебном году ещё нет семестров."}</p>}
           {terms.slice((currentPage - 1) * 20, currentPage * 20).map(term => <Card key={term.id} as="article" className={styles.catalogCard}><div><h2>{term.name}</h2><p className={styles.note}>{term.startsOn} — {term.endsOn} включительно</p></div><div className={styles.actions}><button type="button" disabled={blocked} onClick={() => open("term", term)}>Изменить семестр</button><button type="button" disabled={blocked} onClick={() => setHistory({ entity: "term", id: term.id })}>История семестра</button></div></Card>)}
           {pages > 1 && <nav className={styles.pagination} aria-label="Страницы семестров"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Назад</button><span>{currentPage} / {pages}</span><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>Далее</button></nav>}

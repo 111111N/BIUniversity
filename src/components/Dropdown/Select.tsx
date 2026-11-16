@@ -15,7 +15,7 @@ const PlacementMenu = <IsMulti extends boolean,>(props: MenuProps<DropdownOption
 
 type Props<IsMulti extends boolean> = Omit<SelectProps<DropdownOption, IsMulti>, "styles" | "components"> & { variant?: DropdownVariant };
 
-const DropdownSelect = <IsMulti extends boolean = false,>({ variant = "compact", menuPlacement = "auto", ...props }: Props<IsMulti>) => {
+const DropdownSelect = <IsMulti extends boolean = false,>({ variant = "field", menuPlacement = "auto", ...props }: Props<IsMulti>) => {
   const [placement, setPlacement] = useState<Placement>(menuPlacement === "top" ? "top" : "bottom");
   const styles = useMemo(() => createDropdownStyles<IsMulti>(variant, placement), [variant, placement]);
   return <PlacementContext.Provider value={setPlacement}>

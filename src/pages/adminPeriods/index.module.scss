@@ -1,0 +1,9 @@
+@use "../../styles/administration" as admin;
+
+.page { @include admin.workspace; gap: 20px; --dropdown-control-height: 44px; }
+.header { flex-wrap: wrap; align-items: flex-start; }
+.header h1 { margin: 0 0 8px; font-size: 22px; line-height: 1.4; }
+.controlPanel { display: grid; gap: 16px; }
+.yearHeader { flex-wrap: wrap; align-items: center; }
+.yearHeader > div:first-child { flex: 1 1 220px; }
+@media (max-width: 620px) { .header > div, .yearHeader > div { width: 100%; } }

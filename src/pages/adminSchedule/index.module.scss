@@ -13,13 +13,13 @@
 }
 .page :where(.workflow, .listHeading, .weekToolsContent, .cardActions, .empty, .editorHeading, .editorFooter, .error, .undo, .conflicts li) > button { @include admin.button; }
 .page .primary { @include admin.primary; }
-.weekPanel { border: 1px solid $color-border; border-radius: 12px; background: $color-panel; min-width: 0; }
-.scopeRow { display: grid; grid-template-columns: minmax(180px, 420px) minmax(0, 1fr); gap: 16px 24px; align-items: start; padding: 18px 20px; }
+.weekPanel { @include admin.surface(0); }
+.scopeRow { display: grid; grid-template-columns: minmax(180px, 420px) minmax(0, 1fr); gap: 16px 24px; align-items: start; padding: 20px; }
 .weekTools { justify-self: end; min-width: 0; max-width: 100%; text-align: right; padding-top: 22px; }
 .weekTools > summary { @include admin.button; display: list-item; list-style-position: inside; width: fit-content; margin-left: auto; }
 .weekToolsContent { display: grid; justify-items: end; gap: 8px; padding-top: 12px; > button { max-width: 100%; } p { margin: 2px 0 0; max-width: 310px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; } }
 .weekToolsContent > .reset { color: $color-danger-text; }
-.workflow { display: flex; justify-content: space-between; align-items: center; gap: 16px 24px; padding: 16px 20px; border-top: 1px solid $color-border; > button { flex-shrink: 0; } }
+.workflow { display: flex; justify-content: space-between; align-items: center; gap: 16px 24px; padding: 20px; border-top: 1px solid $color-border; > button { flex-shrink: 0; } }
 .workflowText { min-width: 0; p { margin: 8px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; } }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; > span { color: $color-text-secondary; font-size: 12px; line-height: 1.6; } }
 .statusBadge { display: inline-flex; padding: 4px 9px; background: $color-panel-muted; border: 1px solid $color-border; border-radius: 6px; color: $color-text-light; font-size: 13px; line-height: 1.5; font-weight: 600; }
@@ -35,10 +35,10 @@
 .lessons { display: grid; align-content: start; min-width: 0; gap: 24px; }
 .withEditor .lessons { grid-column: 1; grid-row: 1; }
 .withEditor .editor { grid-column: 2; grid-row: 1; }
-.listHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; > strong { font-size: 15px; line-height: 1.5; } }
+.listHeading { @include admin.surface; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; > strong { font-size: 15px; line-height: 1.5; } }
 .day { min-width: 0; display: grid; gap: 8px; }
 .dayHeading { display: flex; align-items: center; gap: 10px; margin: 0 0 3px; font-size: 14px; font-weight: 600; line-height: 1.6; > span { color: $color-text-secondary; font-weight: 400; font-size: 12px; } }
-.card { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 16px 18px; background: $color-panel; border: 1px solid $color-border; border-radius: 10px; min-width: 0; }
+.card { @include admin.surface; display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 18px; align-items: center; }
 .selectedCard { border-color: $color-accent-primary; box-shadow: inset 3px 0 $color-accent-primary; }
 .time { display: grid; gap: 5px; align-content: start; strong { font-size: 16px; line-height: 1.5; font-variant-numeric: tabular-nums; } span { color: $color-text-secondary; font-size: 13px; line-height: 1.6; font-variant-numeric: tabular-nums; } }
 .details { display: grid; gap: 7px; min-width: 0; > strong { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; } }
@@ -50,8 +50,8 @@
 .cardActions { display: flex; align-items: center; gap: 6px; }
 .cardActions > .remove { background: transparent; border-color: transparent; color: $color-text-secondary; &:not(:disabled):hover { color: $color-danger-text; border-color: $color-danger-text; background: $color-panel; } }
 .withEditor .cardActions { flex-direction: column; align-items: stretch; }
-.empty { padding: 30px 20px; background: $color-panel; border: 1px dashed $color-control-border; border-radius: 12px; text-align: center; strong { font-size: 15px; line-height: 1.6; } p { max-width: 500px; margin: 8px auto 0; color: $color-text-secondary; font-size: 13px; line-height: 1.7; } }
-.editor { display: grid; gap: 22px; min-width: 0; padding: 20px; background: $color-panel; border: 1px solid $color-control-border; border-radius: 12px; }
+.empty { @include admin.surface; text-align: center; strong { font-size: 15px; line-height: 1.6; } p { max-width: 500px; margin: 8px auto 0; color: $color-text-secondary; font-size: 13px; line-height: 1.7; } }
+.editor { @include admin.surface; display: grid; gap: 22px; }
 .editorHeading { display: flex; align-items: start; justify-content: space-between; gap: 12px; min-width: 0; > div { min-width: 0; } h2 { font-size: 18px; line-height: 1.5; margin: 0; } p { margin: 6px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; } > button { flex-shrink: 0; } }
 .editorSection { margin: 0; padding: 16px 0 0; border: 0; border-top: 1px solid $color-border; min-width: 0; display: grid; gap: 16px; > legend { padding: 0 10px 0 0; color: $color-text-light; font-size: 13px; font-weight: 600; line-height: 1.5; } }
 .formGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; > label { display: grid; gap: 8px; min-width: 0; font-size: 13px; color: $color-text-secondary; } }
@@ -63,7 +63,7 @@
 .hint { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; }
 .assignmentHint { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid $color-border; border-radius: 8px; background: $color-panel-muted; > button { @include admin.button; justify-self: start; max-width: 100%; white-space: normal; text-align: left; } }
 .editorFooter { display: grid; gap: 14px; border-top: 1px solid $color-border; padding-top: 16px; p { margin: 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; } }
-.help { border-top: 1px solid $color-border; padding-top: 4px; min-width: 0; summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; font-size: 13px; color: $color-text-secondary; } ol, p { color: $color-text-secondary; font-size: 13px; line-height: 1.8; margin: 6px 0 12px; } ol { padding-left: 22px; } }
+.help { @include admin.surface; summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; font-size: 13px; color: $color-text-secondary; } ol, p { color: $color-text-secondary; font-size: 13px; line-height: 1.8; margin: 6px 0 12px; } ol { padding-left: 22px; } }
 
 @media (max-width: 1350px) { .cardActions { flex-direction: column; align-items: stretch; } }
 @media (max-width: 1200px) {
@@ -80,13 +80,13 @@
 }
 @media (max-width: 600px) {
   .page { padding: 18px 14px; gap: 16px; }
-  .scopeRow, .workflow { padding: 16px; }
+  .scopeRow, .workflow { padding: 14px; }
   .workflow > button { width: 100%; }
   .listHeading { gap: 12px; }
   .card { grid-template-columns: 64px minmax(0, 1fr); padding: 14px; gap: 12px; }
   .cardActions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; padding-top: 10px; border-top: 1px solid $color-border; > button { flex: 1; } }
   .withEditor .cardActions { flex-direction: row; }
-  .editor { padding: 16px; gap: 20px; }
+  .editor { padding: 14px; gap: 20px; }
   .editorHeading { flex-wrap: wrap; > div { flex: 1 1 170px; } }
   .formGrid input { font-size: 16px; }
   .error > button, .undo > button { width: 100%; }

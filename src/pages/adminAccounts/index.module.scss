@@ -1,8 +1,8 @@
 @use "../../styles/administration" as admin;
 @use "../../styles/variables" as *;
 .page { @include admin.workspace; display: grid; align-content: start; gap: 16px; position: relative; z-index: 1; min-width: 0; --dropdown-control-height: 44px; }
-.toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(130px, 170px) minmax(130px, 160px) minmax(150px, 190px) auto; gap: 12px; align-items: end; }
-.toolbarActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.toolbar { @include admin.surface; display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end; }
+.toolbarActions { display: flex; flex-wrap: wrap; justify-content: flex-end; grid-column: 1 / -1; gap: 8px; padding-top: 16px; border-top: 1px solid $color-border; }
 .importLink { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; padding: 8px 14px; color: $color-text-light; background: $color-panel; border: 1px solid $color-border; border-radius: 8px; font-size: 13px; text-decoration: none; }
 @media(max-width: 1100px) { .toolbarActions { grid-column: 1 / -1; } }
 @media(max-width: 720px) { .toolbarActions > * { flex: 1 1 180px; } }
@@ -18,10 +18,10 @@
 .assignmentNote { align-self: center; margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; a { color: $color-link; } }
 .assignments { grid-column: 1 / -1; display: grid; gap: 12px; > span { color: $color-text-secondary; font-size: 12px; } fieldset { min-width: 0; border: 1px solid $color-border; border-radius: 8px; padding: 10px 12px; } legend { padding: 0 6px; font-size: 12px; } fieldset > div { display: flex; flex-wrap: wrap; gap: 10px 20px; } label { display: flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; } input { accent-color: $color-action-primary; } }
 .formActions { display: flex; align-items: center; gap: 14px; span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; } }
-.listHeading { display: flex; justify-content: space-between; gap: 12px; color: $color-text-secondary; font-size: 12px; }
-.list { display: grid; gap: 8px; }.card { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(100px, 1fr) auto; gap: 16px; align-items: center; padding: 16px; background: $color-panel; border: 1px solid $color-border; border-radius: 10px; min-width: 0; }
+.listHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: $color-text-secondary; font-size: 13px; }
+.list { display: grid; gap: 12px; }.card { @include admin.surface; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 16px; align-items: center; }
 .identity { display: grid; gap: 5px; min-width: 0; strong { font-size: 14px; overflow-wrap: anywhere; } > span { color: $color-text-secondary; font-size: 12px; overflow-wrap: anywhere; } small { margin-left: 8px; color: $color-link; font-size: 11px; } }
-.details { display: grid; gap: 6px; font-size: 12px; color: $color-text-secondary; }.role { color: $color-text-light; }.empty { padding: 28px; text-align: center; color: $color-text-secondary; border: 1px solid $color-border; border-radius: 10px; }
+.details { display: grid; gap: 6px; font-size: 12px; color: $color-text-secondary; }.role { color: $color-text-light; }.empty { @include admin.surface; text-align: center; color: $color-text-secondary; }
 @media (max-width: 720px) { .toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); > :first-child { grid-column: 1 / -1; } > button { align-self: end; min-height: 44px; } }.card { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; > button { grid-column: 1 / -1; } }.editor { padding: 14px; }.formActions { align-items: start; flex-direction: column; }.editorHeader { align-items: start; } }
 @media (max-width: 420px) { .toolbar { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .page { padding: 18px 14px; } }
@@ -30,7 +30,7 @@
 .numberDisclosure { min-width: 0; border-top: 1px solid $color-border; > summary { box-sizing: border-box; min-height: 44px; padding: 12px 0; cursor: pointer; color: $color-text-light; font-size: 13px; line-height: 1.65; } }
 .accessCard { display: grid; gap: 12px; align-content: start; padding: 18px; border: 1px solid $color-border; border-radius: 10px; h3 { margin: 0; font-size: 15px; } p { margin: 0; line-height: 1.6; font-size: 13px; color: $color-text-secondary; } button { justify-self: start; } }
 .blocked { color: $color-danger-text; }
-.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 13px; }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; font-size: 13px; }
 .accountTabs { margin-bottom: 0; }
 @media(max-width: 480px) { .editor > .accountTabs { flex-wrap: wrap; overflow: visible; gap: 6px; > button { flex: 1 1 calc(50% - 6px); } } }
 .resetDialog { width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 24px; border: 1px solid $color-border; border-radius: 14px; background: $color-panel; color: $color-text-light; h2 { font-size: 22px; } p { font-size: 13px; line-height: 1.7; color: $color-text-secondary; } button { min-height: 44px; padding: 8px 14px; color: $color-text-light; background: $color-panel; border: 1px solid $color-border; border-radius: 8px; cursor: pointer; } button:disabled { opacity: 1; cursor: not-allowed; } button.primary { color: $color-on-accent; background: $color-accent-primary; } }

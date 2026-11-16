@@ -4,14 +4,13 @@
 :root {
   --dropdown-control: #{$color-dark-primary};
   --dropdown-control-border: #{$color-picker-border};
-  --dropdown-panel: #{$color-field};
   --dropdown-border: #{$color-picker-border};
   --dropdown-accent: #{$color-accent-primary};
   --dropdown-text: #{$color-text-light};
   --dropdown-option-text: color-mix(in srgb, #{$color-text-secondary} 75%, #{$color-text-light});
   --dropdown-muted: #{$color-text-secondary};
-  --dropdown-active: color-mix(in srgb, #{$color-accent-primary} 9%, #{$color-panel});
-  --dropdown-gradient: linear-gradient(to left, #{$color-action-primary}, #{$color-accent-secondary});
+  --dropdown-active: #{$color-action-primary};
+  --dropdown-hover: #{theme-alpha($color-accent-primary, .1)};
   --dropdown-on-accent: #{$color-on-accent};
   --dropdown-shadow: #{$color-shadow};
 }

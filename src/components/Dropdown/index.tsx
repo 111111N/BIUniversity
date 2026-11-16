@@ -6,7 +6,8 @@ import styles from "./index.module.scss";
 import { matchesSearchOption } from "../../domain/search";
 
 export interface DropdownOption { value: string; label: string; searchText?: string }
-export type DropdownVariant = "main" | "compact";
+// main и compact сохранены для совместимости; новые вызовы используют navigation и field.
+export type DropdownVariant = "navigation" | "field" | "main" | "compact";
 
 interface DropdownProps {
   label: string;
@@ -23,7 +24,7 @@ interface DropdownProps {
   error?: string;
 }
 
-const Dropdown = ({ label, value, options, onChange, disabled = false, placeholder, className, hideLabel = false, variant = "compact", searchable = false, menuPlacement = "auto", error }: DropdownProps) => {
+const Dropdown = ({ label, value, options, onChange, disabled = false, placeholder, className, hideLabel = false, variant = "field", searchable = false, menuPlacement = "auto", error }: DropdownProps) => {
   const inputId = useId();
   return <div className={`${styles.field} ${className ?? ""}`}>
     <label className={hideLabel ? styles.visuallyHidden : undefined} htmlFor={inputId}>{label}</label>

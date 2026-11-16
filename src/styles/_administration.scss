@@ -1,4 +1,5 @@
 @use "variables" as *;
+@use "mixins" as surfaces;
 
 @mixin workspace {
   --ui-control-border: var(--ui-admin-control-border);
@@ -7,6 +8,13 @@
   --ui-dark-secondary: var(--ui-panel);
   --ui-dark-tertiary: var(--ui-field);
   --ui-gradient-logo: linear-gradient(to left, var(--ui-action-primary), var(--ui-accent-secondary));
+}
+
+@mixin surface($padding: 20px) {
+  @include surfaces.card-surface($padding);
+  @if $padding != 0 {
+    @media (max-width: 620px) { padding: 14px; }
+  }
 }
 
 // Apply to action controls, leaving calendars, tabs and search controls to their components.

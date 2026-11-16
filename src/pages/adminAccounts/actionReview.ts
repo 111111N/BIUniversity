@@ -23,7 +23,7 @@ export const getAccountActionReview = (action: AccountAction, account: PortalAcc
     const previousState = account.enrollmentStatus ?? "studying"; const nextState = draft.enrollmentStatus ?? "studying";
     if (previousGroup !== nextGroup) result.changes.push({ label: "Учебная группа", before: groupLabel(previousGroup), after: groupLabel(nextGroup) });
     if (previousState !== nextState) result.changes.push({ label: "Состояние обучения", before: STUDENT_ENROLLMENT_LABELS[previousState], after: STUDENT_ENROLLMENT_LABELS[nextState] });
-    const operation = previousGroup !== nextGroup ? "перевод" : nextState === "graduated" ? "выпуск" : nextState === "withdrawn" ? "отчисление" : "возобновление обучения";
+    const operation = previousGroup !== nextGroup ? "перевод" : nextState === "academicLeave" ? "академический отпуск" : nextState === "graduated" ? "выпуск" : nextState === "withdrawn" ? "отчисление" : "возобновление обучения";
     result.title = `Подтвердить ${operation}?`; result.confirmLabel = `Подтвердить ${operation}`;
     if (previousGroup !== nextGroup && previousState !== nextState) result.validationMessage = "Перевод и изменение состояния обучения оформляются отдельными событиями. Вернитесь к форме и выберите одно действие.";
     result.notes.push(previousGroup !== nextGroup ? "Данные учебного кабинета будут связаны с новой группой. Прежние результаты сохранятся в истории." : "Изменится состояние обучения. Группа, выданная зачетка и результаты сохранятся.");

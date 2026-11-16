@@ -7,6 +7,7 @@ import { accountService } from "../../data/accountStore";
 import { TEACHER_REGISTRY_PAGE_SIZE, type TeacherRegistryQuery, type TeacherRegistryResult } from "../../domain/teacherRegistry";
 import Dropdown from "../../components/Dropdown";
 import SearchField from "../../components/SearchField";
+import Card from "../../components/Card";
 import styles from "./index.module.scss";
 
 const emptyResult: TeacherRegistryResult = { rows: [], total: 0, totalTeachers: 0, withoutAssignments: 0, page: 1, pages: 1 };
@@ -46,10 +47,7 @@ export default function AdminTeachersPage() {
   });
   const filtered = query.q !== "" || [query.subject, query.group, query.access, query.assignments].some((value) => value !== "all");
   return <div className={`pageContainer ${styles.page}`}>
-    <div className={styles.topline}>
-      <p>Преподаватели{!loading && !error && ` · ${listing.totalTeachers}`}</p>
-      <Link className={styles.primary} to="/admin/accounts?create=teacher&type=teacher">Создать преподавателя</Link>
-    </div>
+    <Card as="section" className={styles.controlPanel} aria-label="Поиск и фильтры преподавателей">
     <SearchField label="Поиск по ФИО, логину, почте, дисциплине или группе" placeholder="" value={query.q} onChange={(value) => filter("q", value)} />
     <div className={styles.filters}>
       <Dropdown label="Дисциплина" searchable placeholder="" value={query.subject} options={[{ value: "all", label: "Все дисциплины" }, ...catalog.subjects.map((subject) => ({ value: subject.id, label: subject.name, searchText: subject.shortName }))]} onChange={(value) => filter("subject", value)} />
@@ -57,6 +55,7 @@ export default function AdminTeachersPage() {
       <Dropdown label="Назначения" value={query.assignments} options={[{ value: "all", label: "Все преподаватели" }, { value: "none", label: "Без назначений" }, { value: "assigned", label: "Есть назначения" }]} onChange={(value) => filter("assignments", value)} />
       <Dropdown label="Доступ" value={query.access} options={[{ value: "all", label: "Любой" }, { value: "active", label: "Открыт" }, { value: "blocked", label: "Заблокирован" }]} onChange={(value) => filter("access", value)} />
     </div>
+    </Card>
     {error ? <div className={styles.error} role="alert"><p>{error}</p><button type="button" onClick={() => { catalog.refresh(); groups.refresh(); setReload((value) => value + 1); }}>Повторить чтение</button></div> : <>
       <div className={styles.resultLine}>
         <p role="status">{loading ? "Загружаем преподавателей…" : `Найдено: ${listing.total} · Без назначений во всём реестре: ${listing.withoutAssignments}`}</p>

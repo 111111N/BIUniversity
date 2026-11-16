@@ -29,16 +29,23 @@ export const createSubjectLessons = (subjectId: string, groupId: string, now = D
     semesterId: "2026-fall",
     state: "completed",
   }));
-  const additional: AcademicLesson[] = (legacy ? weeklyTopics : []).flatMap((topic, week) => weeklySlots.map((slot): AcademicLesson => {
+  const through = new Date(now);
+  through.setDate(through.getDate() + 3);
+  const throughDay = Date.UTC(through.getFullYear(), through.getMonth(), through.getDate());
+  const firstDay = Date.UTC(2026, 8, 14);
+  // Старые восемь недель и их ID сохраняются; новые недели дополняют каталог по текущую дату + 3 дня.
+  const weekCount = Math.max(weeklyTopics.length, Math.floor((throughDay - firstDay) / (7 * 86400_000)) + 1);
+  const additional: AcademicLesson[] = Array.from({ length: legacy ? weekCount : 0 }, (_, week) => week).flatMap((week) => weeklySlots.flatMap((slot): AcademicLesson[] => {
     const day = new Date(2026, 8, 14 + week * 7 + slot.day, 12);
+    if (week >= weeklyTopics.length && Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) > throughDay) return [];
     const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
-    return {
+    return [{
       id: `${subjectId}:${groupId}:2026-fall:weekly:${date}:${slot.type}`,
       subjectId, groupId, semesterId: "2026-fall", date, startsAt: slot.startsAt, type: slot.type,
-      topic: `${topic} · ${slot.type === "lecture" ? "теория" : slot.type === "practice" ? "решение задач" : "исследование"}`,
+      topic: `${weeklyTopics[week % weeklyTopics.length]} · ${slot.type === "lecture" ? "теория" : slot.type === "practice" ? "решение задач" : "исследование"}`,
       room: slot.room,
       state: new Date(`${date}T${slot.startsAt}`).getTime() + 90 * 60_000 <= now ? "completed" : "scheduled",
-    };
+    }];
   }));
   // Legacy demo lessons and their marks keep their identities. Managed lessons have
   // their own namespace; removals remain visible as cancelled journal entries.

@@ -40,7 +40,7 @@ export const previewStudentBulk = (state: AccountsDocument, groups: RegistryGrou
       if (row.before.enrollment !== "studying") errors.push("Массовый перевод доступен учащимся. Для возобновления обучения откройте учётку отдельно.");
       if (targetGroup) row.after = { ...row.before, groupId: targetGroup.id, groupName: targetGroup.name };
     } else {
-      if (row.before.enrollment !== "studying" && row.before.enrollment !== request.action.kind) errors.push("Состояние обучения уже изменено. Исправление выпускника или отчисленного выполняется в его учётке.");
+      if (row.before.enrollment !== "studying" && row.before.enrollment !== request.action.kind) errors.push("Состояние обучения уже изменено. Для возобновления обучения или исправления состояния откройте учётку студента.");
       row.after.enrollment = request.action.kind;
     }
     if (!sameEducationState(row.before, row.after)) {

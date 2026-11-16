@@ -65,7 +65,7 @@ const weekKey = (date: string) => {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 };
 
-export const calculateTeacherAnalytics = (journals: AnalyticsJournal[], assignments: Assignment[], submissions: Submission[], range: AnalyticsRange, gradeFilter?: number) => {
+export const calculateTeacherAnalytics = (journals: AnalyticsJournal[], assignments: Assignment[], submissions: Submission[], range: AnalyticsRange, gradeFilter?: number, trendInterval: "day" | "week" = "week") => {
   const scoped = journals.map((journal) => {
     const lessons = journal.lessons.filter((lesson) => lesson.state === "completed" && inRange(`${lesson.date}T${lesson.startsAt}`, range));
     const students = gradeFilter === undefined ? journal.students : journal.students
@@ -76,7 +76,16 @@ export const calculateTeacherAnalytics = (journals: AnalyticsJournal[], assignme
   const journalById = new Map(scoped.map((journal) => [journalId(journal.subjectId, journal.groupId), journal]));
   const uniqueStudents = new Set(scoped.flatMap((journal) => journal.students.map((student) => `${journal.groupId}:${student.id}`)));
   const totals = { marked: 0, present: 0, unmarked: 0, cells: 0, grades: [] as number[] };
-  const weeks = new Map<string, { present: number; marked: number }>();
+  const trendBuckets = new Map<string, { present: number; marked: number }>();
+  if (trendInterval === "day") {
+    const day = new Date(range.start);
+    day.setHours(0, 0, 0, 0);
+    while (day.getTime() <= range.end.getTime()) {
+      const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      trendBuckets.set(key, { present: 0, marked: 0 });
+      day.setDate(day.getDate() + 1);
+    }
+  }
   const students = new Map<string, StudentSignal>();
   const groupMetrics = scoped.map((journal) => {
     const ids = journal.lessons.map((lesson) => lesson.id);
@@ -92,9 +101,9 @@ export const calculateTeacherAnalytics = (journals: AnalyticsJournal[], assignme
         if (status !== "unmarked") {
           const present = Number(status === "present");
           item.marked += 1; item.present += present; totals.present += present;
-          const key = weekKey(lesson.date);
-          const point = weeks.get(key) ?? { present: 0, marked: 0 };
-          point.marked += 1; point.present += present; weeks.set(key, point);
+          const key = trendInterval === "day" ? lesson.date : weekKey(lesson.date);
+          const point = trendBuckets.get(key) ?? { present: 0, marked: 0 };
+          point.marked += 1; point.present += present; trendBuckets.set(key, point);
         }
       });
       students.set(key, item);
@@ -147,7 +156,7 @@ export const calculateTeacherAnalytics = (journals: AnalyticsJournal[], assignme
     averageGrade: totals.grades.length ? totals.grades.reduce((sum, grade) => sum + grade, 0) / totals.grades.length : null,
     marked: totals.marked, unmarked: totals.unmarked, cells: totals.cells, gradesCount: totals.grades.length,
     distribution, shares: normalizeGradeShares(distribution), groupMetrics, risks, work,
-    trend: Array.from(weeks, ([date, point]) => ({ date, value: point.present / point.marked * 100, marked: point.marked })).sort((a, b) => a.date.localeCompare(b.date)),
+    trend: Array.from(trendBuckets, ([date, point]) => ({ date, value: point.marked ? point.present / point.marked * 100 : null, marked: point.marked })).sort((a, b) => a.date.localeCompare(b.date)),
   };
 };
 

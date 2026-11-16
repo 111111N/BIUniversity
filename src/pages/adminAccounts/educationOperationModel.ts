@@ -3,9 +3,10 @@ import { isGroupActive } from "../../domain/groupCatalog";
 import type { RegistryGroup } from "../../domain/studentRegistry";
 import { educationContinuationError, normalizeEducationDetails, type EducationEventDetails, type StudentEducationEvent } from "../../domain/studentEducationEvent";
 
-export type EducationOperation = "transfer" | "graduate" | "withdraw" | "reinstate";
+export type EducationOperation = "transfer" | "academicLeave" | "graduate" | "withdraw" | "reinstate";
 export const EDUCATION_OPERATIONS = {
   transfer: { label: "Перевести в другую группу", hint: "Изменить группу, сохранив состояние «Учится».", success: "Перевод сохранён." },
+  academicLeave: { label: "Оформить академический отпуск", hint: "Приостановить обучение, сохранив группу и результаты.", success: "Академический отпуск оформлен." },
   graduate: { label: "Оформить выпуск", hint: "Сохранить дату и основание выпуска.", success: "Выпуск оформлен." },
   withdraw: { label: "Оформить отчисление", hint: "Сохранить дату и основание отчисления.", success: "Отчисление оформлено." },
   reinstate: { label: "Возобновить обучение", hint: "Вернуть состояние «Учится» в текущей группе.", success: "Возобновление обучения сохранено." },
@@ -15,7 +16,7 @@ export const getEducationOperations = (account: PortalAccount): EducationOperati
   if (account.role !== "student") return [];
   const state = account.enrollmentStatus ?? "studying";
   return [
-    ...(state === "studying" ? ["transfer" as const] : ["reinstate" as const]),
+    ...(state === "studying" ? ["transfer" as const, "academicLeave" as const] : ["reinstate" as const]),
     ...(state !== "graduated" ? ["graduate" as const] : []),
     ...(state !== "withdrawn" ? ["withdraw" as const] : []),
   ];
@@ -26,7 +27,7 @@ export const prepareEducationOperation = (account: PortalAccount, draft: Account
   studentGroupId: account.studentGroupId,
   memberships: account.memberships.map((entry) => ({ ...entry, groupIds: [...entry.groupIds] })),
   studentCampus: undefined,
-  enrollmentStatus: operation === "graduate" ? "graduated" : operation === "withdraw" ? "withdrawn" : operation === "reinstate" ? "studying" : account.enrollmentStatus,
+  enrollmentStatus: operation === "academicLeave" ? "academicLeave" : operation === "graduate" ? "graduated" : operation === "withdraw" ? "withdrawn" : operation === "reinstate" ? "studying" : account.enrollmentStatus,
 });
 
 export const getEducationOperationRestriction = (account: PortalAccount, operation: EducationOperation, groups: RegistryGroup[]) => {
@@ -52,7 +53,7 @@ export const getEducationOperationProblem = (
   const previousGroup = groups.find((group) => group.id === getStudentGroupId(account))!;
   const nextGroup = getStudentGroupId(draft);
   const state = account.enrollmentStatus ?? "studying";
-  const expectedState = operation === "transfer" ? state : operation === "graduate" ? "graduated" : operation === "withdraw" ? "withdrawn" : "studying";
+  const expectedState = operation === "transfer" ? state : operation === "academicLeave" ? "academicLeave" : operation === "graduate" ? "graduated" : operation === "withdraw" ? "withdrawn" : "studying";
   if ((draft.enrollmentStatus ?? "studying") !== expectedState || (operation !== "transfer" && nextGroup !== previousGroup.id)) return "Оформите перевод и изменение состояния отдельными действиями.";
   if (operation === "transfer" && (!nextGroup || nextGroup === previousGroup.id)) return "Выберите другую учебную группу для перевода.";
   if (operation === "transfer" && !groups.some((group) => group.id === nextGroup && isGroupActive(group))) return "Выберите действующую учебную группу для перевода.";

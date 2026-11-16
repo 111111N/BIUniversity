@@ -116,7 +116,7 @@ const weeks: WeekOption[] = useMemo(() => {
       <div className={styles.weekPickerControls}>
         <div className={styles.weekPickerDisplayWrapper}>
           <Dropdown
-            variant="main"
+            variant="navigation"
             label="Учебная неделя"
             hideLabel
             value={String(selectedWeek.getTime())}

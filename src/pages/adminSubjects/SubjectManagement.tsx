@@ -44,7 +44,7 @@ export default function SubjectManagement({ subject, revision, disabled, onDirty
     await subjectCatalogService.update({ ...editor.base, draft: { name: editor.name, shortName: editor.shortName } });
     if (generation.current === token) { setEditor(null); setMessage("Реквизиты дисциплины сохранены."); onSaved(); }
   });
-  return <section aria-label="Реквизиты и состояние дисциплины">
+  return <section className={editor ? undefined : styles.management} aria-label="Реквизиты и состояние дисциплины">
     {!editor && <div className={styles.formActions}><button ref={trigger} type="button" disabled={disabled || busy || !isSubjectActive(subject)} onClick={openEdit}>Изменить реквизиты</button><button type="button" disabled={disabled || busy} onClick={checkStatus}>{isSubjectActive(subject) ? "Архивировать" : "Восстановить из архива"}</button></div>}
     {!isSubjectActive(subject) && <p className={styles.note}>Дисциплина в архиве. История, материалы и опубликованные результаты сохранены.</p>}
     {message && <p role="status">{message}</p>}{error && !preview && <p className={styles.error} role="alert">{error}</p>}

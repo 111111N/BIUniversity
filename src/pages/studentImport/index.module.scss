@@ -24,22 +24,22 @@
 .source { display: grid; gap: 8px; min-width: 0; color: $color-text-secondary; font-size: 12px; textarea { box-sizing: border-box; width: 100%; min-height: 200px; max-height: 480px; min-width: 0; resize: vertical; padding: 14px; border: 1px solid $color-control-border; border-radius: 10px; color: $color-text-light; background: $color-panel; font: inherit; font-family: monospace; font-size: 14px; line-height: 1.6; tab-size: 4; white-space: pre; overflow: auto; } }
 .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; }
 .format, .history { min-width: 0; summary { display: list-item; width: fit-content; min-height: 44px; padding: 10px 0; box-sizing: border-box; color: $color-text-secondary; font-size: 13px; cursor: pointer; } > div, > ul { margin-top: 10px; } }
-.mapping { padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; h3 { margin: 0 0 8px; font-size: 16px; } }
+.mapping { @include admin.surface; h3 { margin: 0 0 8px; font-size: 16px; } }
 .mappingFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; margin-top: 16px; }
 .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; > div { display: grid; gap: 8px; padding: 16px; background: $color-panel; border: 1px solid $color-border; border-radius: 10px; } span { color: $color-text-secondary; font-size: 12px; } strong { font-size: 24px; } }
 .rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-.row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(160px, .8fr); align-items: center; gap: 16px; padding: 18px; border: 1px solid $color-border; border-radius: 10px; background: $color-panel; > div { display: grid; gap: 6px; min-width: 0; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; } strong { font-size: 14px; overflow-wrap: anywhere; } }
+.row { @include admin.surface; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(160px, .8fr); align-items: center; gap: 16px; > div { display: grid; gap: 6px; min-width: 0; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; } strong { font-size: 14px; overflow-wrap: anywhere; } }
 .invalid, .invalid strong { color: $color-danger-text; }.invalidRow { border-color: theme-alpha($color-error, .6); }
 .issues { grid-column: 1 / -1; padding: 12px 12px 12px 28px; margin: 0; background: $color-ghost; border-radius: 8px; color: $color-text-secondary; font-size: 12px; line-height: 1.6; }
 .error { margin: 0; border: 1px solid theme-alpha($color-error, .5); border-radius: 10px; padding: 14px; color: $color-danger-text; font-size: 13px; line-height: 1.6; }
-.empty { padding: 28px 18px; border: 1px dashed $color-border; border-radius: 12px; color: $color-text-secondary; text-align: center; line-height: 1.7; strong { color: $color-text-light; } }
+.empty { @include admin.surface; color: $color-text-secondary; text-align: center; line-height: 1.7; strong { color: $color-text-light; } }
 .history ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 360px; overflow-y: auto; } .history a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid $color-border; border-radius: 8px; color: $color-text-light; font-size: 13px; line-height: 1.6; text-decoration: none; }
 @media(max-width: 760px) { .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); > :nth-child(3) { grid-column: 1 / -1; } } }
 @media(max-width: 600px) { .page { padding: 18px 14px; } .settings { grid-template-columns: minmax(0, 1fr); } .mapping, .row { padding: 14px; } .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .page > [role="tablist"] { flex-wrap: wrap; overflow: visible; > button { flex: 1 1 calc(50% - 8px); } } }
 @media(max-width: 420px) { .row { grid-template-columns: minmax(0, 1fr); } .sourceActions, .actions { align-items: stretch; flex-direction: column; } }
 
 .page .error { @include admin.notice($color-error); }.page .message { @include admin.notice($color-success); }
-.sourcePanel, .defaults { min-width: 0; display: grid; gap: 18px; padding: 20px; background: $color-panel; border: 1px solid $color-border; border-radius: 12px; }
+.sourcePanel, .defaults { @include admin.surface; display: grid; gap: 18px; }
 .sourcePanel > [role="tablist"] { flex-wrap: wrap; overflow: visible; margin: 0; }
 .methodTabs { border: 0; padding: 0; margin: 0; min-width: 0; > [role="tablist"] { flex-wrap: wrap; overflow: visible; margin: 0; } }
 .sourcePanel .source textarea { min-height: 240px; }
@@ -49,3 +49,6 @@
 .header h2:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 @media(max-width: 600px) { .sourcePanel, .defaults { padding: 14px; } .source textarea { font-size: 16px; } .prepareActions > button { width: 100%; } .sourcePanel > [role="tablist"] > button { flex: 1 1 150px; } }
 @media(max-width: 600px) { .methodTabs > [role="tablist"] > button { flex: 1 1 150px; } }
+
+.topline { @include admin.surface; }
+.page > .format, .history { @include admin.surface; }

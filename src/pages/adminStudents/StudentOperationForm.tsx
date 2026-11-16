@@ -54,7 +54,7 @@ export default function StudentOperationForm({ parameters, groups, count, busy, 
       {!unavailable && !activeGroups.length && <p className={styles.note}>Действующих групп нет. Сначала создайте или восстановите учебную группу.</p>}
     </div>}
     <EducationEventFields value={parameters.education} onChange={onEducation} disabled={fieldsDisabled} showErrors={showErrors} />
-    <p className={styles.note}>{parameters.kind === "transfer" ? "Перевод доступен учащимся. Прежние оценки останутся в прежней группе; дисциплины новой группы определяются её назначениями." : "Уже оформленные записи останутся без изменений. Исправление другого завершённого состояния выполняется отдельно в учётке."}</p>
+    <p className={styles.note}>{parameters.kind === "transfer" ? "Перевод доступен учащимся. Прежние оценки останутся в прежней группе; дисциплины новой группы определяются её назначениями." : parameters.kind === "academicLeave" ? "Академический отпуск доступен учащимся. Группа, зачетка, результаты и доступ к кабинету сохранятся. Возобновить обучение можно в учётке студента." : "Уже оформленные записи останутся без изменений. Исправление другого завершённого состояния выполняется отдельно в учётке."}</p>
     <RecordEditorActions label={`Проверить список (${count})`} busyLabel="Проверяем…" disabled={Boolean(blockReason)} busy={busy} onCancel={onCancel} hint={blockReason || "Откроется предпросмотр всего выбранного списка. Применение изменений — отдельный шаг."} />
   </form>;
 }

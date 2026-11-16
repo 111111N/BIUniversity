@@ -9,6 +9,7 @@ import { getSubmissionAttempts } from "../domain/assignments";
 import { appendJournalDemoRecords } from "./journalStore";
 import type { JournalActor } from "./journalStore";
 import { appendAssessmentDemoRecords } from "./assessmentStore";
+import { toLocalDateKey } from "../domain/schedule";
 
 export interface DemoImportResult { assignments: number; submissions: number; tasks: number; materials: number; journals: number; journalCells: number; grades: number; assessments: number; assessmentAttempts: number; warnings: string[] }
 export interface DemoImportOptions { journalActor?: JournalActor; plannerOwnerId?: string }
@@ -86,7 +87,16 @@ const runDemoImport = async (anchor: Date, options: DemoImportOptions): Promise<
   } catch {
     result.warnings.push("Не удалось добавить задания и ответы. Проверьте доступ к хранилищу браузера.");
   } finally { await cleanupUnusedFiles(); }
-  try { result.tasks = appendPlannerDemoNotes(createPlannerDemo(anchor), options.plannerOwnerId ?? actor?.id); }
+  try {
+    const today = new Date();
+    const through = new Date(today);
+    through.setDate(through.getDate() + 3);
+    const lastDay = toLocalDateKey(through);
+    const tasks = new Map([anchor, today, through].flatMap(createPlannerDemo)
+      .filter(note => toLocalDateKey(note.createdAt) <= lastDay)
+      .map(note => [note.id, { ...note, completed: toLocalDateKey(note.createdAt) > toLocalDateKey(today) ? false : note.completed }]));
+    result.tasks = appendPlannerDemoNotes([...tasks.values()], options.plannerOwnerId ?? actor?.id);
+  }
   catch (error) { console.error("Не удалось добавить демонстрационные задачи планировщика:", error); result.warnings.push("Задачи не добавлены: проверьте хранилище планировщика."); }
 
   for (const subject of DEMO_SUBJECTS) {

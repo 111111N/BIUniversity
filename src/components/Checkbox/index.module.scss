@@ -6,7 +6,7 @@
 .indicator { display: grid; place-items: center; box-sizing: border-box; width: 18px; height: 18px; border: 1px solid theme-alpha($color-text-secondary, .45); border-radius: 5px; background: $color-ghost; color: $color-on-accent; transition: border-color $transition-speed, background-color $transition-speed; }
 .indicator::after { width: 4px; height: 8px; margin-top: -2px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); content: ""; opacity: 0; }
 .checkbox:hover .control input:not(:disabled) + .indicator { border-color: $color-accent-primary; }
-.control input:checked + .indicator { border-color: $color-accent-primary; background: $color-accent-primary; }
+.control input:checked + .indicator { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
 .control input:checked + .indicator::after { opacity: 1; }
 .control input:focus-visible + .indicator { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
 .label { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }

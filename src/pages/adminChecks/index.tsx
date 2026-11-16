@@ -47,6 +47,7 @@ export default function AdminChecksPage() {
   const refresh = () => { refreshAccounts(); subjects.refresh(); groups.refresh(); setReload((value) => value + 1); };
   const filtered = Boolean(query.q || query.kind !== "all" || query.level !== "all");
   return <div className={`pageContainer ${styles.page}`}>
+    <section className={styles.controlPanel} aria-label="Управление проверками данных">
     <div className={styles.topline}><p>Выберите замечание и откройте запись для исправления.</p><button type="button" disabled={loading} onClick={refresh}>Проверить заново</button></div>
     <section className={styles.overview} aria-label="Важность замечаний">
       <p className={styles.note}>Замечания во всех данных · без учёта поиска и типа проверки</p>
@@ -62,6 +63,7 @@ export default function AdminChecksPage() {
       <Dropdown label="Тип проверки" searchable placeholder="" value={query.kind} options={[{ value: "all", label: "Все проверки" }, ...Object.entries(ADMINISTRATION_CHECK_LABELS).map(([value, label]) => ({ value, label }))]} onChange={(value) => update("kind", value)} />
     </div>
     {filtered && <div className={styles.activeFilters}><span>Применены фильтры</span><button type="button" onClick={() => setParams({}, { replace: true })}>Сбросить фильтры</button></div>}
+    </section>
     <CheckResults snapshot={snapshot} error={error} loading={loading} filtered={filtered} onPage={page} />
     <details className={styles.help}><summary>Что проверяется и как читать результат</summary><div><p>Проверяем внесённые учётки, группы, назначения, предстоящие или текущие опубликованные пары и связи аттестаций.</p><p>«Нужно исправить» — отсутствует номер зачетки, недоступны данные пары или участника ведомости, ответственный преподаватель не может заполнить черновик. «Проверить» — группа без учащихся, дисциплина без назначений, изменённые учётки комиссии или незавершённая аттестация архивной группы.</p><p>Замечания разбираются вручную. Зафиксированный состав и опубликованные результаты не меняются вслед за переводом, выпуском или блокировкой учётки. Этот отчёт не подтверждает исторические полномочия и не заменяет проверки перед публикацией.</p></div></details>
   </div>;

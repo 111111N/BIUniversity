@@ -5,19 +5,20 @@
 .page :where(.catalog, .header, .editorHeader, .teacherHeader, .formActions, .pagination, .empty, .error) > button { @include admin.button; }
 
 .page button.primary { @include admin.primary; }
-.catalog { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; width: 100%; min-width: 0; }
+.catalog { @include admin.surface; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; width: 100%; }
 .content { display: grid; gap: 16px; min-width: 0; }
-.header { display: flex; gap: 16px; align-items: center; justify-content: space-between; h2 { margin: 0; font-size: 18px; line-height: 1.5; } p { margin: 5px 0 0; font-size: 12px; color: $color-text-secondary; } > button { flex-shrink: 0; } }
-.editor, .teacher { border: 1px solid $color-border; border-radius: 12px; background: $color-panel; padding: 18px; }
+.management { @include admin.surface; display: grid; gap: 16px; }
+.header { @include admin.surface; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; > div { flex: 1 1 240px; min-width: 0; } h2 { margin: 0; font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; } p { margin: 5px 0 0; font-size: 13px; color: $color-text-secondary; } > button { flex-shrink: 0; } }
+.editor, .teacher { @include admin.surface; }
 .editor { display: grid; gap: 16px; }
 .teacherScope { min-width: 0; > a { color: $color-link; display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; overflow-wrap: anywhere; } .editorHeader { flex-wrap: wrap; > div { min-width: 0; flex: 1 1 180px; overflow-wrap: anywhere; strong { font-size: 14px; } } } }
 .editorHeader, .teacherHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; h2, h3 { margin: 0; font-size: 15px; } }
 .note { color: $color-text-secondary; font-size: 12px; line-height: 1.6; margin: 0; }
 .formActions { display: flex; justify-content: flex-start; }
 .list { display: grid; gap: 10px; }
-.listTools { display: grid; gap: 12px; }
+.listTools { @include admin.surface; display: grid; gap: 16px; }
 .results { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; p { margin: 0; color: $color-text-secondary; font-size: 12px; line-height: 1.6; } }
-.pagination { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; font-size: 13px; }
 .teacherHeader > div > .blocked { color: $color-danger-text; }
 .moreGroups { min-width: 0; summary { display: list-item; width: fit-content; min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; color: $color-text-secondary; font-size: 12px; } > div { max-height: 200px; overflow-y: auto; padding: 4px 2px; } }
 .teacher { display: grid; gap: 14px; }
@@ -27,7 +28,7 @@
 .error, .message { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; line-height: 1.5; font-size: 13px; }
 .error { color: $color-danger-text; }
 .message { color: $color-success; }
-.empty { text-align: center; padding: 30px 18px; color: $color-text-secondary; border: 1px dashed $color-border; border-radius: 12px; line-height: 1.8; strong { color: $color-text-light; font-size: 15px; } p { max-width: 620px; margin: 8px auto 0; } a { color: $color-link; } button { margin-top: 16px; } }
+.empty { @include admin.surface; text-align: center; color: $color-text-secondary; line-height: 1.8; strong { color: $color-text-light; font-size: 15px; } p { max-width: 620px; margin: 8px auto 0; } a { color: $color-link; } button { margin-top: 16px; } }
 @media(max-width: 760px) { .header h2 { font-size: 16px; } .editor, .teacher { padding: 14px; } }
 @media(max-width: 600px) { .page { padding: 18px 14px; } }
 @media(max-width: 600px) { .catalog { grid-template-columns: minmax(0, 1fr); } }

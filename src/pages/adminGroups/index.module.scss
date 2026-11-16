@@ -6,11 +6,17 @@
 .page .primary { @include admin.primary; }
 .topline, .heading, .summary, .resultLine { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; }
 .topline > a, .empty > a { color: $color-link; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
-.toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 14px; align-items: end; }
+.filtersPanel { @include admin.surface; display: grid; gap: 16px; min-width: 0; }
+.toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
+.toolbar > button { @include admin.button; justify-self: end; }
 .toolbar > :only-child { grid-column: 1 / -1; }
+.filtersRow { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; > :first-child { flex: 1 1 360px; } > :last-child { flex: 0 1 240px; min-width: 180px; } }
 .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
-.group, .student, .summary, .editor { min-width: 0; border: 1px solid $color-border; border-radius: 12px; padding: 18px; background: $color-panel; }
-.group { display: grid; gap: 14px; color: $color-text-light; text-decoration: none; transition: border-color .15s ease; &:hover { border-color: $color-link; } > div { display: grid; gap: 6px; } strong { font-size: 16px; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; } .open { color: $color-link; } }
+.group, .student, .summary, .editor { @include admin.surface; }
+.group { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; color: $color-text-light; text-decoration: none; transition: border-color .15s ease; &:hover { border-color: $color-link; } > div { display: grid; grid-column: 1; gap: 6px; } strong { font-size: 16px; overflow-wrap: anywhere; } span { color: $color-text-secondary; font-size: 12px; line-height: 1.5; } .open { grid-column: 2; grid-row: 1 / 3; align-self: center; color: $color-link; opacity: 0; transition: opacity .2s ease; } }
+.group:hover .open, .group:focus-visible .open { opacity: 1; }
+@media (hover: none) { .group .open { opacity: 1; } }
+@media (max-width: 600px) { .filtersRow { align-items: stretch; > :first-child, > :last-child { flex: 1 1 100%; min-width: 0; } } }
 .summary h2, .heading h2 { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
 .summary > div:first-child { min-width: 0; }
 .summary p { margin: 8px 0; color: $color-text-secondary; font-size: 13px; }
@@ -20,12 +26,12 @@
 .student { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; > div { display: grid; gap: 6px; min-width: 0; } strong { overflow-wrap: anywhere; font-size: 14px; } div span { color: $color-text-secondary; font-size: 12px; overflow-wrap: anywhere; } }
 .blocked { color: $color-danger-text; font-size: 12px; }
 .editor { display: grid; gap: 18px; }
-.pagination { display: flex; align-items: center; gap: 12px; font-size: 13px; }
-.empty { border: 1px dashed $color-border; border-radius: 12px; text-align: center; padding: 30px 18px; color: $color-text-secondary; line-height: 1.7; strong { color: $color-text-light; } p { margin: 8px auto 12px; max-width: 600px; font-size: 13px; } }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; font-size: 13px; }
+.empty { @include admin.surface; text-align: center; color: $color-text-secondary; line-height: 1.7; strong { color: $color-text-light; } p { margin: 8px auto 12px; max-width: 600px; font-size: 13px; } }
 .error, .message { margin: 0; padding: 12px 14px; border: 1px solid $color-border; border-radius: 8px; font-size: 13px; line-height: 1.6; }
 .error { color: $color-danger-text; }.message { color: $color-success; }
 .error > p { margin: 0 0 12px; }
-.review { display: grid; gap: 14px; min-width: 0; padding: 18px; border: 1px solid $color-border; border-radius: 12px; background: $color-panel; h3 { margin: 0; font-size: 17px; } }
+.review { @include admin.surface; display: grid; gap: 14px; h3 { margin: 0; font-size: 17px; } }
 .blockers { margin: 0; padding-left: 22px; color: $color-danger-text; font-size: 13px; line-height: 1.7; }
 @media(max-width: 720px) { .student { grid-template-columns: minmax(0, 1fr) auto; > a { grid-column: 1 / -1; } } .summary { align-items: stretch; flex-direction: column; } }
 @media(max-width: 600px) { .page { padding: 18px 14px; } .toolbar { grid-template-columns: minmax(0, 1fr); } .editor, .summary, .student, .group { padding: 14px; } }
@@ -41,3 +47,5 @@
 .sourceNotice { @include admin.notice($color-warning); display: grid; gap: 12px; min-width: 0; padding: 14px; border-radius: 10px; > p { margin: 0; color: $color-text-light; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; } > button { @include admin.button; justify-self: start; max-width: 100%; } }
 @media(max-width: 600px) { .sourceNotice > button { justify-self: stretch; } }
 @media(max-width: 600px) { .summary > .actions { flex-direction: column; align-items: stretch; } .moreActions > summary { width: 100%; box-sizing: border-box; } }
+
+.topline { @include admin.surface; }
