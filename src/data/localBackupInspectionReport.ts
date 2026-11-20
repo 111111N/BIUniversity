@@ -6,6 +6,8 @@ import { assertCompleteCatalogComparison } from "../domain/backupCatalogComparis
 import { assertCompleteAccountComparison } from "../domain/backupAccountComparison";
 import { assertCompleteLearningComparison } from "../domain/backupLearningComparison";
 import { assertCompleteScheduleComparison } from "../domain/backupScheduleComparison";
+import { assertCompleteScheduleCatalogComparison } from "../domain/backupScheduleCatalogComparison";
+import { assertCompleteAcademicComparison } from "../domain/backupAcademicComparison";
 import { assertCompleteJournalComparison } from "../domain/backupJournalComparison";
 import { assessBackupRestoreAdmission } from "../domain/backupRestoreAdmission";
 import { assertCompleteNotificationComparison } from "../domain/backupNotificationComparison";
@@ -48,6 +50,8 @@ export const prepareBackupInspectionReport = (
     if (report.accountComparison) assertCompleteAccountComparison(report.accountComparison);
     if (report.learningComparison) assertCompleteLearningComparison(report.learningComparison);
     if (report.scheduleComparison) assertCompleteScheduleComparison(report.scheduleComparison);
+    if (report.scheduleCatalogComparison) assertCompleteScheduleCatalogComparison(report.scheduleCatalogComparison);
+    if (report.academicComparison) assertCompleteAcademicComparison(report.academicComparison);
     if (report.journalComparison) assertCompleteJournalComparison(report.journalComparison);
     if (report.notificationComparison) assertCompleteNotificationComparison(report.notificationComparison);
     if (report.assessmentComparison) assertCompleteAssessmentComparison(report.assessmentComparison);
@@ -59,6 +63,8 @@ export const prepareBackupInspectionReport = (
       restoreAdmission: assessBackupRestoreAdmission(report.documents),
       notificationComparison: report.notificationComparison,
       assessmentComparison: report.assessmentComparison,
+      scheduleCatalogComparison: report.scheduleCatalogComparison,
+      academicComparison: report.academicComparison,
     };
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json;charset=utf-8" });
     if (blob.size > BACKUP_LIMITS.archiveBytes) throw new Error("Отчёт превышает лимит 128 МиБ. Частичный файл не скачан.");

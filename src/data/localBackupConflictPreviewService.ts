@@ -6,6 +6,13 @@ import { addBackupText, checkBackupAbort, createBackupBudget, type Administrativ
 import { validateAdministrativeBackup } from "../domain/localBackupValidation";
 import { reviewBackupAssessmentSelection, type AssessmentRecordChoice, type AssessmentSelectionCollection } from "../domain/backupAssessmentSelection";
 import type { AssessmentReferenceTarget } from "../domain/backupAssessmentReferences";
+import { SCHEDULE_CATALOG_SECTIONS } from "../domain/backupScheduleCatalogComparison";
+import { ACADEMIC_COMPARISON_SECTIONS } from "../domain/backupAcademicComparison";
+import { resolveBackupPeriodSelection, type PeriodRecordChoice, type PeriodSelectionCollection } from "../domain/backupPeriodSelection";
+import { resolveBackupDocumentSelection, type DocumentSelectionReview } from "../domain/backupDocumentSelection";
+import { BACKUP_SELECTION_DOCUMENTS, getBackupSelectionDocumentKind } from "../domain/backupDocumentSelectionDefinitions";
+import { inspectSelectedBackupDependencies } from "../domain/backupSelectedDependencies";
+import type { BackupDocumentIssue } from "../domain/localBackupDocuments";
 
 export type BackupConflictVersion = "archive" | "browser";
 interface Snapshot { file: File; sha256: string; actorId: string; actorRevision: number; current: AdministrativeBackup["localStorage"]; allowed: Set<string>; reviewed: Set<string>; choices: Map<string, BackupConflictVersion>; choiceRevision: number }
@@ -15,6 +22,8 @@ export const bindBackupInspectionPreview = (inspection: BackupInspection, file: 
   lists.push(inspection.notificationComparison?.differences);
   lists.push(inspection.assessmentComparison?.assessments.differences, inspection.assessmentComparison?.history.differences);
   lists.push(inspection.assessmentComparison?.corrections?.differences, inspection.assessmentComparison?.correctionHistory?.differences);
+  for (const section of SCHEDULE_CATALOG_SECTIONS) lists.push(inspection.scheduleCatalogComparison?.[section].differences);
+  for (const section of ACADEMIC_COMPARISON_SECTIONS) lists.push(inspection.academicComparison?.[section].differences);
   snapshots.set(inspection, { file, sha256: inspection.sha256, actorId: inspection.actor.id, actorRevision: inspection.actor.revision, current: current.map(entry => ({ ...entry })), allowed: new Set([...inspection.comparison.differences, ...lists.flatMap(list => list ?? [])].filter(canPreviewBackupDifference).map(getBackupDifferenceKey)), reviewed: new Set(), choices: new Map(), choiceRevision: 0 });
 };
 export const releaseBackupInspectionPreview = (inspection: BackupInspection | null) => { if (inspection) snapshots.delete(inspection); };
@@ -51,6 +60,7 @@ const readVerifiedArchive = async (dependencies: BackupDependencies, snapshot: S
 };
 const ASSESSMENT_COLLECTIONS: Record<string, AssessmentSelectionCollection> = { assessments: "assessments", "assessment-history": "history", "assessment-corrections": "corrections", "assessment-correction-history": "correctionHistory" };
 const REFERENCE_COLLECTIONS: Record<string, AssessmentReferenceTarget> = { accounts: "accounts", groups: "groups", subjects: "subjects" };
+const PERIOD_COLLECTIONS: Record<string, PeriodSelectionCollection> = { "academic-years": "years", "academic-terms": "terms", "academic-period-history": "history" };
 const selectedChoices = <Collection extends string>(snapshot: Snapshot, collections: Record<string, Collection>) => {
   const choices: { collection: Collection; id: string; version: BackupConflictVersion }[] = [];
   for (const [key, version] of snapshot.choices) {
@@ -74,10 +84,10 @@ export const createBackupConflictPreviewService = (dependencies: BackupDependenc
     try {
       checkBackupAbort(command.signal); dependencies.authorize(command);
       const snapshot = resolveBinding(command), browser = captureCurrent(dependencies, snapshot);
-      const choices: AssessmentRecordChoice[] = selectedChoices(snapshot, ASSESSMENT_COLLECTIONS), referenceChoices = selectedChoices(snapshot, REFERENCE_COLLECTIONS), choiceVersion = snapshot.choiceRevision;
+      const choices: AssessmentRecordChoice[] = selectedChoices(snapshot, ASSESSMENT_COLLECTIONS), referenceChoices = selectedChoices(snapshot, REFERENCE_COLLECTIONS), periodChoices = selectedChoices(snapshot, PERIOD_COLLECTIONS), choiceVersion = snapshot.choiceRevision;
       const archive = await readVerifiedArchive(dependencies, snapshot, command);
       dependencies.authorize(command);
-      const result = await reviewBackupAssessmentSelection(archive.localStorage, browser, choices, command.signal, { choices: referenceChoices });
+      const result = await reviewBackupAssessmentSelection(archive.localStorage, browser, choices, command.signal, { choices: referenceChoices, periodChoices });
       checkBackupAbort(command.signal); dependencies.authorize(command); captureCurrent(dependencies, snapshot);
       if (snapshots.get(command.inspection) !== snapshot || snapshot.choiceRevision !== choiceVersion) throw new Error(STALE);
       return result;
@@ -85,6 +95,45 @@ export const createBackupConflictPreviewService = (dependencies: BackupDependenc
       if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Не удалось проверить выбранный набор аттестаций:", error);
       throw error;
     }
+  },
+  async reviewPeriods(command: BackupSelectionReviewCommand) {
+    try {
+      checkBackupAbort(command.signal); dependencies.authorize(command);
+      const snapshot = resolveBinding(command), browser = captureCurrent(dependencies, snapshot), choiceVersion = snapshot.choiceRevision;
+      const choices: PeriodRecordChoice[] = selectedChoices(snapshot, PERIOD_COLLECTIONS), archive = await readVerifiedArchive(dependencies, snapshot, command);
+      dependencies.authorize(command);
+      const result = await resolveBackupPeriodSelection(archive.localStorage, browser, choices, command.signal);
+      checkBackupAbort(command.signal); dependencies.authorize(command); captureCurrent(dependencies, snapshot);
+      if (snapshots.get(command.inspection) !== snapshot || snapshot.choiceRevision !== choiceVersion) throw new Error(STALE);
+      return result.review;
+    } catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Не удалось проверить выбранные учебные периоды:", error); throw error; }
+  },
+  async reviewDocuments(command: BackupSelectionReviewCommand) {
+    try {
+      checkBackupAbort(command.signal); dependencies.authorize(command);
+      const snapshot = resolveBinding(command), browser = captureCurrent(dependencies, snapshot), choiceVersion = snapshot.choiceRevision;
+      const choices = BACKUP_SELECTION_DOCUMENTS.map(definition => selectedChoices(snapshot, Object.fromEntries(definition.collections.map(collection => [collection.recordCollection, collection.recordCollection]))));
+      const periodChoices = selectedChoices(snapshot, PERIOD_COLLECTIONS);
+      const archive = await readVerifiedArchive(dependencies, snapshot, command), documents: DocumentSelectionReview[] = [], selected = new Map<string, object>(), unavailable: BackupDocumentIssue[] = [];
+      for (const [index, definition] of BACKUP_SELECTION_DOCUMENTS.entries()) {
+        checkBackupAbort(command.signal); dependencies.authorize(command);
+        const result = await resolveBackupDocumentSelection(archive.localStorage, browser, choices[index], definition, command.signal);
+        documents.push(result.review);
+        if (result.document) selected.set(definition.key, result.document);
+        if (result.review.status === "blocked") {
+          const kind = getBackupSelectionDocumentKind(definition.key);
+          if (!kind) throw new Error("Вид выбранного документа не поддерживается проверкой зависимостей.");
+          unavailable.push({ kind, level: "review", code: "selected-document-structure-unavailable", referenceId: definition.key, message: "Выбранный документ не согласован со своей историей. Его значения не подставлялись при проверке зависимостей." });
+        }
+      }
+      const periodSelection = await resolveBackupPeriodSelection(archive.localStorage, browser, periodChoices, command.signal);
+      if (!periodSelection.document && periodSelection.review.issues.some(issue => issue.code !== "missing-source")) unavailable.push({ kind: "periods", level: "review", code: "selected-period-structure-unavailable", message: "Выбранный справочник периодов не согласован. Его снимки не подставлялись при проверке других документов." });
+      dependencies.authorize(command);
+      const references = await inspectSelectedBackupDependencies(archive.localStorage, browser, selected, periodSelection.document, new Date().toISOString(), command.signal, unavailable);
+      checkBackupAbort(command.signal); dependencies.authorize(command); captureCurrent(dependencies, snapshot);
+      if (snapshots.get(command.inspection) !== snapshot || snapshot.choiceRevision !== choiceVersion) throw new Error(STALE);
+      return { scope: "selected-document-structures" as const, status: documents.every(document => document.status === "absent") ? "absent" as const : documents.some(document => document.status === "blocked") ? "blocked" as const : "consistent" as const, documents, references };
+    } catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Не удалось проверить выбранные справочники и их историю:", error); throw error; }
   },
   choose(command: BackupConflictPreviewCommand & { version: BackupConflictVersion }) {
     try {
@@ -125,6 +174,8 @@ export const createBackupConflictPreviewService = (dependencies: BackupDependenc
   },
 });
 export const backupConflictPreviewService = {
+  reviewDocuments: (command: BackupSelectionReviewCommand) => createBackupConflictPreviewService(createBrowserBackupDependencies()).reviewDocuments(command),
+  reviewPeriods: (command: BackupSelectionReviewCommand) => createBackupConflictPreviewService(createBrowserBackupDependencies()).reviewPeriods(command),
   reviewAssessments: (command: BackupSelectionReviewCommand) => createBackupConflictPreviewService(createBrowserBackupDependencies()).reviewAssessments(command),
   isSelectionCurrent: (command: BackupSelectionReviewCommand) => createBackupConflictPreviewService(createBrowserBackupDependencies()).isSelectionCurrent(command),
   preview: (command: BackupConflictPreviewCommand) => createBackupConflictPreviewService(createBrowserBackupDependencies()).preview(command),

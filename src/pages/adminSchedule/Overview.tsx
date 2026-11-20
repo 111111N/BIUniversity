@@ -4,12 +4,14 @@ import Link from "../../components/ChecksContextLink";
 import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
 import Card from "../../components/Card";
 import Dropdown from "../../components/Dropdown";
+import TemporalField from "../../components/DateTimePicker/Field";
 import SearchField from "../../components/SearchField";
 import { useRole } from "../../components/RoleContext";
 import { scheduleOverviewService } from "../../data/scheduleOverview";
 import { getManagedWeekKey } from "../../domain/scheduleManagement";
 import { getWeekStart, toLocalDateKey } from "../../domain/schedule";
 import { formatAcademicDay } from "../../domain/academicCalendarMath";
+import { formatLessonRoom } from "../../domain/rooms";
 import { lessonTypeLabels } from "../../domain/academic";
 import styles from "../adminPrograms/index.module.scss";
 
@@ -34,14 +36,14 @@ function Overview({ actorId }: { actorId: string }) {
       <Dropdown searchable label="Преподаватель" value={teacher} options={[{ value: "all", label: "Все преподаватели" }, ...(data?.teachers ?? [])]} onChange={value => change("teacher", value)} />
       <Dropdown searchable label="Аудитория" value={room} options={[{ value: "all", label: "Все аудитории" }, ...(data?.rooms ?? [])]} onChange={value => change("room", value)} />
       <Dropdown searchable label="Группа" value={group} options={[{ value: "all", label: "Все группы" }, ...(data?.groupOptions ?? [])]} onChange={value => change("group", value)} />
-      <label className={styles.field}>Дата начала<input type="date" value={from} onChange={event => change("from", event.target.value)} /></label><label className={styles.field}>Дата окончания<input type="date" value={to} onChange={event => change("to", event.target.value)} /></label>
+      <TemporalField label="Дата начала" value={from} onChange={value => change("from", value)} /><TemporalField label="Дата окончания" value={to} onChange={value => change("to", value)} />
     </div><div className={styles.actions}><button type="button" onClick={reset}>Сбросить фильтры</button><button type="button" onClick={() => setReload(value => value + 1)}>Обновить</button></div></Card>
     {!source && <p role="status">Загружаем опубликованное расписание…</p>}
     {(source?.error || data?.queryError) && <p className={styles.error} role="alert">{source?.error || data?.queryError}</p>}
     {data?.warning && <p role="status">{data.warning}</p>}
     {data && !data.queryError && <Card className={styles.list}><div className={styles.actions}><h2>{formatAcademicDay(from)} — {formatAcademicDay(to)}</h2><span>Занятий: {data.total} · групп: {data.groups}</span></div>
       {!data.rows.length && <p>В выбранном периоде нет подходящих сохранённых публикаций.</p>}
-      {data.rows.map(lesson => <article className={styles.row} key={lesson.id}><div><strong>{lesson.subjectName} · {lessonTypeLabels[lesson.type]}</strong><p>{formatAcademicDay(lesson.date)} · {lesson.startsAt}–{lesson.endsAt} · {lesson.groupName}</p><p>{lesson.teacherName} · ауд. {lesson.room}</p></div><Link to={`/admin/schedule?group=${encodeURIComponent(lesson.groupId)}&date=${getManagedWeekKey(lesson.date)}`}>Открыть неделю</Link></article>)}
+      {data.rows.map(lesson => <article className={styles.row} key={lesson.id}><div><strong>{lesson.subjectName} · {lessonTypeLabels[lesson.type]}</strong><p>{formatAcademicDay(lesson.date)} · {lesson.startsAt}–{lesson.endsAt} · {lesson.groupName}</p><p>{lesson.teacherName} · ауд. {formatLessonRoom(lesson)}</p></div><Link to={`/admin/schedule?group=${encodeURIComponent(lesson.groupId)}&date=${getManagedWeekKey(lesson.date)}`}>Открыть неделю</Link></article>)}
       {data.pages > 1 && <nav className={styles.actions} aria-label="Страницы опубликованного расписания"><button type="button" disabled={data.page <= 1} onClick={() => change("page", String(data.page - 1))}>Назад</button><span>{data.page} / {data.pages}</span><button type="button" disabled={data.page >= data.pages} onClick={() => change("page", String(data.page + 1))}>Далее</button></nav>}
     </Card>}
   </div>;

@@ -2,7 +2,7 @@ import { getUncheckedScheduleDocuments, type BackupScheduleComparison, type Sche
 import RecordComparisonReview from "./RecordComparisonReview";
 import styles from "./index.module.scss";
 
-const FIELDS: Record<ScheduleComparedField, string> = { scheduleId: "числовой ID занятия", subjectId: "ID дисциплины", groupId: "ID группы", teacherId: "ID преподавателя", teacherName: "имя преподавателя", date: "дата", startsAt: "начало", endsAt: "окончание", type: "тип занятия", room: "аудитория", other: "дополнительные поля" };
+const FIELDS: Record<ScheduleComparedField, string> = { scheduleId: "числовой ID занятия", subjectId: "ID дисциплины", groupId: "ID группы", teacherId: "ID преподавателя", teacherName: "имя преподавателя", date: "дата", startsAt: "начало", endsAt: "окончание", type: "тип занятия", room: "аудитория", roomId: "ID аудитории", roomRevision: "версия аудитории", roomBuilding: "корпус аудитории", teachingAssignmentId: "ID назначения преподавателя", teachingAssignmentRevision: "версия назначения преподавателя", other: "дополнительные поля" };
 const JOURNAL_FIELDS: Record<ScheduleJournalComparedField, string> = { ...FIELDS, journalState: "состояние связи" };
 export default function ScheduleComparisonReview({ review }: { review: BackupScheduleComparison }) {
   if (!review.drafts.counts.documents && !review.published.counts.documents) return null;

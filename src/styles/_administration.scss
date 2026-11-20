@@ -8,6 +8,80 @@
   --ui-dark-secondary: var(--ui-panel);
   --ui-dark-tertiary: var(--ui-field);
   --ui-gradient-logo: linear-gradient(to left, var(--ui-action-primary), var(--ui-accent-secondary));
+
+  // Панели со своей SVG-стрелкой сохраняют оформление своего компонента.
+  details > summary:not(:has(svg)) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 46px;
+    width: 100%;
+    padding: 11px 54px 11px 14px;
+    border: 1px solid $color-control-border;
+    border-radius: 10px;
+    background: $color-field;
+    color: $color-text-light;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.6;
+    text-align: left;
+    overflow-wrap: anywhere;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 160ms ease, background-color 160ms ease;
+
+    &::-webkit-details-marker { display: none; }
+    &::marker { content: ""; }
+    &::before {
+      content: "";
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      width: 28px;
+      height: 28px;
+      border: 1px solid $color-border;
+      border-radius: 8px;
+      background: $color-panel;
+      transform: translateY(-50%);
+      pointer-events: none;
+      transition: border-color 160ms ease, background-color 160ms ease;
+    }
+    &::after {
+      content: "";
+      position: absolute;
+      right: 21px;
+      top: calc(50% - 5px);
+      width: 7px;
+      height: 7px;
+      border: solid $color-text-secondary;
+      border-width: 0 1.6px 1.6px 0;
+      transform: rotate(45deg);
+      pointer-events: none;
+      transition: transform 180ms ease, border-color 160ms ease;
+    }
+    &:hover {
+      border-color: theme-alpha($color-accent-primary, .5);
+      background: color-mix(in srgb, #{$color-accent-primary} 4%, #{$color-field});
+      color: $color-text-light;
+    }
+    &:hover::before { border-color: theme-alpha($color-accent-primary, .4); background: $color-accent-background-hover; }
+    &:hover::after { border-color: $color-accent-primary; }
+    &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; }
+  }
+  details[open] > summary:not(:has(svg)) {
+    border-color: theme-alpha($color-accent-primary, .45);
+    background: color-mix(in srgb, #{$color-accent-primary} 5%, #{$color-field});
+    &::before { border-color: theme-alpha($color-accent-primary, .3); background: $color-accent-background-hover; }
+    &::after { border-color: $color-accent-primary; transform: translateY(3px) rotate(225deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    details > summary:not(:has(svg)) { &, &::before, &::after { transition: none; } }
+  }
 }
 
 @mixin surface($padding: 20px) {

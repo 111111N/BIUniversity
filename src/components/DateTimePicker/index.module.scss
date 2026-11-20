@@ -153,6 +153,7 @@
   color: $color-on-accent;
 }
 .selectedDay:hover { border-color: $color-accent-primary; background: $color-accent-primary; color: $color-on-accent; }
+.day:disabled { opacity: .3; cursor: not-allowed; background: transparent; border-color: transparent; }
 
 .footer {
   justify-content: space-between;
@@ -202,3 +203,10 @@
 
 .dateOnly { width: 310px; max-width: calc(100vw - 24px); }
 .dateOnly .pickerBody { grid-template-columns: minmax(0, 1fr); }
+.timeOnly { width: 260px; max-width: calc(100vw - 24px); }
+.timeOnly .pickerBody { grid-template-columns: 140px; justify-content: center; }
+.timeOnly .manualField input { width: 94px; }
+.clockIcon { width: 20px; height: 20px; flex: 0 0 20px; color: $color-text-secondary; }
+.field { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.field > label { color: $color-text-secondary; font-size: 13px; font-weight: 500; }
+.fieldHint { color: $color-text-secondary; font-size: 12px; line-height: 1.5; }

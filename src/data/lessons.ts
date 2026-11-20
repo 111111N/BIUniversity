@@ -53,7 +53,7 @@ export const createSubjectLessons = (subjectId: string, groupId: string, now = D
     .filter((lesson) => lesson.subjectId === subjectId && lesson.groupId === groupId)
     .map((lesson) => ({
       id: lesson.id, subjectId, groupId, semesterId: `${lesson.date.slice(0, 4)}-${Number(lesson.date.slice(5, 7)) >= 8 ? "fall" : "spring"}`,
-      date: lesson.date, startsAt: lesson.startsAt, type: lesson.type, room: lesson.room,
+      date: lesson.date, startsAt: lesson.startsAt, type: lesson.type, room: lesson.roomBuilding ? `${lesson.roomBuilding} · ${lesson.room}` : lesson.room,
       topic: "Занятие из опубликованного расписания",
       state: lesson.journalState !== "active" ? lesson.journalState : new Date(`${lesson.date}T${lesson.endsAt}`).getTime() <= now ? "completed" : "scheduled",
     }));

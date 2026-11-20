@@ -37,7 +37,7 @@ export default function AssessmentSelectionReview({ inspection }: { inspection: 
     } finally { if (operation.current === controller) operation.current = null; }
   };
   return <section aria-label="Проверка выбранного набора аттестаций">
-    <p className={styles.hint}>Проверьте аттестации, их историю, исправления и ссылки на выбранные учётки, группы и дисциплины. Записи только из браузера сохраняются в проверяемом наборе. Различающиеся ID требуют выбора после просмотра значений.</p>
+    <p className={styles.hint}>Проверьте аттестации, их историю, исправления и ссылки на выбранные учётки, группы, дисциплины и учебные периоды. Записи только из браузера сохраняются в проверяемом наборе. Различающиеся ID требуют выбора после просмотра значений.</p>
     <div className={styles.actions}><button type="button" disabled={!active || current?.busy} onClick={() => void validate()}>{current?.busy ? "Проверяем выбранные версии…" : "Проверить выбранные аттестации"}</button></div>
     {current?.error && <p className={styles.error} role="alert">{current.error}</p>}
     {current?.review && <div role="status" aria-live="polite">
@@ -46,7 +46,7 @@ export default function AssessmentSelectionReview({ inspection }: { inspection: 
       <p className={styles.hint}>Конфликтов: {current.review.counts.conflicts}. Без выбора: {current.review.counts.unresolved}. Записей только из браузера: {current.review.counts.browserOnly}.</p>
       {current.review.records && <p className={styles.hint}>Аттестаций: {current.review.records.assessments}. Событий истории: {current.review.records.history}. Исправлений: {current.review.records.corrections}. Событий исправлений: {current.review.records.correctionHistory}. Ревизия проверяемого набора: {current.review.revisions.candidate}.</p>}
       {current.review.references && <AssessmentReferencesReview review={current.review.references} />}
-      <p className={styles.hint}>Исторические полномочия, учебные периоды и связи с остальными выбранными документами требуют подтверждения. Восстановление всего архива остаётся недоступным; данные не изменены.</p>
+      <p className={styles.hint}>Исторические полномочия и связи с остальными выбранными документами требуют подтверждения. Проверка периодов не объединяет расходящиеся ветви истории. Восстановление всего архива остаётся недоступным; данные не изменены.</p>
     </div>}
   </section>;
 }

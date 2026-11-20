@@ -32,6 +32,7 @@ const NotFound = lazy(() => import("./pages/notFound"));
 const AdminSchedule = lazy(() => import("./pages/adminSchedule"));
 const AdminScheduleOverview = lazy(() => import("./pages/adminSchedule/Overview"));
 const AdminScheduleTemplates = lazy(() => import("./pages/adminSchedule/Templates"));
+const AdminRooms = lazy(() => import("./pages/adminRooms"));
 const AdminAccounts = lazy(() => import("./pages/adminAccounts"));
 const AdminPeople = lazy(() => import("./pages/adminPeople"));
 const AdminSubjects = lazy(() => import("./pages/adminSubjects"));
@@ -81,6 +82,7 @@ const LayoutWithNav = () => {
                     <Route path="/admin/schedule" element={<RoleRoute allow="configurator"><AdminSchedule /></RoleRoute>} />
                     <Route path="/admin/schedule/overview" element={<RoleRoute allow="configurator"><AdminScheduleOverview /></RoleRoute>} />
                     <Route path="/admin/schedule/templates" element={<RoleRoute allow="configurator"><AdminScheduleTemplates /></RoleRoute>} />
+                    <Route path="/admin/rooms" element={<RoleRoute allow="configurator"><AdminRooms /></RoleRoute>} />
                     <Route path="/admin/accounts" element={<RoleRoute allow="configurator"><AdminAccounts /></RoleRoute>} />
                     <Route path="/admin/people" element={<RoleRoute allow="configurator"><AdminPeople /></RoleRoute>} />
                     <Route path="/admin/accounts/import" element={<RoleRoute allow="configurator"><StudentImport /></RoleRoute>} />

@@ -1,7 +1,7 @@
 import { decodeManagedSchedule, MANAGED_SCHEDULE_KEY, type ManagedJournalEntry } from "./scheduleManagement";
 import { assertCompleteBackupRecordComparison, compareBackupRecords, type BackupRecordComparison, type BackupRecordDefinition, type BackupRecordEntries } from "./backupRecordComparison";
 
-const FIELDS = ["scheduleId", "subjectId", "groupId", "teacherId", "teacherName", "date", "startsAt", "endsAt", "type", "room"] as const;
+const FIELDS = ["scheduleId", "subjectId", "groupId", "teacherId", "teacherName", "date", "startsAt", "endsAt", "type", "room", "roomId", "roomRevision", "roomBuilding", "teachingAssignmentId", "teachingAssignmentRevision"] as const;
 export type ScheduleComparedField = typeof FIELDS[number] | "other";
 export type ScheduleJournalComparedField = ScheduleComparedField | "journalState";
 export interface BackupScheduleComparison { drafts: BackupRecordComparison<ScheduleComparedField>; published: BackupRecordComparison<ScheduleComparedField>; journalComparisonVersion?: 1; journal?: BackupRecordComparison<ScheduleJournalComparedField> }

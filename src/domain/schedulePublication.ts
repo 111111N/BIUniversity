@@ -1,6 +1,6 @@
 import type { ManagedLesson } from "./scheduleManagement";
 
-export const PUBLICATION_FIELD_LABELS = { subjectId: "Дисциплина", groupId: "Группа", teacherId: "Преподаватель", teacherName: "Имя преподавателя", date: "Дата", startsAt: "Начало", endsAt: "Окончание", type: "Тип занятия", room: "Аудитория" };
+export const PUBLICATION_FIELD_LABELS = { subjectId: "Дисциплина", groupId: "Группа", teacherId: "Преподаватель", teacherName: "Имя преподавателя", date: "Дата", startsAt: "Начало", endsAt: "Окончание", type: "Тип занятия", room: "Аудитория", roomId: "Карточка аудитории", roomBuilding: "Корпус", roomRevision: "Версия аудитории" };
 export type PublicationChangeField = keyof typeof PUBLICATION_FIELD_LABELS;
 export type PublicationChangeKind = "added" | "changed" | "removed";
 export interface PublicationChange { id: string; kind: PublicationChangeKind; before?: ManagedLesson; after?: ManagedLesson; fields: PublicationChangeField[] }

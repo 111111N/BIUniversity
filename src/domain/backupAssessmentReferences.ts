@@ -5,8 +5,8 @@ import { decodeSubjectCatalog } from "./subjectCatalog";
 import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, encodeBackupValue } from "./localBackup";
 import { canonicalBackupValue } from "./localBackupValidation";
 import type { BackupRecordEntries } from "./backupRecordComparison";
-import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument } from "./academicPeriods";
 import { createAssessmentPeriodHistoryLookup } from "./assessmentPeriods";
+import { resolveBackupPeriodSelection, type PeriodRecordChoice } from "./backupPeriodSelection";
 
 export type AssessmentReferenceTarget = "accounts" | "groups" | "subjects";
 export interface AssessmentReferenceChoice { collection: AssessmentReferenceTarget; id: string; version: "archive" | "browser" }
@@ -30,7 +30,7 @@ const DEFINITIONS = {
 /** Checks exact IDs in selected cards only; does not infer historical roles or membership. */
 export async function inspectSelectedAssessmentReferences(
   document: AssessmentDocument, archive: BackupRecordEntries, browser: BackupRecordEntries,
-  choices: readonly AssessmentReferenceChoice[], signal?: AbortSignal,
+  choices: readonly AssessmentReferenceChoice[], signal?: AbortSignal, periodChoices: readonly PeriodRecordChoice[] = [],
 ): Promise<AssessmentReferenceReview> {
   checkBackupAbort(signal);
   const result: AssessmentReferenceReview = { scope: "assessment-reference-presence", status: "blocked", counts: { references: 0, found: 0, missing: 0, unresolved: 0, unavailable: 0 }, issues: [] };
@@ -123,23 +123,14 @@ export async function inspectSelectedAssessmentReferences(
   const linked = document.assessments.filter(row => row.academicPeriod);
   if (linked.length) {
     result.counts.references += linked.length;
-    const readPeriods = (entries: BackupRecordEntries) => {
-      const matches = entries.filter(row => row.key.startsWith("bi-university-academic-periods-"));
-      if (!matches.length) return null;
-      if (matches.length !== 1 || matches[0].key !== ACADEMIC_PERIODS_STORAGE_KEY) throw new Error("Unsupported period source");
-      addBackupText(textBudget, matches[0].raw); return decodeAcademicPeriodsDocument(matches[0].raw);
-    };
     try {
-      const left = readPeriods(archive), right = readPeriods(browser);
-      if (!left && !right) {
-        result.counts.unavailable += linked.length;
-        result.issues.push({ code: "missing-source", target: "periods", message: "Справочник учебных периодов отсутствует в обоих источниках. Текст периода и номер семестра не заменяют сохранённую связь." });
-      } else if (left && right && canonicalBackupValue(await encodeBackupValue(left, valueBudget, signal)) !== canonicalBackupValue(await encodeBackupValue(right, valueBudget, signal))) {
-        result.counts.unresolved += linked.length;
-        result.issues.push({ code: "unresolved-reference", target: "periods", message: "Версии справочника периодов различаются. Выбор и согласование его записей с историей ещё не реализованы; учебная область выбранных аттестаций не подтверждена." });
+      const selected = await resolveBackupPeriodSelection(archive, browser, periodChoices, signal);
+      if (!selected.document) {
+        const unavailable = selected.review.issues.some(issue => issue.code === "invalid-source" || issue.code === "missing-source");
+        if (unavailable) result.counts.unavailable += linked.length; else result.counts.unresolved += linked.length;
+        for (const issue of selected.review.issues) result.issues.push({ code: issue.code === "invalid-source" || issue.code === "missing-source" ? issue.code : "unresolved-reference", target: "periods", message: issue.message });
       } else {
-        const catalog = right ?? left!;
-        const periodExists = createAssessmentPeriodHistoryLookup(catalog);
+        const periodExists = createAssessmentPeriodHistoryLookup(selected.document);
         for (const assessment of linked) {
           await step();
           if (periodExists(assessment.academicPeriod!, assessment.attempts[0].createdAt)) result.counts.found++;

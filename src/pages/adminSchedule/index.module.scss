@@ -15,10 +15,34 @@
 .page .primary { @include admin.primary; }
 .weekPanel { @include admin.surface(0); }
 .scopeRow { display: grid; grid-template-columns: minmax(180px, 420px) minmax(0, 1fr); gap: 16px 24px; align-items: start; padding: 20px; }
-.weekTools { justify-self: end; min-width: 0; max-width: 100%; text-align: right; padding-top: 22px; }
-.weekTools > summary { @include admin.button; display: list-item; list-style-position: inside; width: fit-content; margin-left: auto; }
-.weekToolsContent { display: grid; justify-items: end; gap: 8px; padding-top: 12px; > button { max-width: 100%; } p { margin: 2px 0 0; max-width: 310px; color: $color-text-secondary; font-size: 13px; line-height: 1.6; } }
-.weekToolsContent > .reset { color: $color-danger-text; }
+.weekTools { justify-self: end; min-width: 0; width: min(100%, 350px); text-align: left; padding-top: 22px; }
+.weekToolsContent {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid $color-control-border;
+  border-radius: 12px;
+  background: $color-field;
+  box-shadow: 0 8px 22px theme-alpha($color-shadow, .15);
+  p { margin: 4px 6px 2px; padding: 10px 4px 4px; border-top: 1px solid $color-border; color: $color-text-secondary; font-size: 12px; line-height: 1.65; }
+}
+.page .weekToolsContent > button {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 10px 12px;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+  &:not(:disabled):hover { background: $color-accent-background-hover; border-color: theme-alpha($color-accent-primary, .4); }
+  &:not(.reset)::after { content: ""; flex: 0 0 6px; width: 6px; height: 6px; margin-left: auto; border: solid $color-text-secondary; border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); }
+  &:not(:disabled):hover::after { border-color: $color-accent-primary; }
+  &:disabled { background: transparent; opacity: .55; }
+}
+.weekToolsDivider { height: 1px; margin: 4px 8px; background: $color-border; }
+.page .weekToolsContent > .reset { margin-top: 4px; color: $color-danger-text; border-color: theme-alpha($color-danger-text, .2); &:not(:disabled):hover { border-color: $color-danger-text; } }
 .workflow { display: flex; justify-content: space-between; align-items: center; gap: 16px 24px; padding: 20px; border-top: 1px solid $color-border; > button { flex-shrink: 0; } }
 .workflowText { min-width: 0; p { margin: 8px 0 0; color: $color-text-secondary; font-size: 13px; line-height: 1.65; } }
 .statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; > span { color: $color-text-secondary; font-size: 12px; line-height: 1.6; } }
@@ -74,8 +98,7 @@
 @media (max-width: 760px) {
   .workflow { align-items: stretch; flex-direction: column; gap: 14px; > button { align-self: start; } }
   .scopeRow { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .weekTools { justify-self: stretch; text-align: left; padding-top: 0; > summary { margin: 0; } }
-  .weekToolsContent { justify-items: stretch; p { max-width: none; } }
+  .weekTools { justify-self: stretch; width: 100%; padding-top: 0; }
   .conflicts li { align-items: start; flex-direction: column; }
 }
 @media (max-width: 600px) {

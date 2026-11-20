@@ -1,6 +1,7 @@
 import { checkBackupAbort } from "./localBackup";
 import type { BackupDocumentIssue } from "./localBackupDocuments";
 import { getScheduleRoomKey, MANAGED_SCHEDULE_KEY, type ManagedLesson, type ManagedScheduleSnapshot, type ScheduleConflict } from "./scheduleManagement";
+import { compareLessonRooms, emptyRooms, indexRooms, type RoomsDocument } from "./rooms";
 
 type Mode = "published" | "draft" | "draft-published";
 type Kind = ScheduleConflict["kind"];
@@ -9,22 +10,27 @@ const labels: Record<Kind, string> = { teacher: "преподавателя", gr
 const byStart = (left: ManagedLesson, right: ManagedLesson) => left.startsAt.localeCompare(right.startsAt) || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
 
 /** Compare only saved managed lessons. A draft replaces its own group's published week. */
-export const inspectArchivedScheduleConflicts = async (schedule: ManagedScheduleSnapshot | undefined, signal?: AbortSignal) => {
+export const inspectArchivedScheduleConflicts = async (schedule: ManagedScheduleSnapshot | undefined, signal?: AbortSignal, rooms?: RoomsDocument) => {
   const issues: BackupDocumentIssue[] = [];
   const stats: Record<Mode, number> = { published: 0, draft: 0, "draft-published": 0 };
   const kinds: Record<Kind, number> = { teacher: 0, group: 0, room: 0 };
   const buckets = new Map<string, Bucket>();
+  const roomIndex = indexRooms(rooms ?? emptyRooms()), found = new Set<string>();
   let published = 0; let drafts = 0; let count = 0;
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   checkBackupAbort(signal);
   if (!schedule) return { issues, summary: "Пересечения пар не проверены: расписание отсутствует или не читается. Пары браузера и встроенного расписания не подставлялись." };
   const finding = (mode: Mode, kind: Kind, left: ManagedLesson, right: ManagedLesson) => {
     if (left.id === right.id) return;
+    const roomConflict = kind === "room" ? compareLessonRooms(left, right, roomIndex) : null;
+    if (kind === "room" && !roomConflict) return;
+    const identity = JSON.stringify([mode, kind, ...[left.id, right.id].sort()]);
+    if (found.has(identity)) return; found.add(identity);
     stats[mode]++; kinds[kind]++;
     const ids = mode === "draft-published" ? [left.id, right.id] : [left.id, right.id].sort();
-    issues.push({ kind: "schedule", level: mode === "published" ? "error" : "review", code: `${mode}-schedule-conflict-${kind}`,
+    issues.push({ kind: "schedule", level: mode === "published" && roomConflict !== "possible" ? "error" : "review", code: `${mode}-schedule-conflict-${kind}`,
       referenceId: MANAGED_SCHEDULE_KEY, recordId: JSON.stringify([mode, ...ids]),
-      message: mode === "published" ? `В сохранённой публикации пересекается время занятий ${labels[kind]}. Требуется решение перед восстановлением; пары не изменены.`
+      message: roomConflict === "possible" ? "Возможно пересечение аудитории со старым названием. Сопоставление корпуса и карточки требует проверки; пары и справочник не изменены." : mode === "published" ? `В сохранённой публикации пересекается время занятий ${labels[kind]}. Требуется решение перед восстановлением; пары не изменены.`
         : mode === "draft" ? `В сохранённом черновике одной группы пересекается время занятий ${labels[kind]}. Черновик может быть промежуточным; перед публикацией потребуется устранить пересечение. Пары не изменены.`
           : `Пара черновика пересекается по времени с опубликованной парой другой группы по ${kind === "teacher" ? "преподавателю" : kind === "group" ? "группе" : "аудитории"}. По текущим правилам это мешает публикации; черновик и публикация не изменены.`,
     });
@@ -34,7 +40,8 @@ export const inspectArchivedScheduleConflicts = async (schedule: ManagedSchedule
       await step();
       for (const lesson of week.lessons) {
         await step(); if (mode === "published") published++; else drafts++;
-        const resources: [Kind, string][] = [["teacher", lesson.teacherId], ["group", lesson.groupId], ["room", getScheduleRoomKey(lesson.room)]];
+        const roomKey = getScheduleRoomKey(lesson.room), roomIds = lesson.roomId ? [lesson.roomId] : [...(roomIndex.candidatesByLegacyKey.get(roomKey) ?? [])];
+        const resources: [Kind, string][] = [["teacher", lesson.teacherId], ["group", lesson.groupId], ...[...new Set([`legacy:${roomKey}`, ...roomIds.map(id => `id:${id}`)])].map((key): [Kind, string] => ["room", key])];
         for (const [kind, resource] of resources) {
           const key = JSON.stringify([kind, lesson.date, resource]);
           let bucket = buckets.get(key);

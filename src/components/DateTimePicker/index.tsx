@@ -33,9 +33,12 @@ interface DateTimePickerProps {
   describedBy?: string;
   invalid?: boolean;
   disabled?: boolean;
+  timeOnly?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
-const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выберите дату", ariaLabel = "Дата и время", showTime = true, allowClear = true, id, describedBy, invalid, disabled = false }: DateTimePickerProps) => {
+const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выберите дату", ariaLabel = "Дата и время", showTime = true, allowClear = true, id, describedBy, invalid, disabled = false, timeOnly = false, minDate, maxDate }: DateTimePickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [draftValue, setDraftValue] = useState(value);
   const dialogId = useId();
@@ -55,6 +58,11 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+  const isAllowedDay = (day: Date) => {
+    const key = format(day, "yyyy-MM-dd");
+    return (!minDate || key >= format(minDate, "yyyy-MM-dd")) && (!maxDate || key <= format(maxDate, "yyyy-MM-dd"));
+  };
+  const valueFormat = timeOnly ? "HH:mm" : showTime ? "d MMMM yyyy, HH:mm" : "d MMMM yyyy";
   useEffect(() => { if (disabled) setIsOpen(false); }, [disabled]);
   useEffect(() => {
     if (!isOpen) return;
@@ -89,10 +97,14 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
     if (!isOpen) return;
     const frame = requestAnimationFrame(() => {
       if (popoverRef.current?.contains(document.activeElement) && document.activeElement?.matches("input")) return;
-      popoverRef.current?.querySelector<HTMLElement>('[data-focused="true"], [data-selected-period="true"]')?.focus({ preventScroll: true });
+      if (timeOnly) timeInputRef.current?.focus({ preventScroll: true });
+      else {
+        const root = popoverRef.current;
+        (root?.querySelector<HTMLElement>('[data-focused="true"]:not([disabled]), [data-selected-period="true"]') ?? root?.querySelector<HTMLElement>('[data-calendar-day]:not([disabled])'))?.focus({ preventScroll: true });
+      }
     });
     return () => cancelAnimationFrame(frame);
-  }, [isOpen, view]);
+  }, [isOpen, view, timeOnly]);
 
   const close = () => {
     setIsOpen(false);
@@ -157,6 +169,10 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
 
   const selectDay = (day: Date, closeAfterSelection = true) => {
     if (disabled) return;
+    if (!isAllowedDay(day)) {
+      setDateError("Выберите дату в допустимом диапазоне.");
+      return;
+    }
     setFocusedDay(day);
     if (!isSameMonth(day, visibleMonth)) setVisibleMonth(startOfMonth(day));
     const next = new Date(day);
@@ -180,8 +196,8 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
     setTime({ hours, minutes });
     setTimeText(formatPickerTimeText(hours, minutes));
     setTimeError("");
-    if (!draftValue) return;
-    const next = new Date(draftValue);
+    if (!draftValue && !timeOnly) return;
+    const next = new Date(draftValue ?? initialDate ?? new Date());
     next.setHours(hours, minutes, 0, 0);
     setDraftValue(next);
   };
@@ -192,6 +208,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
       if (reportError || text.length >= 10) setDateError("Введите существующую дату: дд.мм.гггг");
       return false;
     }
+    if (!isAllowedDay(date)) { setDateError("Выберите дату в допустимом диапазоне."); return false; }
     try { selectDay(date, false); setView("days"); return true; }
     catch (error) { console.error("Не удалось применить введённую дату:", error); setDateError("Не удалось изменить дату."); return false; }
   };
@@ -205,10 +222,17 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
     catch (error) { console.error("Не удалось применить введённое время:", error); setTimeError("Не удалось изменить время."); return false; }
   };
   const finish = () => {
-    if ((dateText || draftValue) && !parsePickerDateText(dateText)) { setDateError("Введите существующую дату: дд.мм.гггг"); dateInputRef.current?.focus(); return; }
+    if (!timeOnly && (dateText || draftValue) && !parsePickerDateText(dateText)) { setDateError("Введите существующую дату: дд.мм.гггг"); dateInputRef.current?.focus(); return; }
+    if (!timeOnly && dateText && !isAllowedDay(parsePickerDateText(dateText)!)) { setDateError("Выберите дату в допустимом диапазоне."); dateInputRef.current?.focus(); return; }
     if (showTime && !parsePickerTimeText(timeText)) { setTimeError("Введите время от 00:00 до 23:59"); timeInputRef.current?.focus(); return; }
     try {
-      if (draftValue?.getTime() !== value?.getTime()) onChange(draftValue);
+      let next = draftValue;
+      if (timeOnly) {
+        const parsed = parsePickerTimeText(timeText)!;
+        next = new Date(draftValue ?? initialDate ?? new Date());
+        next.setHours(parsed.hours, parsed.minutes, 0, 0);
+      }
+      if (next?.getTime() !== value?.getTime()) onChange(next);
       close();
     } catch (error) {
       console.error("Не удалось применить дату и время:", error);
@@ -244,7 +268,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
           setIsOpen(true);
         }}
         aria-haspopup="dialog"
-        aria-label={`${ariaLabel}: ${value ? format(value, showTime ? "d MMMM yyyy, HH:mm" : "d MMMM yyyy", { locale: ru }) : placeholder}`}
+        aria-label={`${ariaLabel}: ${value ? format(value, valueFormat, { locale: ru }) : placeholder}`}
         aria-expanded={isOpen && !disabled}
         aria-controls={isOpen && !disabled ? dialogId : undefined}
         aria-describedby={describedBy}
@@ -252,9 +276,9 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
         disabled={disabled}
       >
         <span className={value ? styles.triggerValue : styles.placeholder}>
-          {value ? format(value, showTime ? "d MMMM yyyy, HH:mm" : "d MMMM yyyy", { locale: ru }) : placeholder}
+          {value ? format(value, valueFormat, { locale: ru }) : placeholder}
         </span>
-        <span className={styles.calendarIcon} aria-hidden="true" />
+        {timeOnly ? <svg className={styles.clockIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg> : <span className={styles.calendarIcon} aria-hidden="true" />}
       </button>
       {value && allowClear && <button type="button" className={styles.clearValue} disabled={disabled} aria-label={`Очистить: ${ariaLabel.toLowerCase()}`} onClick={clearSelection}>×</button>}
       </div>
@@ -264,7 +288,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
         <div
           id={dialogId}
           ref={popoverRef}
-          className={`${styles.popover} ${!showTime ? styles.dateOnly : ""}`}
+          className={`${styles.popover} ${!showTime ? styles.dateOnly : ""} ${timeOnly ? styles.timeOnly : ""}`}
           style={popoverPosition}
           role="dialog"
           aria-label={`Выбор: ${ariaLabel.toLowerCase()}`}
@@ -284,13 +308,13 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
           }}
         >
-          <header className={styles.calendarHeader}>
+          {!timeOnly && <header className={styles.calendarHeader}>
             <ArrowButton onClick={() => navigatePeriod(-1)} label="Предыдущий период" direction="left" />
             <div className={styles.periodSelector} aria-live="polite">{view === "days" && <button type="button" onClick={() => setView("months")}>{format(visibleMonth, "LLLL", { locale: ru })}</button>}<button type="button" onClick={() => setView("years")}>{view === "years" ? `${visibleMonth.getFullYear() - 5}–${visibleMonth.getFullYear() + 6}` : visibleMonth.getFullYear()}</button></div>
             <ArrowButton onClick={() => navigatePeriod(1)} label="Следующий период" />
-          </header>
+          </header>}
 
-          <div className={styles.pickerBody}><div className={styles.calendarBody}>{view === "days" && <><div className={styles.weekDays}>
+          <div className={styles.pickerBody}>{!timeOnly && <div className={styles.calendarBody}>{view === "days" && <><div className={styles.weekDays}>
             {WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}
           </div>
 
@@ -304,6 +328,7 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
                   key={day.toISOString()}
                   className={`${styles.day} ${!isSameMonth(day, visibleMonth) ? styles.outsideDay : ""} ${today ? styles.today : ""} ${selected ? styles.selectedDay : ""}`}
                   onClick={() => selectDay(day)}
+                  disabled={!isAllowedDay(day)}
                   tabIndex={isSameDay(day, focusedDay) ? 0 : -1}
                   onFocus={() => setFocusedDay(day)}
                   onKeyDown={(event) => {
@@ -316,6 +341,8 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
                     else if (event.key === "PageUp" || event.key === "PageDown") next = getDayInMonth(day, addMonths(day, (event.key === "PageUp" ? -1 : 1) * (event.shiftKey ? 12 : 1)));
                     else return;
                     event.preventDefault();
+                    if (minDate && format(next, "yyyy-MM-dd") < format(minDate, "yyyy-MM-dd")) next = new Date(minDate);
+                    if (maxDate && format(next, "yyyy-MM-dd") > format(maxDate, "yyyy-MM-dd")) next = new Date(maxDate);
                     setFocusedDay(next);
                     if (!isSameMonth(next, visibleMonth)) setVisibleMonth(startOfMonth(next));
                     requestAnimationFrame(() => popoverRef.current?.querySelector<HTMLElement>(`[data-date="${format(next, "yyyy-MM-dd")}"]`)?.focus());
@@ -334,15 +361,15 @@ const DateTimePicker = ({ value, initialDate, onChange, placeholder = "Выбе�
             })}
           </div></>}
           {view === "months" && <div className={styles.monthsGrid}>{MONTHS.map((month, index) => <button type="button" aria-pressed={index === visibleMonth.getMonth()} data-selected-period={index === visibleMonth.getMonth() ? "true" : undefined} className={index === visibleMonth.getMonth() ? styles.selectedPeriod : ""} key={month} onClick={() => { changeMonth(new Date(visibleMonth.getFullYear(), index, 1)); setView("days"); }}>{month}</button>)}</div>}
-          {view === "years" && <div className={styles.yearsGrid}>{Array.from({ length: 12 }, (_, index) => visibleMonth.getFullYear() - 5 + index).map((year) => <button type="button" aria-pressed={year === visibleMonth.getFullYear()} data-selected-period={year === visibleMonth.getFullYear() ? "true" : undefined} className={year === visibleMonth.getFullYear() ? styles.selectedPeriod : ""} key={year} onClick={() => { changeMonth(new Date(year, visibleMonth.getMonth(), 1)); setView("months"); }}>{year}</button>)}</div>}</div>{showTime && <TimeWheel hours={time.hours} minutes={time.minutes} onChange={changeTime} />}</div>
+          {view === "years" && <div className={styles.yearsGrid}>{Array.from({ length: 12 }, (_, index) => visibleMonth.getFullYear() - 5 + index).map((year) => <button type="button" aria-pressed={year === visibleMonth.getFullYear()} data-selected-period={year === visibleMonth.getFullYear() ? "true" : undefined} className={year === visibleMonth.getFullYear() ? styles.selectedPeriod : ""} key={year} onClick={() => { changeMonth(new Date(year, visibleMonth.getMonth(), 1)); setView("months"); }}>{year}</button>)}</div>}</div>}{showTime && <TimeWheel hours={time.hours} minutes={time.minutes} onChange={changeTime} />}</div>
 
           <footer className={styles.footer}>
             <div className={styles.manualFields}>
-              <label className={styles.manualField}>
+              {!timeOnly && <label className={styles.manualField}>
                 <span className={styles.srOnly}>Дата вручную</span>
                 <svg className={styles.manualIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M7 3v4M17 3v4M3 11h18" /></svg>
                 <input ref={dateInputRef} type="text" inputMode="numeric" value={dateText} placeholder="дд.мм.гггг" maxLength={10} aria-invalid={Boolean(dateError)} aria-describedby={dateError ? `${dialogId}-date-error` : undefined} onChange={(event) => { setDateText(event.target.value); setDateError(""); applyDateText(event.target.value); }} onBlur={() => { if (dateText || draftValue) applyDateText(dateText, true); }} onKeyDown={(event) => { if (event.key !== "Enter" || event.ctrlKey || event.metaKey) return; event.preventDefault(); event.stopPropagation(); if (applyDateText(dateText, true)) { if (showTime) timeInputRef.current?.focus(); else finish(); } }} />
-              </label>
+              </label>}
               {showTime && <label className={styles.manualField}>
                 <span className={styles.srOnly}>Время вручную</span>
                 <svg className={styles.manualIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>

@@ -6,6 +6,7 @@ import type { ManagedScheduleWeek } from "./scheduleManagement";
 import type { AssessmentDocument } from "./assessmentTypes";
 import { inspectAssessmentDependencies } from "./assessmentDependencies";
 import { isSubjectActive } from "./subjectCatalog";
+import type { RoomsDocument } from "./rooms";
 
 export const ADMINISTRATION_CHECK_LABELS = {
   "empty-group": "Группы без внесённых учащихся",
@@ -48,13 +49,14 @@ const collator = new Intl.Collator("ru", { numeric: true, sensitivity: "base" })
 
 export const queryAdministrationChecks = (
   accounts: PortalAccount[], groups: CheckGroup[], subjects: CheckSubject[], published: ManagedScheduleWeek[],
-  query: AdministrationChecksQuery, now: string, assessments?: AssessmentDocument,
+  query: AdministrationChecksQuery, now: string, assessments?: AssessmentDocument, rooms?: RoomsDocument,
 ): AdministrationChecksResult => {
   const instant = Date.parse(now);
   if (!Number.isFinite(instant)) throw new Error("Не удалось определить время проверки данных.");
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const groupsById = new Map(groups.map((group) => [group.id, group]));
   const subjectsById = new Map(subjects.map((subject) => [subject.id, subject]));
+  const roomsById = new Map(rooms?.rooms.map(room => [room.id, room]));
   const populatedGroups = new Set<string>();
   const assignedSubjects = new Set<string>();
   const assignments = new Map<string, Map<string, Set<string>>>();
@@ -87,6 +89,7 @@ export const queryAdministrationChecks = (
     else if (!assignments.get(teacher.id)?.get(lesson.subjectId)?.has(lesson.groupId)) reasons.push("Преподаватель больше не назначен на эту дисциплину и группу");
     if (!group || !isGroupActive(group)) reasons.push("Группа недоступна или находится в архиве");
     if (!subject) reasons.push("Дисциплина недоступна");
+    if (rooms && lesson.roomId && roomsById.get(lesson.roomId)?.status !== "active") reasons.push("Аудитория недоступна или находится в архиве");
     if (reasons.length) issues.push({ id: `published-lesson:${lesson.id}`, kind: "published-lesson", level: "action", title: subject?.name ?? "Дисциплина недоступна", detail: `${lesson.startsAt}–${lesson.endsAt} · ${teacher?.name ?? lesson.teacherName}${teacher ? ` (${teacher.login})` : ""} · ${group?.name ?? "Группа недоступна"}. ${reasons.join(". ")}.`, groupId: group?.id, groupArchived: group?.status === "archived", subjectId: lesson.subjectId, accountId: teacher?.id, weekStart: week.weekStart, lessonDate: lesson.date });
   }
   if (assessments) for (const issue of inspectAssessmentDependencies(assessments, { accounts, groups, subjects })) issues.push(issue);

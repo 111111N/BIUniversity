@@ -11,6 +11,8 @@ import { parseCalendarDate } from "../../domain/calendar";
 import { lessonTypeLabels } from "../../domain/academic";
 import { readGroupCalendarsDocument, subscribeGroupCalendars } from "../../data/groupCalendarRead";
 import useTeachingAssignmentsDocument from "../../hooks/useTeachingAssignmentsDocument";
+import useRoomsDocument from "../../hooks/useRoomsDocument";
+import { formatLessonRoom } from "../../domain/rooms";
 import base from "./CopyWeekDialog.module.scss";
 import styles from "./PublicationReview.module.scss";
 
@@ -22,6 +24,7 @@ const calendarVersion = () => {
 const labels: Record<PublicationChangeKind, string> = { added: "Добавится", changed: "Изменится", removed: "Будет убрано" };
 const dateLabel = (date: string) => parseCalendarDate(date)?.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) ?? date;
 const fieldValue = (lesson: ManagedLesson, field: PublicationChangeField) => {
+  if (field === "roomId") return lesson.roomId ? formatLessonRoom(lesson) : "Прежнее название";
   if (field === "subjectId") return getAcademicSubjectDefinition(lesson.subjectId)?.name ?? "Дисциплина недоступна";
   if (field === "groupId") return getAcademicGroup(lesson.groupId)?.name ?? "Группа недоступна";
   if (field === "teacherId") return lesson.teacherName;
@@ -29,7 +32,7 @@ const fieldValue = (lesson: ManagedLesson, field: PublicationChangeField) => {
   if (field === "type") return lessonTypeLabels[lesson.type];
   return lesson[field];
 };
-const LessonSummary = ({ label, lesson }: { label: string; lesson: ManagedLesson }) => <div><h4>{label}</h4><p>{dateLabel(lesson.date)} · {lesson.startsAt}–{lesson.endsAt}</p><p>{lessonTypeLabels[lesson.type]} · {lesson.teacherName}</p><p>Ауд. {lesson.room}</p></div>;
+const LessonSummary = ({ label, lesson }: { label: string; lesson: ManagedLesson }) => <div><h4>{label}</h4><p>{dateLabel(lesson.date)} · {lesson.startsAt}–{lesson.endsAt}</p><p>{lessonTypeLabels[lesson.type]} · {lesson.teacherName}</p><p>Ауд. {formatLessonRoom(lesson)}</p></div>;
 
 interface Props {
   groupId: string;
@@ -53,11 +56,12 @@ export default function PublicationReview({ groupId, groupName, weekStart, revis
   const [page, setPage] = useState(1);
   const [calendar, setCalendar] = useState(calendarVersion);
   const teaching = useTeachingAssignmentsDocument();
+  const rooms = useRoomsDocument();
   useEffect(() => subscribeGroupCalendars(() => setCalendar(calendarVersion())), []);
   const preview = response?.request === request ? response.preview : null;
   const error = failure?.request === request ? failure.message : "";
   const loading = !preview && !error;
-  const stale = Boolean(calendar.error || teaching.error || preview && (preview.versions.scheduleRevision !== revision || (preview.versions.calendarRevision ?? 0) !== calendar.revision || (preview.versions.teachingRevision ?? 0) !== teaching.document.revision));
+  const stale = Boolean(calendar.error || teaching.error || rooms.error || preview && (preview.versions.scheduleRevision !== revision || (preview.versions.calendarRevision ?? 0) !== calendar.revision || (preview.versions.teachingRevision ?? 0) !== teaching.document.revision || (preview.versions.roomsRevision ?? 0) !== rooms.document.revision));
   useUnsavedChangesWarning(publishing);
   useEffect(() => {
     let current = true;

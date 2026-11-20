@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Card from "../../components/Card";
 import Dropdown from "../../components/Dropdown";
+import TemporalField from "../../components/DateTimePicker/Field";
 import SearchField from "../../components/SearchField";
 import RecordEditor, { RecordEditorActions } from "../../components/RecordEditor";
 import { useRole } from "../../components/RoleContext";
@@ -86,7 +87,7 @@ function PeriodsWorkspace({ actorId }: { actorId: string }) {
         <fieldset className={fields.fields} disabled={blocked}>
           <legend className={fields.legend}>Название и даты</legend>
           <div className={fields.name}><label htmlFor={`${fieldId}-name`}>Название</label><input id={`${fieldId}-name`} required minLength={2} maxLength={160} autoComplete="off" value={editor.draft.name} onChange={event => setEditor({ ...editor, draft: { ...editor.draft, name: event.target.value } })} /></div>
-          {(["startsOn", "endsOn"] as const).map(field => <div key={field} className={fields.field}><label htmlFor={`${fieldId}-${field}`}>{field === "startsOn" ? "Начало" : "Окончание включительно"}</label><input id={`${fieldId}-${field}`} required type="date" min="0001-01-01" max="9999-12-31" value={editor.draft[field]} onChange={event => setEditor({ ...editor, draft: { ...editor.draft, [field]: event.target.value } })} /></div>)}
+          {(["startsOn", "endsOn"] as const).map(field => <TemporalField key={field} id={`${fieldId}-${field}`} label={field === "startsOn" ? "Начало" : "Окончание включительно"} required disabled={blocked} value={editor.draft[field]} onChange={value => setEditor({ ...editor, draft: { ...editor.draft, [field]: value } })} />)}
         </fieldset>
         <RecordEditorActions label={editor.id ? "Сохранить изменения" : "Создать период"} disabled={blocked || stale || Boolean(editor.id && !dirty)} busy={busy} onCancel={close} hint="Семестр должен полностью входить в учебный год. Предыдущие реквизиты сохраняются в истории." />
       </form>

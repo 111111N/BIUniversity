@@ -1,6 +1,8 @@
 import { parseCalendarDate } from "./calendar";
 import { getWeekStart, toLocalDateKey } from "./schedule";
 import type { LessonType } from "./academic";
+import { compareLessonRooms, indexRooms, type RoomIndex } from "./rooms";
+export { getScheduleRoomKey } from "./roomKeys";
 
 export interface ManagedLesson {
   id: string;
@@ -16,6 +18,9 @@ export interface ManagedLesson {
   endsAt: string;
   type: LessonType;
   room: string;
+  roomId?: string;
+  roomRevision?: number;
+  roomBuilding?: string;
 }
 export interface ManagedScheduleWeek {
   weekStart: string;
@@ -55,14 +60,14 @@ export const getManagedLessonIssues = (lesson: ManagedLesson): { field: keyof Ma
   if (!timeIsValid(lesson.startsAt) || !timeIsValid(lesson.endsAt) || lesson.startsAt >= lesson.endsAt) errors.push({ field: !timeIsValid(lesson.startsAt) ? "startsAt" : "endsAt", message: "Время окончания должно быть позже начала в пределах одного дня." });
   if (!lesson.subjectId.trim() || !lesson.groupId.trim()) errors.push({ field: !lesson.subjectId.trim() ? "subjectId" : "groupId", message: "Выберите предмет и группу." });
   if (!lesson.teacherId.trim() || !lesson.teacherName.trim()) errors.push({ field: "teacherId", message: "Выберите преподавателя." });
-  if (!lesson.room.trim() || lesson.room.length > 100) errors.push({ field: "room", message: "Укажите аудиторию, не более 100 символов." });
+  if (!lesson.room.trim() || lesson.room.length > (lesson.roomId ? 160 : 100)) errors.push({ field: "room", message: "Укажите корректное название аудитории." });
+  if (!(lesson.roomId === undefined && lesson.roomRevision === undefined && lesson.roomBuilding === undefined || typeof lesson.roomId === "string" && lesson.roomId.trim().length > 0 && lesson.roomId.length <= 160 && Number.isSafeInteger(lesson.roomRevision) && Number(lesson.roomRevision) > 0 && typeof lesson.roomBuilding === "string" && lesson.roomBuilding.trim().length > 0 && lesson.roomBuilding.length <= 160)) errors.push({ field: "room", message: "Ссылка на аудиторию неполная. Выберите аудиторию заново." });
   if (!["lecture", "practice", "laboratory"].includes(lesson.type)) errors.push({ field: "type", message: "Выберите тип занятия." });
   if (!lesson.id.startsWith("managed:") || !Number.isSafeInteger(lesson.scheduleId) || lesson.scheduleId <= 0) errors.push({ field: "id", message: "Некорректный идентификатор занятия." });
   return errors;
 };
 export const validateManagedLesson = (lesson: ManagedLesson): string[] => getManagedLessonIssues(lesson).map((issue) => issue.message);
-export const getScheduleRoomKey = (room: string) => room.toLocaleLowerCase("ru").replace(/^ауд[.]?\s*/u, "").replace(/\s+/g, "").trim();
-export const findScheduleConflicts = (lessons: ManagedLesson[], others: ManagedLesson[] = []): ScheduleConflict[] => {
+export const findScheduleConflicts = (lessons: ManagedLesson[], others: ManagedLesson[] = [], rooms: RoomIndex = indexRooms({ version: 1, revision: 0, rooms: [], history: [] })): ScheduleConflict[] => {
   const result: ScheduleConflict[] = [];
   const all = [...lessons, ...others];
   lessons.forEach((lesson, index) => {
@@ -71,7 +76,8 @@ export const findScheduleConflicts = (lessons: ManagedLesson[], others: ManagedL
       const add = (kind: ScheduleConflict["kind"], message: string) => result.push({ lessonId: lesson.id, otherId: other.id, kind, message: `${lesson.date}, ${lesson.startsAt}: ${message}` });
       if (lesson.teacherId === other.teacherId) add("teacher", "преподаватель занят на другой паре.");
       if (lesson.groupId === other.groupId) add("group", "у группы уже есть занятие в это время.");
-      if (getScheduleRoomKey(lesson.room) === getScheduleRoomKey(other.room)) add("room", "аудитория занята другой парой.");
+      const roomConflict = compareLessonRooms(lesson, other, rooms);
+      if (roomConflict) add("room", roomConflict === "confirmed" ? "аудитория занята другой парой." : "возможно пересечение аудитории со старым названием. Уточните аудиторию и корпус обеих пар.");
     });
   });
   return result;

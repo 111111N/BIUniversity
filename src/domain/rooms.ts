@@ -55,10 +55,18 @@ export type RoomConflict = "confirmed" | "possible" | null;
 export const compareLessonRooms = (a: LessonRoom, b: LessonRoom, index: RoomIndex): RoomConflict => {
   if (a.roomId && b.roomId) return a.roomId === b.roomId ? "confirmed" : null;
   const keyA = getScheduleRoomKey(a.room), keyB = getScheduleRoomKey(b.room);
-  if (!a.roomId && !b.roomId && keyA === keyB) return "confirmed";
+  if (!a.roomId && !b.roomId && keyA && keyA === keyB) return "confirmed";
   const candidatesA = a.roomId ? new Set([a.roomId]) : index.candidatesByLegacyKey.get(keyA) ?? new Set<string>(), candidatesB = b.roomId ? new Set([b.roomId]) : index.candidatesByLegacyKey.get(keyB) ?? new Set<string>();
   if ([...candidatesA].some(id => candidatesB.has(id))) return "possible";
-  if (keyA === keyB) return "possible";
+  if (keyA && keyA === keyB) return "possible";
   return null;
 };
 export const formatLessonRoom = (lesson: LessonRoom) => lesson.roomBuilding ? `${lesson.roomBuilding} · ${lesson.room}` : lesson.room;
+export const lessonRoomFilterKey = (lesson: LessonRoom) => lesson.roomId ? `id:${lesson.roomId}` : getScheduleRoomKey(lesson.room);
+export const roomLessonIssues = (lesson: LessonRoom, index: RoomIndex, allowLegacy: boolean): string[] => {
+  if (!lesson.roomId) return allowLegacy ? [] : ["Выберите аудиторию из справочника для новой или скопированной пары."];
+  const room = index.byId.get(lesson.roomId);
+  if (!room || room.status !== "active") return ["Аудитория недоступна или находится в архиве. Выберите действующую аудиторию."];
+  if (room.revision !== lesson.roomRevision || room.name !== lesson.room || room.building !== lesson.roomBuilding) return ["Аудитория изменилась. Выберите её актуальную карточку заново."];
+  return [];
+};

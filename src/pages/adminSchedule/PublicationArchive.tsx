@@ -6,6 +6,8 @@ import { subscribeAccounts } from "../../data/accountStore";
 import { subscribeSubjectCatalog } from "../../data/subjectCatalogStore";
 import { subscribeGroupCalendars } from "../../data/groupCalendarRead";
 import { subscribeTeachingAssignments } from "../../data/teachingAssignmentsRead";
+import { subscribeRooms } from "../../data/roomsRead";
+import { formatLessonRoom } from "../../domain/rooms";
 import { sameManagedScheduleVersions } from "../../domain/scheduleVersions";
 import { PUBLICATION_FIELD_LABELS, type PublicationChangeKind } from "../../domain/schedulePublication";
 import { lessonTypeLabels } from "../../domain/academic";
@@ -21,7 +23,7 @@ import styles from "./PublicationReview.module.scss";
 type ArchivePage = Awaited<ReturnType<typeof listManagedSchedulePublications>>;
 const labels: Record<PublicationChangeKind, string> = { added: "Добавится", changed: "Изменится", removed: "Будет убрано" };
 function Lesson({ label, value }: { label: string; value: ManagedLesson }) {
-  return <div><h4>{label}</h4><p>{formatAcademicDay(value.date)} · {value.startsAt}–{value.endsAt}</p><p>{getAcademicSubjectDefinition(value.subjectId)?.name ?? "Дисциплина недоступна"} · {lessonTypeLabels[value.type]}</p><p>{value.teacherName} · ауд. {value.room}</p></div>;
+  return <div><h4>{label}</h4><p>{formatAcademicDay(value.date)} · {value.startsAt}–{value.endsAt}</p><p>{getAcademicSubjectDefinition(value.subjectId)?.name ?? "Дисциплина недоступна"} · {lessonTypeLabels[value.type]}</p><p>{value.teacherName} · ауд. {formatLessonRoom(value)}</p></div>;
 }
 interface Props { groupId: string; groupName: string; weekStart: string; onClose(): void; onApply(lessons: ManagedLesson[]): void }
 export default function PublicationArchive({ groupId, groupName, weekStart, onClose, onApply }: Props) {
@@ -40,7 +42,7 @@ export default function PublicationArchive({ groupId, groupName, weekStart, onCl
   useUnsavedChangesWarning(busy);
   useEffect(() => { invalidate(); pending.current = false; setBusy(false); setError(""); setSelectedId(""); setComparison(null); return invalidate; }, [identity, invalidate]);
   useEffect(() => {
-    const refresh = () => setReload(value => value + 1), stops = [subscribeManagedSchedule(refresh), subscribeAccounts(refresh), subscribeSubjectCatalog(refresh), subscribeGroupCalendars(refresh), subscribeTeachingAssignments(refresh)];
+    const refresh = () => setReload(value => value + 1), stops = [subscribeManagedSchedule(refresh), subscribeAccounts(refresh), subscribeSubjectCatalog(refresh), subscribeGroupCalendars(refresh), subscribeTeachingAssignments(refresh), subscribeRooms(refresh)];
     return () => stops.forEach(stop => stop());
   }, []);
   useEffect(() => {

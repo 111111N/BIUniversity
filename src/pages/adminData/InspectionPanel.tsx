@@ -16,6 +16,11 @@ import RestoreAdmissionReview from "./RestoreAdmissionReview";
 import NotificationComparisonReview from "./NotificationComparisonReview";
 import AssessmentComparisonReview from "./AssessmentComparisonReview";
 import { getUncheckedAssessmentDocuments } from "../../domain/backupAssessmentComparison";
+import ScheduleCatalogComparisonReview from "./ScheduleCatalogComparisonReview";
+import { getUncheckedScheduleCatalogDocuments } from "../../domain/backupScheduleCatalogComparison";
+import AcademicComparisonReview from "./AcademicComparisonReview";
+import { getUncheckedAcademicDocuments } from "../../domain/backupAcademicComparison";
+import DocumentSelectionReview from "./DocumentSelectionReview";
 
 export interface InspectionPanelProps {
   file: File | null; busy: boolean; progress: string; error: string; result: BackupInspection | null; unavailable: boolean;
@@ -33,6 +38,8 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
     { count: result?.comparison.differences.filter(item => item.fileDifference && item.fileDifference.status !== "compared").length ?? 0, label: "Файлы с неполным разбором различий" },
     { count: result?.plannerComparison?.counts.uncheckedDocuments ?? 0, label: "Списки планировщика не сравнены" },
     { count: uncheckedCatalogs, label: "Каталоги не сравнены" },
+    { count: result?.scheduleCatalogComparison ? getUncheckedScheduleCatalogDocuments(result.scheduleCatalogComparison) : 0, label: "Аудитории, шаблоны или архив публикаций не сравнены" },
+    { count: result?.academicComparison ? getUncheckedAcademicDocuments(result.academicComparison) : 0, label: "Учебные справочники или их история не сравнены" },
     { count: uncheckedAccounts, label: "Документы учёток не сравнены" },
     { count: uncheckedLearning, label: "Списки заданий и ответов сравнены не полностью" },
     { count: result?.scheduleComparison ? getUncheckedScheduleDocuments(result.scheduleComparison) : 0, label: "Документы расписания не сравнены" },
@@ -82,6 +89,9 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
       {result.accountComparison && <AccountComparisonReview key={`account:${result.sha256}:${result.inspectedAt}`} review={result.accountComparison} />}
       {result.learningComparison && <LearningComparisonReview key={`learning:${result.sha256}:${result.inspectedAt}`} review={result.learningComparison} />}
       {result.scheduleComparison && <ScheduleComparisonReview key={`schedule:${result.sha256}:${result.inspectedAt}`} review={result.scheduleComparison} />}
+      {result.scheduleCatalogComparison && <ScheduleCatalogComparisonReview key={`schedule-catalog:${result.sha256}:${result.inspectedAt}`} review={result.scheduleCatalogComparison} />}
+      {result.academicComparison && <AcademicComparisonReview key={`academic:${result.sha256}:${result.inspectedAt}`} review={result.academicComparison} inspection={result} />}
+      {(result.academicComparison && [result.academicComparison.programs, result.academicComparison.plans, result.academicComparison.calendars, result.academicComparison.teaching].some(section => section.counts.documents > 0) || result.scheduleCatalogComparison && [result.scheduleCatalogComparison.rooms, result.scheduleCatalogComparison.templates].some(section => section.counts.documents > 0)) && <DocumentSelectionReview key={`document-selection:${result.sha256}:${result.inspectedAt}`} inspection={result} />}
       {result.journalComparison && <JournalComparisonReview key={`journal:${result.sha256}:${result.inspectedAt}`} review={result.journalComparison} />}
       {result.notificationComparison && <NotificationComparisonReview key={`notifications:${result.sha256}:${result.inspectedAt}`} review={result.notificationComparison} />}
       {result.assessmentComparison && <AssessmentComparisonReview key={`assessments:${result.sha256}:${result.inspectedAt}`} review={result.assessmentComparison} inspection={result} />}

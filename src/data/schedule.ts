@@ -5,6 +5,7 @@ import { createDemoWeekSchedule, DEMO_STUDENT_GROUP, DEMO_TEACHER } from "./demo
 import { readManagedScheduleState } from "./managedScheduleStore";
 import type { ManagedScheduleRead } from "./managedScheduleStore";
 import type { AcademicMembership } from "./academicCatalog";
+import { formatLessonRoom } from "../domain/rooms";
 
 export { DEMO_STUDENT_GROUP, DEMO_TEACHER } from "./demoSchedule";
 
@@ -21,7 +22,7 @@ export const getDemoWeekSchedule = (date: Date, source: ManagedScheduleRead = re
     group: getAcademicGroupNameAt(lesson.groupId, `${lesson.date}T${lesson.startsAt}:00+03:00`),
     teacherId: lesson.teacherId, teacher: lesson.teacherName, startTime: lesson.startsAt, endTime: lesson.endsAt,
     type: lesson.type === "lecture" ? "Лек." as const : lesson.type === "laboratory" ? "Лаб." as const : "Пр." as const,
-    location: `Ауд. ${lesson.room.replace(/^ауд[.]?\s*/iu, "")}`,
+    location: `Ауд. ${formatLessonRoom(lesson).replace(/^ауд[.]?\s*/iu, "")}`,
   })))].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.id - b.id);
 };
 

@@ -30,6 +30,8 @@ import { useScheduleAssignmentHandoff } from "../../components/ScheduleAssignmen
 import { SCHEDULE_RETURN_PARAM } from "../../domain/scheduleAssignmentHandoff";
 import { changesLocation, type UnsavedNavigationCheck } from "../../domain/unsavedNavigation";
 import { subscribeTeachingAssignments } from "../../data/teachingAssignmentsRead";
+import useRoomsDocument from "../../hooks/useRoomsDocument";
+import { formatLessonRoom, indexRooms } from "../../domain/rooms";
 
 const freshLesson = (date: string, groupId: string): ManagedLesson => ({
   id: `managed:${crypto.randomUUID()}`, scheduleId: Date.now() * 1000 + Math.floor(Math.random() * 1000),
@@ -40,6 +42,8 @@ const sortLessons = (lessons: ManagedLesson[]) => [...lessons].sort((a, b) => a.
 
 const AdminSchedulePage = () => {
   const { currentUser } = useRole();
+  const rooms = useRoomsDocument();
+  const roomIndex = useMemo(() => indexRooms(rooms.document), [rooms.document]);
   const { subjects, error: catalogError, refresh: refreshCatalog } = useSubjectCatalog();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -108,14 +112,14 @@ const AdminSchedulePage = () => {
     if (changedScope) setMessage("");
   }, [scope, groupId, weekStart, state.snapshot, validScope, catalogError]);
 
-  const conflicts = useMemo(() => validScope && !catalogError && !state.error ? getManagedWeekConflicts(state.snapshot, { weekStart, groupId, lessons }) : [], [state.snapshot, state.error, weekStart, groupId, lessons, validScope, catalogError]);
+  const conflicts = useMemo(() => validScope && !catalogError && !state.error && !rooms.error ? getManagedWeekConflicts(state.snapshot, { weekStart, groupId, lessons }, roomIndex) : [], [state.snapshot, state.error, weekStart, groupId, lessons, validScope, catalogError, rooms.error, roomIndex]);
   const hasDraft = state.snapshot.drafts.some((week) => week.weekStart === weekStart && week.groupId === groupId);
   const published = state.snapshot.published.find((week) => week.weekStart === weekStart && week.groupId === groupId);
   const stale = revision !== state.snapshot.revision;
   const selectedGroup = ACADEMIC_GROUPS.find((group) => group.id === groupId);
   const archived = Boolean(selectedGroup && !isGroupActive(selectedGroup));
-  const blocked = busy || !validScope || Boolean(state.error) || Boolean(catalogError) || currentUser.role !== "configurator" || archived;
-  const actionState = getWeekActionState({ dirty, editorOpen: Boolean(editor), hasDraft, published: Boolean(published), conflicts: conflicts.length, stale, busy, blockedReason: state.error ? "Расписание недоступно. Сначала восстановите чтение данных." : catalogError ? "Каталог недоступен. Повторите чтение перед сохранением." : currentUser.role !== "configurator" ? "Изменение расписания доступно настройщику." : archived ? "Группа в архиве. Расписание доступно для просмотра." : "" });
+  const blocked = busy || !validScope || Boolean(state.error) || Boolean(catalogError) || Boolean(rooms.error) || currentUser.role !== "configurator" || archived;
+  const actionState = getWeekActionState({ dirty, editorOpen: Boolean(editor), hasDraft, published: Boolean(published), conflicts: conflicts.length, stale, busy, blockedReason: rooms.error || (state.error ? "Расписание недоступно. Сначала восстановите чтение данных." : catalogError ? "Каталог недоступен. Повторите чтение перед сохранением." : currentUser.role !== "configurator" ? "Изменение расписания доступно настройщику." : archived ? "Группа в архиве. Расписание доступно для просмотра." : "") });
   const days = useMemo(() => groupScheduleLessons(lessons), [lessons]);
   const conflictingIds = new Set(conflicts.flatMap((conflict) => [conflict.lessonId, conflict.otherId]));
   const closeWeekTools = () => { weekToolsRef.current?.removeAttribute("open"); weekToolsRef.current?.querySelector("summary")?.focus(); };
@@ -186,9 +190,11 @@ const AdminSchedulePage = () => {
           <summary>Действия недели</summary>
           <div className={styles.weekToolsContent}>
             <button type="button" disabled={blocked || Boolean(editor) || stale} onClick={() => { closeWeekTools(); setCopyOpen(true); }}>Копировать из другой недели</button>
+            <div className={styles.weekToolsDivider} aria-hidden="true" />
             <button type="button" disabled={busy || Boolean(state.error) || Boolean(catalogError) || dirty || Boolean(editor) || stale} onClick={() => { closeWeekTools(); setArchiveOpen(true); }}>Архив публикаций</button>
             <button type="button" disabled={busy} onClick={() => { closeWeekTools(); const end = parseCalendarDate(weekStart)!; end.setDate(end.getDate() + 6); navigate(inheritChecksReturn(`/admin/schedule/overview?from=${weekStart}&to=${toLocalDateKey(end)}`, "/admin/schedule", params.toString())); }}>Обзор публикаций</button>
             <button type="button" disabled={busy} onClick={() => { closeWeekTools(); navigate(inheritChecksReturn("/admin/schedule/templates", "/admin/schedule", params.toString())); }}>Шаблоны расписания</button>
+            <button type="button" disabled={busy} onClick={() => { closeWeekTools(); navigate(inheritChecksReturn("/admin/rooms", "/admin/schedule", params.toString())); }}>Аудитории</button>
             {(dirty || editorDirty) && <button className={styles.reset} type="button" disabled={busy} onClick={() => { closeWeekTools(); requestReset(); }}>Сбросить правки недели</button>}
             <p>Копирование заменит рабочий список после проверки. Публикация выполняется отдельно.</p>
           </div>
@@ -217,14 +223,15 @@ const AdminSchedulePage = () => {
       })}</ul><p>Черновик можно сохранить с конфликтами. При публикации проверяются преподаватели, группы и аудитории.</p>
     </details>}
     <div className={`${styles.workspace} ${editor ? styles.withEditor : ""}`}>
-      {editor && <LessonEditor key={editor.id} value={editor} groupName={selectedGroup?.name ?? groupId} weekStart={weekStart} editing={lessons.some((lesson) => lesson.id === editor.id)} blocked={blocked} busy={busy} blockedMessage={blocked ? actionState.hint : ""} subjects={subjects.filter((subject) => isSubjectActive(subject) && getSubjectGroups(subject.id).some((group) => group.id === groupId)).map((subject) => ({ value: subject.id, label: subject.name, searchText: subject.shortName }))} teachers={teachers} onChange={setEditor} onApply={submitLesson} onCancel={cancelLesson} onConfigureAssignment={configureAssignment} />}
+      {rooms.error && <p className={styles.fieldError} role="alert">{rooms.error}</p>}
+      {editor && <LessonEditor key={editor.id} value={editor} groupName={selectedGroup?.name ?? groupId} weekStart={weekStart} editing={lessons.some((lesson) => lesson.id === editor.id)} blocked={blocked} busy={busy} blockedMessage={blocked ? rooms.error || actionState.hint : ""} subjects={subjects.filter((subject) => isSubjectActive(subject) && getSubjectGroups(subject.id).some((group) => group.id === groupId)).map((subject) => ({ value: subject.id, label: subject.name, searchText: subject.shortName }))} teachers={teachers} rooms={rooms.document.rooms} onChange={setEditor} onApply={submitLesson} onCancel={cancelLesson} onConfigureAssignment={configureAssignment} />}
       <section aria-label="Занятия недели" className={styles.lessons}>
         <div ref={listHeadingRef} tabIndex={-1} className={styles.listHeading}><strong>{formatCount(lessons.length, ["занятие", "занятия", "занятий"])}</strong><button type="button" disabled={blocked || Boolean(editor)} onClick={() => startEditing()}>Добавить пару</button></div>
         {lessons.length === 0 ? <div className={styles.empty}><strong>В этой неделе пока нет пар</strong><p>Добавьте первую пару кнопкой выше или перенесите расписание через «Действия недели».</p></div> : days.map((day) => <section key={day.date} className={styles.day} aria-label={parseCalendarDate(day.date)?.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}>
           <h2 className={styles.dayHeading}>{parseCalendarDate(day.date)?.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}<span>{day.lessons.length}</span></h2>
           {day.lessons.map((lesson) => <article key={lesson.id} className={`${styles.card} ${editor?.id === lesson.id ? styles.selectedCard : ""}`}>
             <div className={styles.time}><strong>{lesson.startsAt}</strong><span>до {lesson.endsAt}</span></div>
-            <div className={styles.details}><strong>{getAcademicSubjectDefinition(lesson.subjectId)?.name ?? "Дисциплина недоступна"}</strong><div className={styles.lessonMeta}><span>{lessonTypeLabels[lesson.type]}</span><span>Ауд. {lesson.room}</span>{conflictingIds.has(lesson.id) && <span className={styles.conflictBadge}>Конфликт</span>}{editor?.id === lesson.id && <span className={styles.editBadge}>Редактируется</span>}</div><span className={styles.teacherName}>{lesson.teacherName}</span></div>
+            <div className={styles.details}><strong>{getAcademicSubjectDefinition(lesson.subjectId)?.name ?? "Дисциплина недоступна"}</strong><div className={styles.lessonMeta}><span>{lessonTypeLabels[lesson.type]}</span><span>Ауд. {formatLessonRoom(lesson)}</span>{conflictingIds.has(lesson.id) && <span className={styles.conflictBadge}>Конфликт</span>}{editor?.id === lesson.id && <span className={styles.editBadge}>Редактируется</span>}</div><span className={styles.teacherName}>{lesson.teacherName}</span></div>
             <div className={styles.cardActions}><button type="button" disabled={blocked || Boolean(editor)} onClick={() => startEditing(lesson)}>Изменить</button><button className={styles.remove} type="button" disabled={blocked || Boolean(editor)} onClick={() => { setRemovedLesson({ ...lesson }); setLessons((current) => current.filter((entry) => entry.id !== lesson.id)); setMessage("Пара убрана из рабочей недели. В опубликованном расписании она останется до следующей публикации."); }}>Убрать</button></div>
           </article>)}
         </section>)}

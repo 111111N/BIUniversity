@@ -14,6 +14,8 @@ import { inspectArchivedTeachingAssignments } from "./backupTeachingAssignments"
 import { inspectArchivedSchedulePublications } from "./backupSchedulePublications";
 import { SCHEDULE_TEMPLATES_KEY, decodeScheduleTemplates } from "./scheduleTemplates";
 import { inspectArchivedScheduleTemplates } from "./backupScheduleTemplates";
+import { ROOMS_KEY, decodeRooms } from "./rooms";
+import { inspectArchivedRooms } from "./backupRooms";
 import { decodeManagedSchedule, MANAGED_SCHEDULE_KEY, type ManagedScheduleSnapshot } from "./scheduleManagement";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
@@ -51,7 +53,10 @@ export const BACKUP_PERIOD_DOCUMENTS = {
   groupCalendars: { key: GROUP_CALENDARS_KEY, prefix: "bi-university-group-calendars-", label: "Календари групп и закрытие периодов" },
   teachingAssignments: { key: TEACHING_ASSIGNMENTS_KEY, prefix: "bi-university-teaching-assignments-", label: "Преподаватели по типам занятий" },
 } as const;
-export const BACKUP_SCHEDULE_DOCUMENTS = { scheduleTemplates: { key: SCHEDULE_TEMPLATES_KEY, prefix: "bi-university-schedule-templates-", label: "Именованные шаблоны расписания" } } as const;
+export const BACKUP_SCHEDULE_DOCUMENTS = {
+  scheduleTemplates: { key: SCHEDULE_TEMPLATES_KEY, prefix: "bi-university-schedule-templates-", label: "Именованные шаблоны расписания" },
+  rooms: { key: ROOMS_KEY, prefix: "bi-university-rooms-", label: "Аудитории" },
+} as const;
 const STATIC_BACKUP_DOCUMENTS = { ...BACKUP_CORE_DOCUMENTS, ...BACKUP_LEARNING_DOCUMENTS, ...BACKUP_PERIOD_DOCUMENTS, ...BACKUP_SCHEDULE_DOCUMENTS };
 export const BACKUP_DOCUMENTS = { ...STATIC_BACKUP_DOCUMENTS, ...BACKUP_JOURNAL_DOCUMENTS, ...BACKUP_PLANNER_DOCUMENTS, ...BACKUP_NOTIFICATION_DOCUMENTS, ...BACKUP_SETTINGS_DOCUMENTS, ...BACKUP_MESSAGING_DOCUMENTS, ...BACKUP_MATERIAL_DOCUMENTS, ...BACKUP_ASSESSMENT_DOCUMENTS };
 export type BackupDocumentKind = keyof typeof BACKUP_DOCUMENTS;
@@ -127,6 +132,9 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     return document;
   });
   const scheduleTemplates = await read("scheduleTemplates", decodeScheduleTemplates);
+  const rooms = await read("rooms", decodeRooms);
+  if (rooms) result.checks.find(row => row.kind === "rooms")!.records = rooms.rooms.length;
+  for (const finding of await inspectArchivedRooms(rooms, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), schedule }, archive.completedAt, signal)) issue(finding);
   if (scheduleTemplates) {
     result.checks.find(row => row.kind === "scheduleTemplates")!.records = scheduleTemplates.templates.length;
     for (const finding of await inspectArchivedScheduleTemplates(scheduleTemplates, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), schedule }, archive.completedAt, signal)) issue(finding);
@@ -163,7 +171,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const groupCheck = result.checks.find((check) => check.kind === "groups");
   if (groupCheck) groupCheck.message += ` ${groupStates.summary}`;
   for (const finding of groupStates.issues) issue(finding);
-  const scheduleConflicts = await inspectArchivedScheduleConflicts(schedule, signal);
+  const scheduleConflicts = await inspectArchivedScheduleConflicts(schedule, signal, rooms);
   const scheduleCheck = result.checks.find((check) => check.kind === "schedule");
   if (scheduleCheck) scheduleCheck.message += ` ${scheduleConflicts.summary}`;
   for (const finding of scheduleConflicts.issues) issue(finding);

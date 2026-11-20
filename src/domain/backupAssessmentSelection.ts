@@ -5,6 +5,7 @@ import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, enc
 import { canonicalBackupValue } from "./localBackupValidation";
 import type { BackupRecordEntries } from "./backupRecordComparison";
 import { inspectSelectedAssessmentReferences, type AssessmentReferenceChoice, type AssessmentReferenceReview } from "./backupAssessmentReferences";
+import type { PeriodRecordChoice } from "./backupPeriodSelection";
 
 const COLLECTIONS = ["assessments", "history", "corrections", "correctionHistory"] as const;
 export type AssessmentSelectionCollection = typeof COLLECTIONS[number];
@@ -59,7 +60,7 @@ const orderRows = (selected: Map<string, IndexedRow>, sources: readonly Map<stri
 /** Pure preflight: no candidate data or permission to restore leaves this function. */
 export async function reviewBackupAssessmentSelection(
   archive: BackupRecordEntries, browser: BackupRecordEntries, choices: readonly AssessmentRecordChoice[], signal?: AbortSignal,
-  referenceCheck?: { choices: readonly AssessmentReferenceChoice[] },
+  referenceCheck?: { choices: readonly AssessmentReferenceChoice[]; periodChoices?: readonly PeriodRecordChoice[] },
 ): Promise<AssessmentSelectionReview> {
   checkBackupAbort(signal);
   const result: AssessmentSelectionReview = { scope: "assessment-document", status: "blocked", counts: { same: 0, archiveOnly: 0, browserOnly: 0, conflicts: 0, unresolved: 0 }, revisions: { archive: null, browser: null }, issues: [] };
@@ -131,7 +132,7 @@ export async function reviewBackupAssessmentSelection(
   result.revisions.candidate = candidate.revision;
   result.records = { assessments: candidate.assessments.length, history: candidate.history.length, corrections: candidate.corrections.length, correctionHistory: candidate.correctionHistory.length };
   if (referenceCheck) {
-    result.references = await inspectSelectedAssessmentReferences(candidate, archive, browser, referenceCheck.choices, signal);
+    result.references = await inspectSelectedAssessmentReferences(candidate, archive, browser, referenceCheck.choices, signal, referenceCheck.periodChoices);
     if (result.references.status === "blocked") return reject("unresolved-references", "Наличие всех ссылок в выбранных справочниках пока не подтверждено. Проверьте замечания к учёткам, группам, дисциплинам и учебным периодам.");
   }
   result.status = "consistent";

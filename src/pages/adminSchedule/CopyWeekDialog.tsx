@@ -9,6 +9,8 @@ import { subscribeAccounts } from "../../data/accountStore";
 import { subscribeSubjectCatalog } from "../../data/subjectCatalogStore";
 import { subscribeGroupCalendars } from "../../data/groupCalendarRead";
 import { subscribeTeachingAssignments } from "../../data/teachingAssignmentsRead";
+import { subscribeRooms } from "../../data/roomsRead";
+import { formatLessonRoom } from "../../domain/rooms";
 import useUnsavedChangesWarning from "../../hooks/useUnsavedChangesWarning";
 import type { ManagedLesson, ManagedScheduleSnapshot } from "../../domain/scheduleManagement";
 import type { ScheduleCopyRequest } from "../../domain/scheduleCopy";
@@ -61,7 +63,7 @@ export default function CopyWeekDialog({ snapshot, groupId, groupName, targetWee
   useUnsavedChangesWarning(busy);
   useEffect(() => { invalidate(); pending.current = false; setBusy(false); setSourceGroupId(groupId); setSourceKey(""); setKind("week"); setTemplateId(""); setPreview(null); setError(""); return invalidate; }, [identity, groupId, invalidate]);
   useEffect(() => {
-    const changed = () => setEpoch(value => value + 1), stops = [subscribeAccounts(changed), subscribeSubjectCatalog(changed), subscribeGroupCalendars(changed), subscribeTeachingAssignments(changed)];
+    const changed = () => setEpoch(value => value + 1), stops = [subscribeAccounts(changed), subscribeSubjectCatalog(changed), subscribeGroupCalendars(changed), subscribeTeachingAssignments(changed), subscribeRooms(changed)];
     return () => stops.forEach(stop => stop());
   }, []);
   const prepare = async () => {
@@ -102,7 +104,7 @@ export default function CopyWeekDialog({ snapshot, groupId, groupName, targetWee
       {(currentLessonCount > 0 || hasUnsavedChanges) && <p className={styles.warning}>В рабочей неделе сейчас занятий: {currentLessonCount}.{hasUnsavedChanges ? " Есть несохранённые изменения." : ""} Применение копии заменит этот список целиком. Опубликованное расписание пока сохранится.</p>}
       {preview.issues.length > 0 && <div className={styles.warning}><strong>Проверки перед сохранением и публикацией</strong><ul>{preview.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul><p>{preview.canApply ? "Можно перенести копию в рабочую неделю и исправить занятия там." : "Перенос недоступен до переоткрытия затронутого периода."}</p></div>}
       {preview.conflicts.length > 0 && <details className={styles.warning} open><summary>Конфликты на новой неделе</summary><ul>{preview.conflicts.map((conflict, index) => <li key={index}>{conflict.message}</li>)}</ul><p>Сохранить черновик с конфликтами можно; публикация потребует их устранения.</p></details>}
-      <ul className={styles.lessons}>{sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((lesson) => <li key={lesson.id}><div><strong>{dateLabel(lesson.date)}</strong><span>{lesson.startsAt}–{lesson.endsAt}</span></div><div><strong>{getAcademicSubjectDefinition(lesson.subjectId)?.name ?? "Дисциплина недоступна"}</strong><span>{lessonTypeLabels[lesson.type]} · {lesson.teacherName} · Ауд. {lesson.room}</span></div></li>)}</ul>
+      <ul className={styles.lessons}>{sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((lesson) => <li key={lesson.id}><div><strong>{dateLabel(lesson.date)}</strong><span>{lesson.startsAt}–{lesson.endsAt}</span></div><div><strong>{getAcademicSubjectDefinition(lesson.subjectId)?.name ?? "Дисциплина недоступна"}</strong><span>{lessonTypeLabels[lesson.type]} · {lesson.teacherName} · Ауд. {formatLessonRoom(lesson)}</span></div></li>)}</ul>
       {pageCount > 1 && <nav className={styles.pagination} aria-label="Страницы предпросмотра копии"><button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>Назад</button><span>{page} / {pageCount}</span><button type="button" disabled={page === pageCount} onClick={() => setPage(page + 1)}>Далее</button></nav>}
       <p className={styles.note}>Проверьте чётность недели. При публикации будут проверены заданные каникулы и неучебные дни; закрытый период нельзя изменять до переоткрытия.</p>
       {stale && <p className={styles.error} role="alert">Расписание, назначения или справочники изменились. Повторите проверку перед применением копии.</p>}

@@ -17,6 +17,8 @@ import { assertCalendarDatesEditable, getCalendarPublicationIssues } from "../do
 import { readTeachingAssignmentsDocument } from "./teachingAssignmentsRead";
 import { canScheduleTeacher, findTeachingAssignment } from "../domain/teachingAssignments";
 import { readScheduleTemplatesDocument } from "./scheduleTemplatesRead";
+import { readRoomsDocument } from "./roomsRead";
+import { indexRooms, roomLessonIssues, type RoomIndex } from "../domain/rooms";
 
 const CHANGE_EVENT = "bi-university-managed-schedule-change";
 export interface ManagedScheduleRead { snapshot: ManagedScheduleSnapshot; error: string }
@@ -67,7 +69,7 @@ const getOtherPublishedLessons = (snapshot: ManagedScheduleSnapshot, weekStart: 
   });
   return [...demo, ...snapshot.published.filter((week) => week.weekStart === weekStart && week.groupId !== groupId).flatMap((week) => week.lessons)];
 };
-export const getManagedWeekConflicts = (snapshot: ManagedScheduleSnapshot, week: ManagedScheduleWeek) => findScheduleConflicts(week.lessons, getOtherPublishedLessons(snapshot, week.weekStart, week.groupId));
+export const getManagedWeekConflicts = (snapshot: ManagedScheduleSnapshot, week: ManagedScheduleWeek, rooms: RoomIndex = indexRooms(readRoomsDocument())) => findScheduleConflicts(week.lessons, getOtherPublishedLessons(snapshot, week.weekStart, week.groupId), rooms);
 
 export interface ScheduleCopyPreview extends ScheduleCopyVersions {
   request: ScheduleCopyRequest;
@@ -87,7 +89,7 @@ const readManagedScheduleContext = (actorId: string) => {
   if (!actor || actor.role !== "configurator" || !isAccountActive(actor)) throw new Error("Работа с расписанием доступна только активному настройщику.");
   const state = readManagedScheduleState();
   if (state.error) throw new Error(state.error);
-  const versions: ScheduleCopyVersions = { scheduleRevision: state.snapshot.revision, accountsRevision: accounts.revision, subjectRevision: catalog.revision, groupRevision: readGroupCatalogDocument().revision, calendarRevision: readGroupCalendarsDocument().revision, teachingRevision: readTeachingAssignmentsDocument().revision };
+  const versions: ScheduleCopyVersions = { scheduleRevision: state.snapshot.revision, accountsRevision: accounts.revision, subjectRevision: catalog.revision, groupRevision: readGroupCatalogDocument().revision, calendarRevision: readGroupCalendarsDocument().revision, teachingRevision: readTeachingAssignmentsDocument().revision, roomsRevision: readRoomsDocument().revision };
   return { snapshot: state.snapshot, versions };
 };
 export const previewManagedScheduleCopy = async (command: { actorId: string; request: ScheduleCopyRequest }): Promise<ScheduleCopyPreview> => {
@@ -146,7 +148,8 @@ const updateSnapshot = async (command: ScheduleCommand, mutate: (snapshot: Manag
       if (snapshot.revision !== command.expectedRevision) throw new Error("Расписание изменено в другой вкладке. Обновите данные и повторите действие.");
       const calendars = readGroupCalendarsDocument();
       const teachingRevision = readTeachingAssignmentsDocument().revision;
-      if (command.reviewedVersions && !sameManagedScheduleVersions(command.reviewedVersions, { scheduleRevision: snapshot.revision, accountsRevision: accounts.revision, subjectRevision: catalog.revision, groupRevision: readGroupCatalogDocument().revision, calendarRevision: calendars.revision, teachingRevision })) throw new Error("Данные изменились после проверки публикации. Обновите предпросмотр и подтвердите актуальные изменения.");
+      const roomsRevision = readRoomsDocument().revision;
+      if (command.reviewedVersions && !sameManagedScheduleVersions(command.reviewedVersions, { scheduleRevision: snapshot.revision, accountsRevision: accounts.revision, subjectRevision: catalog.revision, groupRevision: readGroupCatalogDocument().revision, calendarRevision: calendars.revision, teachingRevision, roomsRevision })) throw new Error("Данные изменились после проверки публикации. Обновите предпросмотр и подтвердите актуальные изменения.");
       if (getManagedWeekKey(command.weekStart) !== command.weekStart || !ACADEMIC_GROUPS.some((group) => group.id === command.groupId)) throw new Error("Выберите корректную неделю и группу.");
       if (!isGroupActive(ACADEMIC_GROUPS.find((group) => group.id === command.groupId)!)) throw new Error("Группа находится в архиве. Новые черновики и публикации недоступны.");
       const next = mutate(snapshot);
@@ -170,6 +173,14 @@ const updateSnapshot = async (command: ScheduleCommand, mutate: (snapshot: Manag
 };
 const validateWeek = (week: ManagedScheduleWeek, snapshot: ManagedScheduleSnapshot, publishing: boolean) => {
   const errors = week.lessons.flatMap((lesson) => validateManagedLesson(lesson));
+  const roomDocument = readRoomsDocument(), rooms = indexRooms(roomDocument);
+  const roomTimes = new Map(roomDocument.history.map(event => [event.after.id, Date.parse(event.occurredAt)])), now = Date.now();
+  const previousLessons = new Map([...snapshot.journal, ...snapshot.published.flatMap(row => row.lessons), ...snapshot.drafts.flatMap(row => row.lessons)].map(lesson => [lesson.id, lesson]));
+  for (const lesson of week.lessons) {
+    const previous = previousLessons.get(lesson.id);
+    errors.push(...roomLessonIssues(lesson, rooms, Boolean(previous && !previous.roomId && previous.room === lesson.room)).map(issue => `${lesson.date}, ${lesson.startsAt}: ${issue}`));
+    if (lesson.roomId && ((roomTimes.get(lesson.roomId) ?? 0) > now || week.updatedAt && (roomTimes.get(lesson.roomId) ?? 0) > Date.parse(week.updatedAt))) errors.push(`${lesson.date}, ${lesson.startsAt}: версия аудитории датирована позже сохранения пары. Проверьте часы устройства, выберите актуальную аудиторию и сохраните черновик заново.`);
+  }
   if (week.lessons.some(lesson => getAcademicSubjectDefinition(lesson.subjectId)?.status === "archived")) errors.push("Архивная дисциплина недоступна для новых занятий. Сначала восстановите дисциплину.");
   if (week.lessons.some((lesson) => !SUBJECT_GROUP_OFFERINGS.some((offering) => offering.subjectId === lesson.subjectId && offering.groupId === lesson.groupId))) errors.push("Предмет не назначен выбранной группе.");
   if (week.lessons.some((lesson) => lesson.groupId !== week.groupId || getManagedWeekKey(lesson.date) !== week.weekStart)) errors.push("Все занятия должны относиться к выбранной неделе и группе.");

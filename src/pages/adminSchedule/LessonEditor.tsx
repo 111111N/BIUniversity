@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Dropdown from "../../components/Dropdown";
+import TemporalField from "../../components/DateTimePicker/Field";
 import { canScheduleTeacher, type ScheduleTeacher } from "../../domain/teachingAssignments";
 import { lessonTypeLabels, type LessonType } from "../../domain/academic";
 import { parseCalendarDate } from "../../domain/calendar";
@@ -7,6 +8,7 @@ import { toLocalDateKey } from "../../domain/schedule";
 import type { ManagedLesson } from "../../domain/scheduleManagement";
 import { validateLessonEditor } from "../../domain/scheduleEditing";
 import styles from "./index.module.scss";
+import { indexRooms, roomLabel, roomLessonIssues, type Room } from "../../domain/rooms";
 
 interface Props {
   value: ManagedLesson;
@@ -18,25 +20,32 @@ interface Props {
   blockedMessage: string;
   subjects: { value: string; label: string; searchText?: string }[];
   teachers: Array<ScheduleTeacher & { name: string }>;
+  rooms: Room[];
   onChange(value: ManagedLesson): void;
   onApply(value: ManagedLesson): void;
   onCancel(): void;
   onConfigureAssignment(): void;
 }
-export default function LessonEditor({ value, weekStart, groupName, editing, blocked, busy, blockedMessage, subjects, teachers, onChange, onApply, onCancel, onConfigureAssignment }: Props) {
+export default function LessonEditor({ value, weekStart, groupName, editing, blocked, busy, blockedMessage, subjects, teachers, rooms, onChange, onApply, onCancel, onConfigureAssignment }: Props) {
   const id = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [attempts, setAttempts] = useState(0);
   const selectedTeacher = teachers.find((teacher) => teacher.id === value.teacherId);
   const normalized = { ...value, room: value.room.trim(), teacherName: selectedTeacher?.name ?? "" };
-  const errors = attempts ? validateLessonEditor(normalized, weekStart, teachers) : {};
+  const validate = () => {
+    const errors = validateLessonEditor(normalized, weekStart, teachers);
+    const roomIssue = roomLessonIssues(normalized, indexRooms({ version: 1, revision: 0, rooms, history: [] }), editing && !value.roomId)[0];
+    if (roomIssue) errors.room ??= roomIssue;
+    return errors;
+  };
+  const errors = attempts ? validate() : {};
   const availableTeachers = teachers.filter((teacher) => canScheduleTeacher(teacher, value));
   useEffect(() => { formRef.current?.querySelector<HTMLElement>('[role="combobox"], input')?.focus(); }, []);
-  useEffect(() => { if (attempts) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); }, [attempts]);
+  useEffect(() => { if (attempts) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid="true"]')?.focus(); }, [attempts]);
   const submit = (event: FormEvent) => {
     event.preventDefault(); if (blocked) return;
     setAttempts((count) => count + 1);
-    if (Object.keys(validateLessonEditor(normalized, weekStart, teachers)).length) return;
+    if (Object.values(validate()).some(Boolean)) return;
     onApply(normalized);
   };
   const lastDate = parseCalendarDate(weekStart)!; lastDate.setDate(lastDate.getDate() + 5);
@@ -52,10 +61,10 @@ export default function LessonEditor({ value, weekStart, groupName, editing, blo
     <div className={styles.assignmentHint}>{!availableTeachers.length && <p className={styles.hint}>Для этого предмета и группы пока нет преподавателя.</p>}<button type="button" disabled={blocked || !value.subjectId} onClick={onConfigureAssignment}>Настроить назначение</button><p className={styles.hint}>Ввод пары сохранится на время перехода. Затем вернитесь сюда кнопкой «Вернуться к паре».</p></div>
     </fieldset>
     <fieldset className={`${styles.editorSection} ${styles.formGrid}`} disabled={blocked}><legend>Когда и где</legend>
-      <label className={styles.fullWidth}>Дата<input type="date" required value={value.date} min={weekStart} max={toLocalDateKey(lastDate)} aria-invalid={Boolean(errors.date)} aria-describedby={errors.date ? `${id}-date` : undefined} onChange={(event) => onChange({ ...value, date: event.target.value })} />{errors.date && <span id={`${id}-date`} className={styles.fieldError}>{errors.date}</span>}</label>
-      <label>Начало<input type="time" required value={value.startsAt} aria-invalid={Boolean(errors.startsAt)} aria-describedby={errors.startsAt ? `${id}-start` : undefined} onChange={(event) => onChange({ ...value, startsAt: event.target.value })} />{errors.startsAt && <span id={`${id}-start`} className={styles.fieldError}>{errors.startsAt}</span>}</label>
-      <label>Окончание<input type="time" required value={value.endsAt} aria-invalid={Boolean(errors.endsAt)} aria-describedby={errors.endsAt ? `${id}-end` : undefined} onChange={(event) => onChange({ ...value, endsAt: event.target.value })} />{errors.endsAt && <span id={`${id}-end`} className={styles.fieldError}>{errors.endsAt}</span>}</label>
-      <label className={styles.fullWidth}>Аудитория<input required maxLength={100} value={value.room} aria-invalid={Boolean(errors.room)} aria-describedby={errors.room ? `${id}-room` : undefined} onChange={(event) => onChange({ ...value, room: event.target.value })} />{errors.room && <span id={`${id}-room`} className={styles.fieldError}>{errors.room}</span>}</label>
+      <TemporalField className={styles.fullWidth} id={`${id}-date`} label="Дата" required disabled={blocked} value={value.date} min={weekStart} max={toLocalDateKey(lastDate)} error={errors.date} onChange={date => onChange({ ...value, date })} />
+      <TemporalField id={`${id}-start`} label="Начало" kind="time" required disabled={blocked} value={value.startsAt} error={errors.startsAt} onChange={startsAt => onChange({ ...value, startsAt })} />
+      <TemporalField id={`${id}-end`} label="Окончание" kind="time" required disabled={blocked} value={value.endsAt} error={errors.endsAt} onChange={endsAt => onChange({ ...value, endsAt })} />
+      <div className={styles.fullWidth}><Dropdown searchable label="Аудитория и корпус" placeholder="" value={value.roomId ?? (editing && value.room ? "legacy" : "")} options={[...(editing && !value.roomId && value.room ? [{ value: "legacy", label: `${value.room} · прежнее название` }] : []), ...rooms.filter(room => room.status === "active").map(room => ({ value: room.id, label: roomLabel(room), searchText: [...room.equipment, ...room.aliases].join(" ") }))]} error={errors.room} disabled={blocked} onChange={roomId => { const room = rooms.find(row => row.id === roomId && row.status === "active"); if (room) onChange({ ...value, roomId, roomRevision: room.revision, room: room.name, roomBuilding: room.building }); }} />{!value.roomId && value.room && <p className={styles.hint}>Прежнее название сохранено без автоматической привязки. Выберите карточку, чтобы уточнить корпус.</p>}{value.roomId && roomLessonIssues(value, indexRooms({ version: 1, revision: 0, rooms, history: [] }), false).length > 0 && <p className={styles.fieldError} role="status">Карточка аудитории недоступна или изменилась. Выберите аудиторию заново.</p>}{!rooms.some(room => room.status === "active") && <p className={styles.hint}>Добавьте действующие аудитории в справочник через действия недели.</p>}</div>
     </fieldset>
     <footer className={styles.editorFooter}><p>Все поля обязательны. После применения сохраните черновик недели.</p><button className={styles.primary} type="submit" disabled={blocked}>{editing ? "Применить к неделе" : "Добавить в неделю"}</button></footer>
   </form>;

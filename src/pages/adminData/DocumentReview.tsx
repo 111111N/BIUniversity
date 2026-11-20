@@ -1,4 +1,5 @@
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import Dropdown from "../../components/Dropdown";
 import { BACKUP_DOCUMENTS, type BackupDocumentKind, type BackupDocumentReview } from "../../domain/localBackupDocuments";
 import Tabs from "../../components/Tabs";
 import SearchField from "../../components/SearchField";
@@ -10,7 +11,7 @@ import styles from "./index.module.scss";
 const status = { valid: "Схема прочитана", invalid: "Не читается", absent: "Нет в архиве" };
 export default function DocumentReview({ review }: { review: BackupDocumentReview }) {
   const [query, setQuery] = useState(emptyDocumentIssueQuery);
-  const areaId = useId(); const searchRoot = useRef<HTMLDivElement>(null); const list = useRef<HTMLUListElement>(null);
+  const searchRoot = useRef<HTMLDivElement>(null); const list = useRef<HTMLUListElement>(null);
   const view = getDocumentIssuePage(review.issues, query);
   const paginationFocus = useReviewPaginationFocus(review);
   const update = (patch: Partial<Omit<DocumentIssueQuery, "page">>) => { paginationFocus.cancel(); setQuery((current) => changeDocumentIssueQuery(current, patch)); };
@@ -38,7 +39,7 @@ export default function DocumentReview({ review }: { review: BackupDocumentRevie
     {review.issues.length > 0 && <details className={styles.details} open><summary>Замечания к документам и связям ({review.counts.errors + review.counts.reviews})</summary><div>
       <Tabs variant="filter" className={styles.issueTabs} ariaLabel="Тип замечаний к архиву" value={query.level} onChange={(level) => update({ level: level as DocumentIssueQuery["level"] })} items={[{ value: "all", label: "Все", count: review.issues.length }, { value: "error", label: "Ошибки", count: review.counts.errors }, { value: "review", label: "Проверить", count: review.counts.reviews }]} />
       <div className={styles.issueFilters}>
-        <div className={styles.issueArea}><label htmlFor={areaId}>Область</label><select id={areaId} value={query.area} onChange={(event) => update({ area: event.target.value as DocumentIssueQuery["area"] })}><option value="all">Все области</option>{Object.entries(BACKUP_DOCUMENTS).filter(([kind]) => findings.has(kind as BackupDocumentKind)).map(([kind, definition]) => <option key={kind} value={kind}>{definition.label}</option>)}</select></div>
+        <Dropdown className={styles.issueArea} label="Область" value={query.area} searchable options={[{ value: "all", label: "Все области" }, ...Object.entries(BACKUP_DOCUMENTS).filter(([kind]) => findings.has(kind as BackupDocumentKind)).map(([value, definition]) => ({ value, label: definition.label }))]} onChange={area => update({ area: area as DocumentIssueQuery["area"] })} />
         <div ref={searchRoot}><SearchField label="Найти замечание по тексту или ID" placeholder="" value={query.search} onChange={(search) => update({ search })} /></div>
       </div>
       <div className={styles.issueResult}><p role="status" aria-live="polite">Найдено: {view.total} из {review.issues.length}</p>{(query.level !== "all" || query.area !== "all" || query.search !== "") && <button type="button" onClick={reset}>Сбросить фильтры</button>}</div>

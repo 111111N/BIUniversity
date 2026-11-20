@@ -14,6 +14,8 @@ import { compareBackupNotificationRecords, type BackupNotificationComparison } f
 import { compareBackupFileDifference, type BackupFileDifferenceDetails } from "../domain/backupFileDifference";
 import { createBackupMaterialAreaComparison } from "../domain/backupMaterialAreaComparison";
 import { compareBackupAssessmentRecords, type BackupAssessmentComparison } from "../domain/backupAssessmentComparison";
+import { compareBackupScheduleCatalogRecords, type BackupScheduleCatalogComparison } from "../domain/backupScheduleCatalogComparison";
+import { compareBackupAcademicRecords, type BackupAcademicComparison } from "../domain/backupAcademicComparison";
 export type { BackupDifference, BackupDifferenceKind } from "../domain/backupComparison";
 
 export interface BackupInspection {
@@ -29,6 +31,8 @@ export interface BackupInspection {
   journalComparison?: BackupJournalComparison;
   notificationComparison?: BackupNotificationComparison;
   assessmentComparison?: BackupAssessmentComparison;
+  scheduleCatalogComparison?: BackupScheduleCatalogComparison;
+  academicComparison?: BackupAcademicComparison;
 }
 export interface BackupInspectionCommand extends BackupCommand { file: File }
 const areaNames: Record<string, string> = {
@@ -77,6 +81,8 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       const accountComparison = await compareBackupAccountRecords(archive.localStorage, before, command.signal);
       const learningComparison = await compareBackupLearningRecords(archive.localStorage, before, command.signal);
       const scheduleComparison = await compareBackupScheduleRecords(archive.localStorage, before, command.signal);
+      const scheduleCatalogComparison = await compareBackupScheduleCatalogRecords(archive.localStorage, before, command.signal);
+      const academicComparison = await compareBackupAcademicRecords(archive.localStorage, before, command.signal);
       const journalComparison = await compareBackupJournalRecords(archive.localStorage, before, command.signal);
       const notificationComparison = await compareBackupNotificationRecords(archive.localStorage, before, command.signal);
       const assessmentComparison = await compareBackupAssessmentRecords(archive.localStorage, before, command.signal);
@@ -135,7 +141,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       }
       const latest = await dependencies.listDatabases(); checkBackupAbort(command.signal); dependencies.authorize(command);
       if (JSON.stringify(before) !== JSON.stringify(capturePortalStorage(dependencies.storage)) || BACKUP_DATABASES.some(({ name }) => available.find((item) => item.name === name)?.version !== latest.find((item) => item.name === name)?.version)) throw new Error("Текущие данные изменились во время сравнения. Завершите редактирование в других вкладках и повторите проверку.");
-      const inspection: BackupInspection = { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison, journalComparison, notificationComparison, assessmentComparison };
+      const inspection: BackupInspection = { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison, scheduleCatalogComparison, academicComparison, journalComparison, notificationComparison, assessmentComparison };
       if (currentGeneration !== generation) throw new DOMException("Проверка заменена новым файлом.", "AbortError");
       bindBackupInspectionPreview(inspection, command.file, before);
       previous = inspection;

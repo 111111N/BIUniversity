@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import Dropdown from "../../components/Dropdown";
+import TemporalField from "../../components/DateTimePicker/Field";
 import { academicCalendarWeeks, academicDayKey, academicDayNumber, formatAcademicDay } from "../../domain/academicCalendarMath";
 import { CALENDAR_PHASES, type CalendarContents as Contents, type GroupCalendar } from "../../domain/groupCalendarTypes";
 import styles from "./index.module.scss";
@@ -48,13 +49,13 @@ export default function CalendarContentsEditor({ contents, period, disabled, onC
   return <div className={styles.list}>{error && <p role="alert">{error}</p>}<div className={styles.actions}><h3>Интервалы семестра</h3><button type="button" disabled={disabled || contents.segments.length >= 500} onClick={() => add("segment")}>Добавить интервал</button></div>
     {contents.segments.slice((currentSegment - 1) * 20, currentSegment * 20).map(segment => <div className={styles.calendarRow} key={segment.id}>
       <Dropdown label="Вид периода" value={segment.kind} options={Object.entries(CALENDAR_PHASES).map(([value, label]) => ({ value, label }))} disabled={disabled} onChange={kind => onChange({ ...contents, segments: contents.segments.map(row => row.id === segment.id ? { ...row, kind: kind as typeof segment.kind } : row) })} />
-      <label className={styles.field}>Начало<input type="date" required min={period.term.startsOn} max={period.term.endsOn} value={segment.startsOn} disabled={disabled} onChange={event => onChange({ ...contents, segments: contents.segments.map(row => row.id === segment.id ? { ...row, startsOn: event.target.value } : row) })} /></label>
-      <label className={styles.field}>Окончание<input type="date" required min={period.term.startsOn} max={period.term.endsOn} value={segment.endsOn} disabled={disabled} onChange={event => onChange({ ...contents, segments: contents.segments.map(row => row.id === segment.id ? { ...row, endsOn: event.target.value } : row) })} /></label>
+      <TemporalField label="Начало" required min={period.term.startsOn} max={period.term.endsOn} value={segment.startsOn} disabled={disabled} onChange={value => onChange({ ...contents, segments: contents.segments.map(row => row.id === segment.id ? { ...row, startsOn: value } : row) })} />
+      <TemporalField label="Окончание" required min={period.term.startsOn} max={period.term.endsOn} value={segment.endsOn} disabled={disabled} onChange={value => onChange({ ...contents, segments: contents.segments.map(row => row.id === segment.id ? { ...row, endsOn: value } : row) })} />
       <button type="button" disabled={disabled} aria-label={`Удалить интервал ${segment.startsOn}`} onClick={() => onChange({ ...contents, segments: contents.segments.filter(row => row.id !== segment.id) })}>Удалить</button>
     </div>)}<Pages page={currentSegment} pages={segmentPages} onChange={setSegmentPage} label="Интервалы семестра" />
     <div className={styles.actions}><h3>Неучебные дни</h3><button type="button" disabled={disabled || contents.daysOff.length >= 1000} onClick={() => add("day")}>Добавить дату</button></div>
     {contents.daysOff.slice((currentDay - 1) * 20, currentDay * 20).map(day => <div className={styles.calendarDay} key={day.id}>
-      <label className={styles.field}>Дата<input type="date" required min={period.term.startsOn} max={period.term.endsOn} value={day.date} disabled={disabled} onChange={event => onChange({ ...contents, daysOff: contents.daysOff.map(row => row.id === day.id ? { ...row, date: event.target.value } : row) })} /></label>
+      <TemporalField label="Дата" required min={period.term.startsOn} max={period.term.endsOn} value={day.date} disabled={disabled} onChange={value => onChange({ ...contents, daysOff: contents.daysOff.map(row => row.id === day.id ? { ...row, date: value } : row) })} />
       <label className={styles.field}>Название<input required minLength={2} maxLength={160} value={day.name} disabled={disabled} onChange={event => onChange({ ...contents, daysOff: contents.daysOff.map(row => row.id === day.id ? { ...row, name: event.target.value } : row) })} /></label>
       <button type="button" disabled={disabled} aria-label={`Удалить неучебный день ${day.date}`} onClick={() => onChange({ ...contents, daysOff: contents.daysOff.filter(row => row.id !== day.id) })}>Удалить</button>
     </div>)}<Pages page={currentDay} pages={dayPages} onChange={setDayPage} label="Неучебные дни" />

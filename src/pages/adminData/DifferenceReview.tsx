@@ -1,4 +1,5 @@
-import { useContext, useId, useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
+import Dropdown from "../../components/Dropdown";
 import type { BackupDifference } from "../../data/localBackupInspectionService";
 import { getBackupDifferenceKey, getBackupDifferenceKeyLabel } from "../../domain/backupComparison";
 import Tabs from "../../components/Tabs";
@@ -16,7 +17,7 @@ export default function DifferenceReview({ differences, ariaLabel = "Разли�
   const [query, setQuery] = useState(emptyBackupDifferenceQuery);
   const preview = useContext(ConflictPreviewContext);
   const choices = useContext(ConflictChoiceContext);
-  const areaId = useId(); const searchRoot = useRef<HTMLDivElement>(null); const list = useRef<HTMLUListElement>(null);
+  const searchRoot = useRef<HTMLDivElement>(null); const list = useRef<HTMLUListElement>(null);
   const view = getBackupDifferencePage(differences, query);
   const areas = [...new Set(differences.map((item) => item.area))];
   const paginationFocus = useReviewPaginationFocus(differences);
@@ -27,7 +28,7 @@ export default function DifferenceReview({ differences, ariaLabel = "Разли�
   return <div className={styles.differenceReview} role="group" aria-label={ariaLabel}>
     <Tabs variant="filter" className={styles.issueTabs} ariaLabel="Тип различий с браузером" value={query.kind} onChange={(kind) => update({ kind: kind as BackupDifferenceQuery["kind"] })} items={[{ value: "all", label: "Все", count: differences.length }, ...Object.entries(BACKUP_DIFFERENCE_LABELS).map(([kind, label]) => ({ value: kind, label, count: differences.filter((item) => item.kind === kind).length }))]} />
     <div className={styles.issueFilters}>
-      <div className={styles.issueArea}><label htmlFor={areaId}>Область сравнения</label><select id={areaId} value={query.area === null ? "" : String(areas.indexOf(query.area))} onChange={(event) => update({ area: event.target.value === "" ? null : areas[Number(event.target.value)] ?? null })}><option value="">Все области</option>{areas.map((area, index) => <option key={area} value={index}>{area}</option>)}</select></div>
+      <Dropdown className={styles.issueArea} label="Область сравнения" value={query.area ?? ""} searchable options={[{ value: "", label: "Все области" }, ...areas.map(area => ({ value: area, label: area }))]} onChange={area => update({ area: area || null })} />
       <div ref={searchRoot}><SearchField label="Найти различие по области или ID" placeholder="" value={query.search} onChange={(search) => update({ search })} /></div>
     </div>
     <div className={styles.issueResult}><p role="status" aria-live="polite">Найдено: {view.total} из {differences.length}</p>{(query.kind !== "all" || query.area !== null || query.search !== "") && <button type="button" onClick={reset}>Сбросить фильтры</button>}</div>

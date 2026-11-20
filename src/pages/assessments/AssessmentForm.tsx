@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
+import TemporalField from "../../components/DateTimePicker/Field";
 import { Link } from "react-router-dom";
 import Dropdown from "../../components/Dropdown";
 import RecordEditor, { RecordEditorActions } from "../../components/RecordEditor";
@@ -98,8 +99,8 @@ export default function AssessmentForm({ actorId, snapshot, assessment, editingA
         {!assessment && snapshot.academicPeriods?.error && <div className={styles.error} role="alert"><p>{snapshot.academicPeriods.error}</p><button type="button" disabled={busy} onClick={() => void review()}>Повторить чтение периодов</button></div>}
         {!assessment && <RecordBookFields value={bookDraft} onChange={setBookDraft} disabled={locked} />}
         <div className={styles.fields}>
-          <label className={styles.field} htmlFor={dateId}>Дата сдачи<input id={dateId} required type="date" value={draft.attempt.date} onChange={(event) => patchAttempt({ date: event.target.value })} /></label>
-          <label className={styles.field} htmlFor={timeId}>Время (Москва)<input id={timeId} required type="time" value={draft.attempt.startsAt} onChange={(event) => patchAttempt({ startsAt: event.target.value })} /><small>Внесение результатов откроется с этого момента.</small></label>
+          <TemporalField id={dateId} label="Дата сдачи" required disabled={locked} value={draft.attempt.date} onChange={date => patchAttempt({ date })} />
+          <TemporalField id={timeId} label="Время (Москва)" kind="time" required disabled={locked} value={draft.attempt.startsAt} hint="Внесение результатов откроется с этого момента." onChange={startsAt => patchAttempt({ startsAt })} />
           <label className={styles.field} htmlFor={roomId}>{requiresRoom ? "Аудитория" : "Аудитория (необязательно)"}<input id={roomId} required={requiresRoom} maxLength={256} value={draft.attempt.room ?? ""} onChange={(event) => patchAttempt({ room: event.target.value })} /></label>
           <Dropdown label={supervised ? "Научный руководитель" : "Преподаватель, заполняющий ведомость"} value={draft.attempt.teacherId} disabled={locked || Boolean(fixedSupervisor)} options={teachers} searchable placeholder="" onChange={(teacherId) => patchAttempt({ teacherId })} />
         </div>

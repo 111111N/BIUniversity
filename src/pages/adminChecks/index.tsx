@@ -12,6 +12,7 @@ import styles from "./index.module.scss";
 import Tabs from "../../components/Tabs";
 import CheckResults from "./CheckResults";
 import { assessmentService } from "../../data/assessmentStore";
+import { subscribeRooms } from "../../data/roomsRead";
 
 export default function AdminChecksPage() {
   const { currentUser, accounts, accountError, refreshAccounts } = useRole();
@@ -20,6 +21,7 @@ export default function AdminChecksPage() {
   const scheduleUpdate = useManagedScheduleUpdate();
   const [assessmentUpdate, setAssessmentUpdate] = useState(0);
   useEffect(() => assessmentService.subscribe(() => setAssessmentUpdate((value) => value + 1)), []);
+  useEffect(() => subscribeRooms(() => setAssessmentUpdate(value => value + 1)), []);
   const [params, setParams] = useSearchParams();
   const query = useMemo<AdministrationChecksQuery>(() => ({ q: params.get("q") ?? "", kind: params.get("kind") ?? "all", level: params.get("level") ?? "all", page: Number(params.get("page") ?? 1) }), [params]);
   const [reload, setReload] = useState(0);
