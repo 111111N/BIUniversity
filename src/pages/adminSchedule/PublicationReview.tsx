@@ -9,10 +9,16 @@ import { PUBLICATION_FIELD_LABELS, type PublicationChangeField, type Publication
 import type { ManagedLesson, ManagedScheduleSnapshot } from "../../domain/scheduleManagement";
 import { parseCalendarDate } from "../../domain/calendar";
 import { lessonTypeLabels } from "../../domain/academic";
+import { readGroupCalendarsDocument, subscribeGroupCalendars } from "../../data/groupCalendarRead";
+import useTeachingAssignmentsDocument from "../../hooks/useTeachingAssignmentsDocument";
 import base from "./CopyWeekDialog.module.scss";
 import styles from "./PublicationReview.module.scss";
 
 const PAGE_SIZE = 20;
+const calendarVersion = () => {
+  try { return { revision: readGroupCalendarsDocument().revision, error: "" }; }
+  catch (error) { console.error("Не удалось проверить календарь перед публикацией:", error); return { revision: -1, error: "Календарь недоступен. Публикация приостановлена." }; }
+};
 const labels: Record<PublicationChangeKind, string> = { added: "Добавится", changed: "Изменится", removed: "Будет убрано" };
 const dateLabel = (date: string) => parseCalendarDate(date)?.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) ?? date;
 const fieldValue = (lesson: ManagedLesson, field: PublicationChangeField) => {
@@ -45,10 +51,13 @@ export default function PublicationReview({ groupId, groupName, weekStart, revis
   const [publishing, setPublishing] = useState(false);
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [calendar, setCalendar] = useState(calendarVersion);
+  const teaching = useTeachingAssignmentsDocument();
+  useEffect(() => subscribeGroupCalendars(() => setCalendar(calendarVersion())), []);
   const preview = response?.request === request ? response.preview : null;
   const error = failure?.request === request ? failure.message : "";
   const loading = !preview && !error;
-  const stale = Boolean(preview && preview.versions.scheduleRevision !== revision);
+  const stale = Boolean(calendar.error || teaching.error || preview && (preview.versions.scheduleRevision !== revision || (preview.versions.calendarRevision ?? 0) !== calendar.revision || (preview.versions.teachingRevision ?? 0) !== teaching.document.revision));
   useUnsavedChangesWarning(publishing);
   useEffect(() => {
     let current = true;
@@ -76,7 +85,7 @@ export default function PublicationReview({ groupId, groupName, weekStart, revis
     <header className={base.header}><div><h2 id={titleId}>Проверьте изменения расписания</h2><p>{groupName} · неделя с {dateLabel(weekStart)}</p></div><button ref={closeRef} type="button" disabled={publishing} onClick={onClose}>Вернуться</button></header>
     {loading && <p className={base.note} role="status">Сравниваем сохранённый черновик с публикацией…</p>}
     {error && <p className={base.error} role="alert">{error}</p>}
-    {stale && <p className={base.error} role="alert">Расписание изменилось после проверки. Обновите предпросмотр и проверьте актуальные изменения.</p>}
+    {stale && <p className={base.error} role="alert">{calendar.error || "Расписание или учебный календарь изменились после проверки. Обновите предпросмотр и проверьте актуальные изменения."}</p>}
     <div className={styles.tools}><button type="button" disabled={publishing} onClick={() => { setReviewRevision(revision); setReload((value) => value + 1); }}>Обновить предпросмотр</button></div>
     {preview && <>
       <div className={styles.summary} role="status"><div><span>Добавится</span><strong>{preview.counts.added}</strong></div><div><span>Изменится</span><strong>{preview.counts.changed}</strong></div><div><span>Будет убрано</span><strong>{preview.counts.removed}</strong></div><div><span>Без изменений</span><strong>{preview.counts.unchanged}</strong></div></div>

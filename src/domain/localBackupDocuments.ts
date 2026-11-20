@@ -2,6 +2,18 @@ import { decodeAccountsDocument, getStudentGroupId, isAccountActive, type Accoun
 import { decodeGroupCatalog, type GroupCatalogDocument } from "./groupCatalog";
 import { decodeSubjectCatalog, type SubjectCatalogDocument } from "./subjectCatalog";
 import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument } from "./academicPeriods";
+import { EDUCATION_DIRECTORIES_KEY, decodeEducationDirectories } from "./educationDirectories";
+import { CURRICULA_KEY } from "./curriculumTypes";
+import { decodeCurricula } from "./curricula";
+import { inspectArchivedCurricula } from "./backupCurricula";
+import { GROUP_CALENDARS_KEY } from "./groupCalendarTypes";
+import { decodeGroupCalendars } from "./groupCalendars";
+import { inspectArchivedGroupCalendars } from "./backupGroupCalendars";
+import { TEACHING_ASSIGNMENTS_KEY, decodeTeachingAssignments } from "./teachingAssignments";
+import { inspectArchivedTeachingAssignments } from "./backupTeachingAssignments";
+import { inspectArchivedSchedulePublications } from "./backupSchedulePublications";
+import { SCHEDULE_TEMPLATES_KEY, decodeScheduleTemplates } from "./scheduleTemplates";
+import { inspectArchivedScheduleTemplates } from "./backupScheduleTemplates";
 import { decodeManagedSchedule, MANAGED_SCHEDULE_KEY, type ManagedScheduleSnapshot } from "./scheduleManagement";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
@@ -34,8 +46,13 @@ export const BACKUP_LEARNING_DOCUMENTS = {
 } as const;
 export const BACKUP_PERIOD_DOCUMENTS = {
   periods: { key: ACADEMIC_PERIODS_STORAGE_KEY, prefix: "bi-university-academic-periods-", label: "Учебные годы и семестры" },
+  educationDirectories: { key: EDUCATION_DIRECTORIES_KEY, prefix: "bi-university-education-directories-", label: "Программы и формы обучения" },
+  curricula: { key: CURRICULA_KEY, prefix: "bi-university-curricula-", label: "Учебные планы и назначения групп" },
+  groupCalendars: { key: GROUP_CALENDARS_KEY, prefix: "bi-university-group-calendars-", label: "Календари групп и закрытие периодов" },
+  teachingAssignments: { key: TEACHING_ASSIGNMENTS_KEY, prefix: "bi-university-teaching-assignments-", label: "Преподаватели по типам занятий" },
 } as const;
-const STATIC_BACKUP_DOCUMENTS = { ...BACKUP_CORE_DOCUMENTS, ...BACKUP_LEARNING_DOCUMENTS, ...BACKUP_PERIOD_DOCUMENTS };
+export const BACKUP_SCHEDULE_DOCUMENTS = { scheduleTemplates: { key: SCHEDULE_TEMPLATES_KEY, prefix: "bi-university-schedule-templates-", label: "Именованные шаблоны расписания" } } as const;
+const STATIC_BACKUP_DOCUMENTS = { ...BACKUP_CORE_DOCUMENTS, ...BACKUP_LEARNING_DOCUMENTS, ...BACKUP_PERIOD_DOCUMENTS, ...BACKUP_SCHEDULE_DOCUMENTS };
 export const BACKUP_DOCUMENTS = { ...STATIC_BACKUP_DOCUMENTS, ...BACKUP_JOURNAL_DOCUMENTS, ...BACKUP_PLANNER_DOCUMENTS, ...BACKUP_NOTIFICATION_DOCUMENTS, ...BACKUP_SETTINGS_DOCUMENTS, ...BACKUP_MESSAGING_DOCUMENTS, ...BACKUP_MATERIAL_DOCUMENTS, ...BACKUP_ASSESSMENT_DOCUMENTS };
 export type BackupDocumentKind = keyof typeof BACKUP_DOCUMENTS;
 export interface BackupDocumentBaseline { groupIds: readonly string[]; requiredSubjectIds: readonly string[] }
@@ -77,7 +94,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     }
     try {
       const header: unknown = versioned ? JSON.parse(raw) : null;
-      if (versioned && (!header || typeof header !== "object" || Array.isArray(header) || !("version" in header) || (kind === "subjects" ? header.version !== 1 && header.version !== 2 : header.version !== 1))) throw new Error(kind === "subjects" ? "Поддерживаются документы дисциплин версий 1 и 2." : "Поддерживается только документ версии 1.");
+      if (versioned && (!header || typeof header !== "object" || Array.isArray(header) || !("version" in header) || (kind === "subjects" || kind === "accounts" || kind === "schedule" ? header.version !== 1 && header.version !== 2 : header.version !== 1))) throw new Error(kind === "subjects" || kind === "accounts" || kind === "schedule" ? "Поддерживаются документы версий 1 и 2." : "Поддерживается только документ версии 1.");
       const document = decode(raw);
       const revision = header && typeof header === "object" && "revision" in header && typeof header.revision === "number" ? header.revision : undefined;
       result.checks.push({ kind, key: definition.key, label: definition.label, status: "valid", revision, ...(Array.isArray(document) ? { records: document.length } : {}), message: "Схема прочитана текущей версией приложения. Это не разрешение на восстановление." }); result.counts.valid++;
@@ -109,10 +126,24 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     if (!document) throw new Error("Некорректная схема расписания, повторяющиеся идентификаторы или нарушена связь опубликованных занятий с журналом.");
     return document;
   });
+  const scheduleTemplates = await read("scheduleTemplates", decodeScheduleTemplates);
+  if (scheduleTemplates) {
+    result.checks.find(row => row.kind === "scheduleTemplates")!.records = scheduleTemplates.templates.length;
+    for (const finding of await inspectArchivedScheduleTemplates(scheduleTemplates, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), schedule }, archive.completedAt, signal)) issue(finding);
+  }
   for (const event of subjects?.history ?? []) if (event.origin === "saved-snapshot") issue({ kind: "subjects", level: "review", code: "legacy-subject-snapshot", recordId: event.id, referenceId: event.subjectId, message: "Реквизиты до первого изменения сохранены снимком прежнего каталога. История ранних изменений не создавалась и требует независимого подтверждения." });
   const assignments = await read("assignments", decodeBackupAssignments, false);
   const submissions = await read("submissions", decodeBackupSubmissions, false);
   const periods = await read("periods", decodeAcademicPeriodsDocument);
+  const educationDirectories = await read("educationDirectories", decodeEducationDirectories);
+  const curricula = await read("curricula", decodeCurricula);
+  const groupCalendars = await read("groupCalendars", decodeGroupCalendars);
+  const teachingAssignments = await read("teachingAssignments", decodeTeachingAssignments);
+  if (teachingAssignments) {
+    result.checks.find(row => row.kind === "teachingAssignments")!.records = teachingAssignments.assignments.length;
+    for (const finding of await inspectArchivedTeachingAssignments(teachingAssignments, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), groupIds: groups && new Set(groups.groups.map(row => row.id)), subjectIds: subjects && new Set(subjects.subjects.map(row => row.id)), periods, schedule }, archive.completedAt, signal)) issue(finding);
+  } else if (schedule && [...schedule.published.flatMap(week => week.lessons), ...schedule.journal, ...(schedule.publications?.flatMap(version => version.week.lessons) ?? [])].some(lesson => lesson.teachingAssignmentId)) issue({ kind: "teachingAssignments", level: "error", code: "missing-teaching-source", message: "Расписание ссылается на версии назначений по типам занятий, но их источник отсутствует или повреждён в архиве." });
+  if (schedule) for (const finding of await inspectArchivedSchedulePublications(schedule, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), groupIds: groups && new Set(groups.groups.map(row => row.id)), subjectIds: subjects && new Set(subjects.subjects.map(row => row.id)) }, archive.completedAt, signal)) issue(finding);
   if (accounts) {
     const history = await indexArchivedAccountHistory(accounts.history, signal);
     const studentNumbers = await inspectArchivedStudentNumbers(accounts, signal);
@@ -154,6 +185,27 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   addReview(await inspectArchivedMaterials(archive.databases, { accountIds, subjectIds, groupIds: groups ? savedGroupIds : undefined }, signal));
   let builtInGroups = false; let count = 0;
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  if (groupCalendars) {
+    result.checks.find(row => row.kind === "groupCalendars")!.records = groupCalendars.calendars.length;
+    for (const finding of await inspectArchivedGroupCalendars(groupCalendars, { accountIds, groupIds: groups ? savedGroupIds : undefined, periods }, archive.completedAt, signal)) issue(finding);
+  }
+  if (curricula) {
+    result.checks.find(row => row.kind === "curricula")!.records = curricula.plans.length + curricula.bindings.length;
+    for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, directories: educationDirectories, periods }, archive.completedAt, signal)) issue(finding);
+  }
+  if (educationDirectories) {
+    result.checks.find(row => row.kind === "educationDirectories")!.records = educationDirectories.programs.length + educationDirectories.forms.length;
+    for (const event of educationDirectories.history) {
+      await step();
+      if (!accountIds) issue({ kind: "educationDirectories", level: "review", code: "unchecked-education-directory-author", recordId: event.id, referenceId: event.actorId, message: "Автор изменения программы или формы обучения не проверен: справочник учёток отсутствует или не читается в архиве." });
+      else if (!accountIds.has(event.actorId)) issue({ kind: "educationDirectories", level: "error", code: "missing-education-directory-author", recordId: event.id, referenceId: event.actorId, message: "В архиве отсутствует учётная запись автора изменения учебного справочника." });
+      if (Date.parse(event.occurredAt) > Date.parse(archive.completedAt)) issue({ kind: "educationDirectories", level: "error", code: "education-directory-event-after-backup", recordId: event.id, message: "Изменение программы или формы обучения датировано позже завершения архива." });
+    }
+    if (educationDirectories.history.length) {
+      if (!Number.isFinite(Date.parse(archive.completedAt))) issue({ kind: "educationDirectories", level: "review", code: "unchecked-education-directory-cutoff", message: "Время завершения архива не подтверждено для проверки истории программ и форм обучения." });
+      issue({ kind: "educationDirectories", level: "review", code: "unconfirmed-education-directory-authority", message: "Схема учебных справочников и наличие ID авторов не подтверждают исторические полномочия и не разрешают восстановление." });
+    }
+  }
   if (periods) {
     const check = result.checks.find(row => row.kind === "periods")!;
     check.records = periods.years.length + periods.terms.length;

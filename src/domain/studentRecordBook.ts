@@ -1,11 +1,11 @@
-import type { Assessment, AssessmentKind, AssessmentOutcome, AssessmentTeacherOption } from "./assessmentTypes";
+import type { Assessment, AssessmentAttemptKind, AssessmentKind, AssessmentOutcome, AssessmentTeacherOption } from "./assessmentTypes";
 
 export const RECORD_BOOK_SECTIONS = { passes: "Зачёты", exams: "Экзамены", internships: "Практики", coursework: "Курсовые работы", electives: "Факультативы", theses: "ВКР" } as const;
 export type RecordBookSection = keyof typeof RECORD_BOOK_SECTIONS;
 export interface StudentRecordBookRow {
   id: string; title: string; kind: AssessmentKind; semester: number | null; hours: number | null;
   section: RecordBookSection; date: string; startsAt: string; outcome: AssessmentOutcome;
-  teacher: string | null; attemptNumber: number; attemptKind: "primary" | "retake" | "commission"; attempts: number;
+  teacher: string | null; attemptNumber: number; attemptKind: AssessmentAttemptKind; attempts: number;
 }
 export interface StudentRecordBookSemester { key: string; semester: number | null; rows: StudentRecordBookRow[] }
 const sectionFor = (assessment: Assessment): RecordBookSection => assessment.recordBook?.category === "elective" ? "electives"

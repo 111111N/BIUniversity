@@ -30,10 +30,17 @@ const StudentCabinet = lazy(() => import("./pages/studentCabinet"));
 const StudentJournal = lazy(() => import("./pages/studentJournal"));
 const NotFound = lazy(() => import("./pages/notFound"));
 const AdminSchedule = lazy(() => import("./pages/adminSchedule"));
+const AdminScheduleOverview = lazy(() => import("./pages/adminSchedule/Overview"));
+const AdminScheduleTemplates = lazy(() => import("./pages/adminSchedule/Templates"));
 const AdminAccounts = lazy(() => import("./pages/adminAccounts"));
+const AdminPeople = lazy(() => import("./pages/adminPeople"));
 const AdminSubjects = lazy(() => import("./pages/adminSubjects"));
 const AdminGroups = lazy(() => import("./pages/adminGroups"));
 const AdminPeriods = lazy(() => import("./pages/adminPeriods"));
+const AdminPrograms = lazy(() => import("./pages/adminPrograms"));
+const AdminCurricula = lazy(() => import("./pages/adminPrograms/Curricula"));
+const AdminCalendars = lazy(() => import("./pages/adminPrograms/Calendars"));
+const AdminTeachingAssignments = lazy(() => import("./pages/adminPrograms/TeachingAssignments"));
 const StudentImport = lazy(() => import("./pages/studentImport"));
 const StudentEducation = lazy(() => import("./pages/studentEducation"));
 const AdminStudents = lazy(() => import("./pages/adminStudents"));
@@ -72,11 +79,18 @@ const LayoutWithNav = () => {
                     <Route path="/" element={role === "configurator" ? <Navigate to="/admin/schedule" replace /> : role === "student" ? <StudentHome /> : <Home />} />
                     <Route path="/schedule" element={<Schedule />} />
                     <Route path="/admin/schedule" element={<RoleRoute allow="configurator"><AdminSchedule /></RoleRoute>} />
+                    <Route path="/admin/schedule/overview" element={<RoleRoute allow="configurator"><AdminScheduleOverview /></RoleRoute>} />
+                    <Route path="/admin/schedule/templates" element={<RoleRoute allow="configurator"><AdminScheduleTemplates /></RoleRoute>} />
                     <Route path="/admin/accounts" element={<RoleRoute allow="configurator"><AdminAccounts /></RoleRoute>} />
+                    <Route path="/admin/people" element={<RoleRoute allow="configurator"><AdminPeople /></RoleRoute>} />
                     <Route path="/admin/accounts/import" element={<RoleRoute allow="configurator"><StudentImport /></RoleRoute>} />
                     <Route path="/admin/subjects" element={<RoleRoute allow="configurator"><AdminSubjects /></RoleRoute>} />
                     <Route path="/admin/groups" element={<RoleRoute allow="configurator"><AdminGroups /></RoleRoute>} />
                     <Route path="/admin/periods" element={<RoleRoute allow="configurator"><AdminPeriods /></RoleRoute>} />
+                    <Route path="/admin/programs" element={<RoleRoute allow="configurator"><AdminPrograms /></RoleRoute>} />
+                    <Route path="/admin/curricula" element={<RoleRoute allow="configurator"><AdminCurricula /></RoleRoute>} />
+                    <Route path="/admin/calendars" element={<RoleRoute allow="configurator"><AdminCalendars /></RoleRoute>} />
+                    <Route path="/admin/teaching" element={<RoleRoute allow="configurator"><AdminTeachingAssignments /></RoleRoute>} />
                     <Route path="/admin/students/:accountId/education" element={<RoleRoute allow="configurator"><StudentEducation /></RoleRoute>} />
                     <Route path="/admin/students" element={<RoleRoute allow="configurator"><AdminStudents /></RoleRoute>} />
                     <Route path="/admin/teachers" element={<RoleRoute allow="configurator"><AdminTeachers /></RoleRoute>} />

@@ -30,7 +30,7 @@ export default function SupervisorChange({ assessment, actorId, snapshot, blocke
     finally { pending.current = false; setBusy(false); }
   };
   return <ConfirmDialog title="Заменить научного руководителя?" confirmLabel="Заменить руководителя" busy={busy} confirmDisabled={locked || !selected || !validReason} error={error || (stale ? "Данные изменились. Выбор сохранён; закройте подтверждение и проверьте актуальную аттестацию." : !available ? "Замена больше недоступна. Для неё нужна текущая попытка без ранее сохранённых результатов по всей аттестации." : "")} onCancel={() => { if (!busy) onClose(); }} onConfirm={() => void save()}>
-    <p>{assessment.title}. Назначение текущей попытки изменится; прежние назначения и отменённые попытки сохранятся в истории.</p>
+    <p>{assessment.title}. Руководитель изменится во всех незавершённых ведомостях, включая допсроки. Прежние назначения и отменённые попытки сохранятся в истории.</p>
     <Dropdown label="Новый научный руководитель" value={teacherId} options={options} onChange={(value) => { setTeacherId(value); setError(""); }} searchable placeholder="" disabled={locked} />
     {!options.length && <p className={styles.note}>Нет других действующих преподавателей. Проверьте учётные записи преподавателей.</p>}
     <label className={styles.field} htmlFor={id}>Причина замены<input id={id} maxLength={500} value={reason} disabled={locked} onChange={(event) => { setReason(event.target.value); setError(""); }} /></label>

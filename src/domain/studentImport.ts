@@ -3,6 +3,7 @@ import { groupNameKey, isGroupActive, type GroupStatus } from "./groupCatalog";
 import { MAX_IMPORT_ROWS } from "./importTable";
 import { getStudentNumberYear, previewStudentNumber, type StudentNumberPreview } from "./studentRecord";
 import type { StudentImportReceipt } from "./studentImportReceipt";
+import { attachAccountPerson, migrateAccountPeople } from "./accountPeople";
 
 export interface StudentImportRow { line: number; name: string; login: string; group: string; campus: string; email: string }
 export interface StudentImportRequest { rows: StudentImportRow[]; defaultGroupId: string; defaultCampus: number | null }
@@ -88,7 +89,8 @@ export const previewStudentImport = (state: AccountsDocument, groups: StudentImp
   return { rows, year, counters, ready: rows.filter((row) => row.status === "ready").length, existing: rows.filter((row) => row.status === "existing").length, errors: rows.filter((row) => row.status === "error").length };
 };
 
-export const applyStudentImport = (state: AccountsDocument, command: ApplyStudentImportCommand, groups: StudentImportGroup[], groupRevision: number, date: string, identities: Array<{ id: string; changeId: string }>): { state: AccountsDocument; receipt: StudentImportReceipt; replayed: boolean } => {
+export const applyStudentImport = (source: AccountsDocument, command: ApplyStudentImportCommand, groups: StudentImportGroup[], groupRevision: number, date: string, identities: Array<{ id: string; changeId: string; personId?: string }>): { state: AccountsDocument; receipt: StudentImportReceipt; replayed: boolean } => {
+  const state = migrateAccountPeople(source);
   authorizeAccountCommand(state, { ...command, expectedRevision: state.revision });
   if (typeof command.batchId !== "string" || !command.batchId.trim() || command.batchId.length > 120 || typeof command.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(command.fingerprint)) throw new Error("Некорректный идентификатор пакета импорта.");
   const receipts = state.studentImports ?? [];
@@ -106,10 +108,14 @@ export const applyStudentImport = (state: AccountsDocument, command: ApplyStuden
   const ids = new Set(state.accounts.map((account) => account.id));
   const historyIds = new Set(state.history.map((change) => change.id));
   if (identities.length !== ready.length || identities.some((identity) => !identity.id || ids.has(identity.id) || !identity.changeId || historyIds.has(identity.changeId)) || new Set(identities.map((identity) => identity.id)).size !== ready.length || new Set(identities.map((identity) => identity.changeId)).size !== ready.length) throw new Error("Не удалось подготовить уникальные записи импорта.");
+  let peopleState = state;
   const accounts: PortalAccount[] = ready.map((row, index) => {
     const record = row.allocation!;
-    return { ...validateAccountDraft(row.draft!, []), id: identities[index].id, revision: 1, status: "active", createdAt: date, updatedAt: date, studentRecord: { number: record.number, year: record.year, campus: record.campus, sequence: record.sequence, issuedAt: date } };
+    const draft = validateAccountDraft(row.draft!, []), identity = identities[index];
+    const linked = attachAccountPerson(peopleState, draft, identity.id, identity.changeId, command.actorId, date, identity.personId);
+    peopleState = linked.state;
+    return { ...draft, personId: linked.person.id, id: identity.id, revision: 1, status: "active", createdAt: date, updatedAt: date, studentRecord: { number: record.number, year: record.year, campus: record.campus, sequence: record.sequence, issuedAt: date } };
   });
   const receipt: StudentImportReceipt = { id: command.batchId, fingerprint: command.fingerprint, actorId: command.actorId, createdAt: date, sourceRowCount: plan.rows.length, created: ready.map((row, index) => ({ line: row.line, accountId: accounts[index].id, studentNumber: row.studentNumber! })), skipped: plan.rows.filter((row) => row.status === "existing").map((row) => ({ line: row.line, accountId: row.accountId! })) };
-  return { replayed: false, receipt, state: { ...state, revision: state.revision + 1, accounts: [...state.accounts, ...accounts], studentNumberCounters: plan.counters, studentImports: [...receipts, receipt], history: [...state.history, ...accounts.map((account, index) => ({ id: identities[index].changeId, actorId: command.actorId, accountId: account.id, occurredAt: date, action: "created" as const, previousRole: null, nextRole: "student" as const, importBatchId: receipt.id }))] } };
+  return { replayed: false, receipt, state: { ...peopleState, revision: state.revision + 1, accounts: [...state.accounts, ...accounts], studentNumberCounters: plan.counters, studentImports: [...receipts, receipt], history: [...state.history, ...accounts.map((account, index) => ({ id: identities[index].changeId, actorId: command.actorId, accountId: account.id, occurredAt: date, action: "created" as const, previousRole: null, nextRole: "student" as const, importBatchId: receipt.id }))] } };
 };

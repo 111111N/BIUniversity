@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { deleteAssignmentFile, removeAssignmentRecords, saveAssignments, saveSubmissions, subscribeAssignmentStore } from "../../data/assignmentStore";
 import type { Assignment, Submission, SubmissionAttempt } from "../../data/assignmentStore";
 import { saveAssignmentFile } from "../../data/assignmentStore";
+import { AssignmentPeriodError } from "../../data/assignmentStore";
 import { getCurrentSubmissionAttempt, getSubmissionAttempts, isAssignmentVisibleToStudent, isAttemptLate, isSubmissionAllowed } from "../../domain/assignments";
 import { addNotification } from "../../data/notificationStore";
 import { ACADEMIC_GROUPS, ACADEMIC_SUBJECTS, getAcademicGroup, getAcademicGroupByName, getAcademicSubjectByName } from "../../data/academicCatalog";
@@ -158,7 +159,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     } catch (error) {
       console.error("Не удалось сохранить задание:", error);
       if (attachmentId) void deleteAssignmentFile(attachmentId).catch(() => {});
-      setFormError(error instanceof AssignmentSaveError ? error.message : "Не удалось сохранить задание. Проверьте доступ к хранилищу и повторите попытку.");
+      setFormError(error instanceof AssignmentSaveError || error instanceof AssignmentPeriodError ? error.message : "Не удалось сохранить задание. Проверьте доступ к хранилищу и повторите попытку.");
       if (!previewing) requestAnimationFrame(() => formErrorRef.current?.focus());
     } finally {
       setSaving(false);
@@ -205,7 +206,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
       setOperationMessage(cleanup.some((result) => result.status === "rejected") ? "Задание и ответы удалены. Некоторые вложения не удалось очистить из хранилища браузера." : "Задание и связанные ответы удалены.", assignmentResultScope(null));
     } catch (error) {
       console.error("Не удалось удалить задание:", error);
-      setDeleteError("Не удалось удалить задание. Проверьте доступ к хранилищу и повторите попытку.");
+      setDeleteError(error instanceof AssignmentPeriodError ? error.message : "Не удалось удалить задание. Проверьте доступ к хранилищу и повторите попытку.");
     } finally {
       setSaving(false);
     }
@@ -268,7 +269,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     } catch (error) {
       console.error("Не удалось отправить ответ на задание:", error);
       if (newAttachmentId) void deleteAssignmentFile(newAttachmentId).catch(() => {});
-      setOperationError(error instanceof AnswerSendError ? error.message : "Не удалось отправить работу. Ответ остался в форме — повторите попытку.");
+      setOperationError(error instanceof AnswerSendError || error instanceof AssignmentPeriodError ? error.message : "Не удалось отправить работу. Ответ остался в форме — повторите попытку.");
       reload();
       return false;
     } finally {
@@ -318,7 +319,7 @@ export const useAssignmentController = ({ subject, group }: { subject?: string; 
     return true;
     } catch (error) {
       console.error("Не удалось сохранить результат проверки:", error);
-      setOperationError("Не удалось сохранить результат проверки. Повторите попытку.");
+      setOperationError(error instanceof AssignmentPeriodError ? error.message : "Не удалось сохранить результат проверки. Повторите попытку.");
       return false;
     } finally {
       setSaving(false);

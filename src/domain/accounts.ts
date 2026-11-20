@@ -3,15 +3,17 @@ import { isStudentImportReceipt, type StudentImportReceipt } from "./studentImpo
 import { isStudentEnrollmentStatus, type StudentEnrollmentStatus } from "./studentEnrollment";
 import { isStudentBulkReceipt, type StudentBulkReceipt } from "./studentBulkReceipt";
 import { isStudentEducationEvent, sameEducationState, type StudentEducationEvent, type EducationEventDetails } from "./studentEducationEvent";
+import type { Person, PersonChange } from "./personTypes";
+import { attachAccountPerson, migrateAccountPeople, synchronizeAccountPerson, validateAccountPeople } from "./accountPeople";
 
 export type UserRole = "teacher" | "student" | "configurator";
 export type AcademicMembership = { subjectId: string; groupIds: string[] };
-export type CurrentUser = { id: string; name: string; role: UserRole; scheduleName?: string; memberships: AcademicMembership[]; status?: "active" | "blocked"; email?: string; studentRecord?: StudentRecord; studentGroupId?: string; enrollmentStatus?: StudentEnrollmentStatus };
+export type CurrentUser = { id: string; personId?: string; name: string; role: UserRole; scheduleName?: string; memberships: AcademicMembership[]; status?: "active" | "blocked"; email?: string; studentRecord?: StudentRecord; studentGroupId?: string; enrollmentStatus?: StudentEnrollmentStatus };
 export type PortalAccount = CurrentUser & { login: string; revision: number; createdAt?: string; updatedAt?: string };
-export type AccountDraft = { name: string; login: string; role: UserRole; memberships: AcademicMembership[]; scheduleName?: string; email?: string; studentCampus?: number; studentGroupId?: string; enrollmentStatus?: StudentEnrollmentStatus };
+export type AccountDraft = { personId?: string; name: string; login: string; role: UserRole; memberships: AcademicMembership[]; scheduleName?: string; email?: string; studentCampus?: number; studentGroupId?: string; enrollmentStatus?: StudentEnrollmentStatus };
 export type AccountFieldChange = { field: string; before: string; after: string };
 export type AccountChange = { id: string; actorId: string; accountId: string; occurredAt: string; action: "created" | "role-changed" | "assignments-changed" | "details-changed" | "status-changed" | "student-number-issued"; previousRole: UserRole | null; nextRole: UserRole; previousMemberships?: AcademicMembership[]; nextMemberships?: AcademicMembership[]; changes?: AccountFieldChange[]; importBatchId?: string; studentOperationBatchId?: string; educationEventId?: string };
-export type AccountsDocument = { version: 1; revision: number; accounts: PortalAccount[]; history: AccountChange[]; studentNumberCounters?: Record<string, number>; studentImports?: StudentImportReceipt[]; studentOperations?: StudentBulkReceipt[]; educationEvents?: StudentEducationEvent[] };
+export type AccountsDocument = { version: 1 | 2; persons?: Person[]; personHistory?: PersonChange[]; revision: number; accounts: PortalAccount[]; history: AccountChange[]; studentNumberCounters?: Record<string, number>; studentImports?: StudentImportReceipt[]; studentOperations?: StudentBulkReceipt[]; educationEvents?: StudentEducationEvent[] };
 export type AccountCommandContext = { actorId: string; actorRevision: number; expectedRevision: number };
 
 export const ACCOUNT_ROLE_LABELS: Record<UserRole, string> = { teacher: "Преподаватель", student: "Студент", configurator: "Настройщик" };
@@ -91,12 +93,14 @@ export const authorizeAccountCommand = (state: AccountsDocument, command: Accoun
   return actor;
 };
 
-export const createAccount = (state: AccountsDocument, command: AccountCommandContext & { draft: AccountDraft; expectedStudentNumber?: string }, id: string, changeId: string, occurredAt: string): AccountsDocument => {
+export const createAccount = (source: AccountsDocument, command: AccountCommandContext & { draft: AccountDraft; expectedStudentNumber?: string }, id: string, changeId: string, occurredAt: string, newPersonId?: string): AccountsDocument => {
+  const state = migrateAccountPeople(source);
   authorizeAccountCommand(state, command);
   if (!id || state.accounts.some((account) => account.id === id)) throw new Error("Не удалось создать уникальную учётную запись.");
   const draft = validateAccountDraft(command.draft, state.accounts);
   const allocation = draft.role === "student" ? allocateStudentNumber(state, command.draft.studentCampus, command.expectedStudentNumber, occurredAt) : undefined;
-  return { ...state, ...(allocation ? { studentNumberCounters: allocation.studentNumberCounters } : {}), revision: state.revision + 1, accounts: [...state.accounts, { ...draft, id, revision: 1, status: "active", createdAt: occurredAt, updatedAt: occurredAt, ...(allocation ? { studentRecord: allocation.studentRecord } : {}) }], history: [...state.history, { id: changeId, accountId: id, actorId: command.actorId, occurredAt, action: "created", previousRole: null, nextRole: draft.role }] };
+  const linked = attachAccountPerson(state, { ...draft, personId: command.draft.personId }, id, changeId, command.actorId, occurredAt, newPersonId);
+  return { ...linked.state, ...(allocation ? { studentNumberCounters: allocation.studentNumberCounters } : {}), revision: state.revision + 1, accounts: [...state.accounts, { ...draft, name: linked.person.name, personId: linked.person.id, id, revision: 1, status: "active", createdAt: occurredAt, updatedAt: occurredAt, ...(allocation ? { studentRecord: allocation.studentRecord } : {}) }], history: [...state.history, { id: changeId, accountId: id, actorId: command.actorId, occurredAt, action: "created", previousRole: null, nextRole: draft.role }] };
 };
 
 export const changeAccountRole = (state: AccountsDocument, command: AccountCommandContext & { accountId: string; accountRevision: number; role: UserRole; memberships: AcademicMembership[]; studentGroupId?: string; studentCampus?: number; expectedStudentNumber?: string }, changeId: string, occurredAt: string): AccountsDocument => {
@@ -110,7 +114,7 @@ export const changeAccountRole = (state: AccountsDocument, command: AccountComma
   const lastEducation = state.educationEvents?.filter((event) => event.accountId === current.id).at(-1);
   if (command.role === "student" && lastEducation && (getStudentGroupId(draft) !== lastEducation.after.groupId || (draft.enrollmentStatus ?? "studying") !== lastEducation.after.enrollment)) throw new Error("При возвращении типа «Студент» выберите последнюю группу из истории обучения. Дальнейший перевод оформляется отдельным событием.");
   const allocation = command.role === "student" && !current.studentRecord ? allocateStudentNumber(state, command.studentCampus, command.expectedStudentNumber, occurredAt) : undefined;
-  return { ...state, ...(allocation ? { studentNumberCounters: allocation.studentNumberCounters } : {}), revision: state.revision + 1, accounts: state.accounts.map((account) => account.id === current.id ? { ...account, ...draft, ...(allocation ? { studentRecord: allocation.studentRecord } : {}), updatedAt: occurredAt, revision: account.revision + 1 } : account), history: [...state.history, { id: changeId, actorId: command.actorId, accountId: current.id, occurredAt, action: "role-changed", previousRole: current.role, nextRole: command.role }] };
+  return { ...state, ...(allocation ? { studentNumberCounters: allocation.studentNumberCounters } : {}), revision: state.revision + 1, accounts: state.accounts.map((account) => account.id === current.id ? { ...account, ...draft, name: account.name, ...(allocation ? { studentRecord: allocation.studentRecord } : {}), updatedAt: occurredAt, revision: account.revision + 1 } : account), history: [...state.history, { id: changeId, actorId: command.actorId, accountId: current.id, occurredAt, action: "role-changed", previousRole: current.role, nextRole: command.role }] };
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -141,11 +145,11 @@ const getCommandAccount = (state: AccountsDocument, command: AccountTargetComman
   if (!account || account.revision !== command.accountRevision) throw new Error("Учётная запись изменилась. Откройте её заново и повторите действие.");
   return account;
 };
-const updateAccount = (state: AccountsDocument, account: PortalAccount, patch: Partial<PortalAccount>, change: AccountChange): AccountsDocument => ({
+const updateAccount = (state: AccountsDocument, account: PortalAccount, patch: Partial<PortalAccount>, change: AccountChange): AccountsDocument => synchronizeAccountPerson({
   ...state, revision: state.revision + 1,
   accounts: state.accounts.map((entry) => entry.id === account.id ? { ...entry, ...patch, updatedAt: change.occurredAt, revision: entry.revision + 1 } : entry),
   history: [...state.history, change],
-});
+}, account.id, change);
 export type UpdateAccountDetailsCommand = AccountTargetCommand & { details: { name: string; login: string; email?: string; memberships?: AcademicMembership[]; studentGroupId?: string; enrollmentStatus?: StudentEnrollmentStatus }; education?: EducationEventDetails };
 export const updateAccountDetails = (state: AccountsDocument, command: UpdateAccountDetailsCommand, changeId: string, occurredAt: string): AccountsDocument => {
   const current = getCommandAccount(state, command);
@@ -179,7 +183,7 @@ export const issueStudentRecord = (state: AccountsDocument, command: AccountTarg
 
 export const decodeAccountsDocument = (raw: string): AccountsDocument => {
   const value: unknown = JSON.parse(raw);
-  if (!isRecord(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !Array.isArray(value.accounts) || !value.accounts.length || !Array.isArray(value.history)) throw new Error("Неверный формат хранилища учётных записей.");
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !Array.isArray(value.accounts) || !value.accounts.length || !Array.isArray(value.history)) throw new Error("Неверный формат хранилища учётных записей.");
   const accounts: PortalAccount[] = [];
   const ids = new Set<string>();
   const logins = new Set<string>();
@@ -233,5 +237,5 @@ export const decodeAccountsDocument = (raw: string): AccountsDocument => {
   for (const event of educationEvents) if (event.batchId) { const accountIds = eventAccountsByBatch.get(event.batchId) ?? new Set<string>(); accountIds.add(event.accountId); eventAccountsByBatch.set(event.batchId, accountIds); }
   for (const operation of (value.studentOperations ?? []) as StudentBulkReceipt[]) if (operation.education && operation.rows.some((row) => row.outcome === "changed" && !eventAccountsByBatch.get(operation.id)?.has(row.accountId))) throw new Error("В массовом действии отсутствуют связанные события обучения.");
   for (const audit of value.history as AccountChange[]) if (audit.educationEventId !== undefined && eventsById.get(audit.educationEventId)?.auditId !== audit.id) throw new Error("Событие обучения в аудите недоступно.");
-  return value as AccountsDocument;
+  return validateAccountPeople(value as AccountsDocument);
 };

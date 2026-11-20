@@ -18,6 +18,9 @@ import Tabs from "../../components/Tabs";
 import { JOURNAL_PERIOD, useJournal } from "../../data/journalStore";
 import { useRole } from "../../components/RoleContext";
 import { createSubjectLessons } from "../../data/lessons";
+import usePeriodLocks from "../../hooks/usePeriodLocks";
+import useTeachingAssignmentsDocument from "../../hooks/useTeachingAssignmentsDocument";
+import { canTeachLesson } from "../../domain/teachingAssignments";
 import JournalHistory from "../../components/JournalHistory";
 import JournalSummary from "../../components/JournalSummary";
 import AttendanceLegend from "../../components/AttendanceLegend";
@@ -46,6 +49,9 @@ const Journal = () => {
   const { students, setStudents } = journal;
   const lessons = useMemo(() => createSubjectLessons(subjectId ?? "", groupId ?? "", now.getTime()), [subjectId, groupId, now]);
   const visibleLessons = useMemo(() => lessonType === "all" ? lessons : lessons.filter((lesson) => lesson.type === lessonType), [lessonType, lessons]);
+  const periodLocks = usePeriodLocks(groupId ?? "", visibleLessons);
+  const teaching = useTeachingAssignmentsDocument();
+  const lockedLessonIds = new Set([...periodLocks.lockedIds, ...visibleLessons.filter(lesson => !canTeachLesson(teaching.document, currentUser, lesson)).map(lesson => lesson.id)]);
   const exportJournal = () => downloadJournalCsv(createJournalCsv(students, visibleLessons), `journal-${subjectId}-${groupId}.csv`);
 
   const chartsData = useMemo(() => {
@@ -94,7 +100,9 @@ const Journal = () => {
         </div>
         {journal.error ? <p className={styles.pageError} role="alert">{journal.error}</p> : journal.lastSavedAt && <p className={styles.saveStatus} role="status">Сохранено {new Date(journal.lastSavedAt).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}</p>}
         <div className={styles.tableFilters}><LessonTypeFilter lessons={lessons} value={lessonType} onChange={setLessonType} /><AttendanceLegend /></div>
-        <AttendanceTable students={students} setStudents={setStudents} lessons={visibleLessons} readOnly={!journal.canEdit} />
+        {periodLocks.message && <p role="status">{periodLocks.message}</p>}
+        {teaching.error ? <p role="alert">{teaching.error}</p> : lockedLessonIds.size > periodLocks.lockedIds.size && <p role="status">Редактирование доступно по назначенным вам типам занятий и семестрам. Остальные занятия сохранены для просмотра.</p>}
+        <AttendanceTable students={students} setStudents={setStudents} lessons={visibleLessons} readOnly={!journal.canEdit || Boolean(periodLocks.error || teaching.error)} lockedLessonIds={lockedLessonIds} />
         <div className={styles.inlineAnalytics}>
           <div className={styles.sectionHeading}><div><span>Срез данных</span><h2>Аналитика группы</h2></div><strong>Проведённые занятия по текущему фильтру</strong></div>
           <JournalSummary students={students} lessons={visibleLessons} period={JOURNAL_PERIOD} />

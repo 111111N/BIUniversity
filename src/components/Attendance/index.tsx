@@ -277,9 +277,10 @@ interface AttendanceTableProps {
   readOnly?: boolean;
   dates?: Date[];
   lessons?: AcademicLesson[];
+  lockedLessonIds?: ReadonlySet<string>;
 }
 
-export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setStudents, readOnly = false, dates, lessons }) => {
+export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setStudents, readOnly = false, dates, lessons, lockedLessonIds }) => {
   const { groupId } = useParams<{ groupId: string }>();
   // Мемоизированные значения
   const columns = useMemo(() => lessons ?? (dates ?? generateDates(START_DATE, END_DATE)).map((date) => ({ id: getDateKey(date), date: getDateKey(date) })), [dates, lessons]);
@@ -586,7 +587,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
         mode={mode}
         hoveredCell={hoveredCell}
         activeCell={activeCell}
-        isEditing={isEditing}
+        isEditing={isEditing && !lockedLessonIds?.has(column.id)}
         isTabStop={student.id === keyboardStudentId && column.id === keyboardLessonId}
         onCellFocus={onCellFocus}
         toggleAttendance={toggleAttendance}
@@ -596,7 +597,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({ students, setS
       />
     );
     });
-  }, [columns, mode, hoveredCell, activeCell, isEditing, keyboardStudentId, keyboardLessonId, onCellFocus, toggleAttendance, toggleGrade]);
+  }, [columns, mode, hoveredCell, activeCell, isEditing, lockedLessonIds, keyboardStudentId, keyboardLessonId, onCellFocus, toggleAttendance, toggleGrade]);
 
   // Рендер строк таблицы
   const renderTableRows = useCallback(() => {

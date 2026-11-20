@@ -124,6 +124,7 @@ export async function reviewBackupAssessmentSelection(
   if (result.counts.unresolved) return reject("unresolved-conflicts", "Выберите версию каждого различающегося ID аттестации, её истории и исправлений после просмотра значений.");
   candidate.revision = candidate.history.length + candidate.correctionHistory.length;
   if (candidate.assessments.some(row => Object.hasOwn(row, "academicPeriod")) || candidate.history.some(row => Object.hasOwn(row, "academicPeriod"))) candidate.version = 6;
+  if (candidate.assessments.some(row => row.attempts.some(attempt => attempt.kind === "additional"))) candidate.version = 7;
   try { decodeAssessmentDocument(JSON.stringify(candidate)); }
   catch { return reject("inconsistent-selection", "Выбранная карточка, состав, попытки, результаты или исправления не согласованы с историей. Согласуйте версии связанных записей. Оценки, события и назначения автоматически не исправлялись."); }
   checkBackupAbort(signal);

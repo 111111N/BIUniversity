@@ -3,7 +3,7 @@ const CHECKS_PATH = "/admin/checks";
 const LOCAL_ORIGIN = "https://portal.invalid";
 const RESULT_PREFIX = "admin-check-";
 const FILTERS = ["q", "kind", "level", "page"] as const;
-const RECORD_PATHS = new Set(["/admin/accounts", "/admin/accounts/import", "/admin/subjects", "/admin/groups", "/admin/schedule", "/assessments"]);
+const RECORD_PATHS = new Set(["/admin/accounts", "/admin/accounts/import", "/admin/subjects", "/admin/groups", "/admin/schedule", "/admin/schedule/overview", "/admin/schedule/templates", "/assessments"]);
 const isRecordPath = (pathname: string) => RECORD_PATHS.has(pathname) || /^\/assessments\/[^/]+$/.test(pathname);
 
 export const getCheckResultId = (issueId: string) => `${RESULT_PREFIX}${issueId}`;

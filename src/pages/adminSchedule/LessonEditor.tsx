@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Dropdown from "../../components/Dropdown";
-import type { AcademicMembership } from "../../domain/accounts";
+import { canScheduleTeacher, type ScheduleTeacher } from "../../domain/teachingAssignments";
 import { lessonTypeLabels, type LessonType } from "../../domain/academic";
 import { parseCalendarDate } from "../../domain/calendar";
 import { toLocalDateKey } from "../../domain/schedule";
@@ -17,7 +17,7 @@ interface Props {
   busy: boolean;
   blockedMessage: string;
   subjects: { value: string; label: string; searchText?: string }[];
-  teachers: { id: string; name: string; memberships: AcademicMembership[] }[];
+  teachers: Array<ScheduleTeacher & { name: string }>;
   onChange(value: ManagedLesson): void;
   onApply(value: ManagedLesson): void;
   onCancel(): void;
@@ -30,7 +30,7 @@ export default function LessonEditor({ value, weekStart, groupName, editing, blo
   const selectedTeacher = teachers.find((teacher) => teacher.id === value.teacherId);
   const normalized = { ...value, room: value.room.trim(), teacherName: selectedTeacher?.name ?? "" };
   const errors = attempts ? validateLessonEditor(normalized, weekStart, teachers) : {};
-  const availableTeachers = teachers.filter((teacher) => teacher.memberships.some((entry) => entry.subjectId === value.subjectId && entry.groupIds.includes(value.groupId)));
+  const availableTeachers = teachers.filter((teacher) => canScheduleTeacher(teacher, value));
   useEffect(() => { formRef.current?.querySelector<HTMLElement>('[role="combobox"], input')?.focus(); }, []);
   useEffect(() => { if (attempts) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); }, [attempts]);
   const submit = (event: FormEvent) => {
@@ -46,10 +46,10 @@ export default function LessonEditor({ value, weekStart, groupName, editing, blo
     {Object.keys(errors).length > 0 && <p className={styles.fieldError} role="alert">{errors.form ?? "Проверьте отмеченные поля. Изменения пары ещё не применены."}</p>}
     <fieldset className={styles.editorSection} disabled={blocked}><legend>Занятие</legend>
     <Dropdown searchable label="Предмет" placeholder="" value={value.subjectId} options={subjects} error={errors.subjectId} disabled={blocked} onChange={(subjectId) => onChange({ ...value, subjectId, teacherId: "", teacherName: "" })} />
+    <Dropdown label="Тип занятия" value={value.type} options={Object.entries(lessonTypeLabels).map(([type, label]) => ({ value: type, label }))} error={errors.type} disabled={blocked} onChange={(type) => onChange({ ...value, type: type as LessonType })} />
     <Dropdown searchable label="Преподаватель" placeholder="" value={value.teacherId} options={availableTeachers.map((teacher) => ({ value: teacher.id, label: teacher.name }))} error={errors.teacherId} disabled={blocked} onChange={(teacherId) => onChange({ ...value, teacherId, teacherName: teachers.find((teacher) => teacher.id === teacherId)?.name ?? "" })} />
     {value.teacherId && !availableTeachers.some((teacher) => teacher.id === value.teacherId) && <p className={styles.fieldError} role="status">Ранее выбранный преподаватель больше недоступен для этой группы и предмета. Выберите преподавателя заново.</p>}
     <div className={styles.assignmentHint}>{!availableTeachers.length && <p className={styles.hint}>Для этого предмета и группы пока нет преподавателя.</p>}<button type="button" disabled={blocked || !value.subjectId} onClick={onConfigureAssignment}>Настроить назначение</button><p className={styles.hint}>Ввод пары сохранится на время перехода. Затем вернитесь сюда кнопкой «Вернуться к паре».</p></div>
-    <Dropdown label="Тип занятия" value={value.type} options={Object.entries(lessonTypeLabels).map(([type, label]) => ({ value: type, label }))} error={errors.type} disabled={blocked} onChange={(type) => onChange({ ...value, type: type as LessonType })} />
     </fieldset>
     <fieldset className={`${styles.editorSection} ${styles.formGrid}`} disabled={blocked}><legend>Когда и где</legend>
       <label className={styles.fullWidth}>Дата<input type="date" required value={value.date} min={weekStart} max={toLocalDateKey(lastDate)} aria-invalid={Boolean(errors.date)} aria-describedby={errors.date ? `${id}-date` : undefined} onChange={(event) => onChange({ ...value, date: event.target.value })} />{errors.date && <span id={`${id}-date`} className={styles.fieldError}>{errors.date}</span>}</label>

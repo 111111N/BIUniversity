@@ -13,7 +13,7 @@ export const changesAdminSubject: UnsavedNavigationCheck = (transition) => chang
   || ["subject", "teacher"].some((key) => new URLSearchParams(transition.currentLocation.search).get(key) !== new URLSearchParams(transition.nextLocation.search).get(key));
 
 export const changesAdminAccount: UnsavedNavigationCheck = (transition) => changesPage(transition)
-  || ["account", "create", "mode"].some((key) => new URLSearchParams(transition.currentLocation.search).get(key) !== new URLSearchParams(transition.nextLocation.search).get(key));
+  || ["account", "create", "mode", "person"].some((key) => new URLSearchParams(transition.currentLocation.search).get(key) !== new URLSearchParams(transition.nextLocation.search).get(key));
 
 export const changesMaterialScope: UnsavedNavigationCheck = (transition) => changesPage(transition)
   || new URLSearchParams(transition.currentLocation.search).get("tab") !== new URLSearchParams(transition.nextLocation.search).get("tab")

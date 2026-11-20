@@ -1,13 +1,20 @@
 import { decodeAccountsDocument, type AccountsDocument } from "./accounts";
 import { assertCompleteBackupRecordComparison, BackupRecordDecodeError, compareBackupRecords, type BackupRecordComparison, type BackupRecordDefinition, type BackupRecordEntries } from "./backupRecordComparison";
 
-const FIELDS = ["name", "login", "role", "status", "email", "scheduleName", "memberships", "studentGroupId", "enrollmentStatus", "studentRecord", "revision", "createdAt", "updatedAt"] as const;
+const FIELDS = ["personId", "name", "login", "role", "status", "email", "scheduleName", "memberships", "studentGroupId", "enrollmentStatus", "studentRecord", "revision", "createdAt", "updatedAt"] as const;
 export type AccountComparedField = typeof FIELDS[number] | "other";
 const HISTORY_FIELDS = ["accountId", "actorId", "occurredAt", "action", "previousRole", "nextRole", "previousMemberships", "nextMemberships", "changes", "importBatchId", "studentOperationBatchId", "educationEventId"] as const;
 export type AccountHistoryComparedField = typeof HISTORY_FIELDS[number] | "other";
 const EDUCATION_FIELDS = ["accountId", "actorId", "registeredAt", "accountRevisionAfter", "kind", "effectiveDate", "basis", "documentNumber", "documentDate", "before", "after", "auditId", "batchId"] as const;
 export type EducationComparedField = typeof EDUCATION_FIELDS[number] | "other";
+const PERSON_FIELDS = ["name", "externalReference", "revision", "createdAt", "updatedAt", "legacyAccountId"] as const;
+const PERSON_HISTORY_FIELDS = ["personId", "actorId", "occurredAt", "action", "snapshot"] as const;
+export type PersonComparedField = typeof PERSON_FIELDS[number] | "other";
+export type PersonHistoryComparedField = typeof PERSON_HISTORY_FIELDS[number] | "other";
 export interface BackupAccountComparison extends BackupRecordComparison<AccountComparedField> {
+  peopleComparisonVersion?: 1;
+  persons?: BackupRecordComparison<PersonComparedField>;
+  personHistory?: BackupRecordComparison<PersonHistoryComparedField>;
   historyComparisonVersion?: 1;
   history?: BackupRecordComparison<AccountHistoryComparedField>;
   educationComparisonVersion?: 1;
@@ -36,6 +43,13 @@ const educationDefinition = (read = decodeAccountsDocument): BackupRecordDefinit
   },
 });
 const education = educationDefinition();
+const peopleDefinition = (read = decodeAccountsDocument): BackupRecordDefinition<PersonComparedField> => ({
+  ...cards, collection: "persons", label: "Люди", fields: PERSON_FIELDS, decode: raw => read(raw).persons!,
+});
+const personHistoryDefinition = (read = decodeAccountsDocument): BackupRecordDefinition<PersonHistoryComparedField> => ({
+  ...cards, collection: "person-history", label: "История людей", fields: PERSON_HISTORY_FIELDS, decode: raw => read(raw).personHistory!,
+});
+const people = peopleDefinition(), personHistory = personHistoryDefinition();
 
 export const compareBackupAccountRecords = async (archive: BackupRecordEntries, browser: BackupRecordEntries, signal?: AbortSignal): Promise<BackupAccountComparison> => {
   const snapshots = new Map<string, AccountsDocument | null>();
@@ -55,10 +69,18 @@ export const compareBackupAccountRecords = async (archive: BackupRecordEntries, 
       history: await compareBackupRecords(archive, browser, historyDefinition(read), signal),
       educationComparisonVersion: 1,
       education: await compareBackupRecords(archive, browser, educationDefinition(read), signal),
+      peopleComparisonVersion: 1,
+      persons: await compareBackupRecords(archive, browser, peopleDefinition(read), signal),
+      personHistory: await compareBackupRecords(archive, browser, personHistoryDefinition(read), signal),
     };
   } finally { snapshots.clear(); }
 };
 export const assertCompleteAccountComparison = (review: BackupAccountComparison) => {
+  if (review.peopleComparisonVersion !== undefined || review.persons !== undefined || review.personHistory !== undefined) {
+    if (review.peopleComparisonVersion !== 1 || !review.persons || !review.personHistory) throw new Error("Сравнение людей и их истории неполно. Проверьте архив заново.");
+    assertCompleteBackupRecordComparison(review.persons, people);
+    assertCompleteBackupRecordComparison(review.personHistory, personHistory);
+  }
   assertCompleteBackupRecordComparison(review, cards);
   if (review.historyComparisonVersion !== undefined || review.history !== undefined) {
     if (review.historyComparisonVersion !== 1 || !review.history) throw new Error("История учёток отсутствует или несовместима. Проверьте архив заново; неполный отчёт не скачан.");
@@ -69,5 +91,5 @@ export const assertCompleteAccountComparison = (review: BackupAccountComparison)
     assertCompleteBackupRecordComparison(review.education, education);
   }
 };
-export const getUncheckedAccountDocuments = (review: BackupAccountComparison) => new Set([...review.uncompared, ...(review.history?.uncompared ?? []), ...(review.education?.uncompared ?? [])].map((item) => item.key)).size;
-export const getAccountBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => [cards, history, education].find(item => item.collection === collection);
+export const getUncheckedAccountDocuments = (review: BackupAccountComparison) => new Set([...review.uncompared, ...(review.history?.uncompared ?? []), ...(review.education?.uncompared ?? []), ...(review.persons?.uncompared ?? []), ...(review.personHistory?.uncompared ?? [])].map((item) => item.key)).size;
+export const getAccountBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => [cards, history, education, people, personHistory].find(item => item.collection === collection);

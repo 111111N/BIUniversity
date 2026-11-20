@@ -254,6 +254,7 @@ const AdminSubjectsPage = () => {
         return <article key={account.id} className={styles.teacher}>
           <div className={styles.teacherHeader}><div><strong>{account.name}</strong><span>{account.login}</span>{!isAccountActive(account) && <span className={styles.blocked}>Учётная запись заблокирована</span>}</div><button type="button" disabled={busy || unavailable} aria-label={`Изменить группы: ${account.name}`} onClick={() => editTeacher(account.id)}>Изменить группы</button></div>
           <div className={styles.tags}>{groups.slice(0, 5).map((id) => <span key={id}>{getAcademicGroup(id)?.name ?? id}</span>)}</div>
+          <Link to={`/admin/teaching?teacher=${encodeURIComponent(account.id)}&subject=${encodeURIComponent(subject.id)}`}>Типы занятий и семестры</Link>
           {groups.length > 5 && <details className={styles.moreGroups}><summary>Ещё групп: {groups.length - 5}</summary><div className={styles.tags}>{groups.slice(5).map((id) => <span key={id}>{getAcademicGroup(id)?.name ?? id}</span>)}</div></details>}
         </article>;
       })}</div>

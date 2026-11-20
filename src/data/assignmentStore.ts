@@ -2,6 +2,10 @@ import { decodeSavedAssignments, decodeSavedSubmissions, type SavedSubmission } 
 import { getAcademicGroupByName, getAcademicSubjectByName } from "./academicCatalog";
 import { getAttachmentError } from "../domain/files";
 import { downloadBlob } from "../domain/fileDownload";
+import { readGroupCalendarsDocument } from "./groupCalendarRead";
+import { assertCalendarDatesEditable } from "../domain/groupCalendars";
+import { sameCurriculumData } from "../domain/curricula";
+import { isAcademicCalendarDate } from "../domain/academicPeriods";
 
 export type LessonType = "Лекция" | "Практика" | "Лабораторная";
 export type AssignmentStatus = "draft" | "published" | "closed" | "archived";
@@ -160,12 +164,31 @@ export const readAssignmentData = () => ({
 });
 
 export const getAssignments = () => readList(ASSIGNMENTS_KEY, initialAssignments).map(normalizeAssignment);
+export class AssignmentPeriodError extends Error {}
+const checkAssignmentPeriods = (items: Assignment[]) => {
+  try {
+    const calendars = readGroupCalendarsDocument();
+    for (const item of items) {
+      const date = item.lessonDate.slice(0, 10);
+      if (!isAcademicCalendarDate(date) && calendars.calendars.some(calendar => calendar.state === "closed" && calendar.group.id === item.groupId)) throw new Error("Не удалось определить дату занятия задания. Восстановите источник даты перед изменением закрытого периода.");
+      assertCalendarDatesEditable(calendars, item.groupId, [date]);
+    }
+  } catch (error) { console.error("Не удалось проверить учебный период задания:", error); throw new AssignmentPeriodError(error instanceof Error ? error.message : "Проверка учебного периода недоступна. Изменения не сохранены."); }
+};
+const changedRecords = <T extends { id: string }>(before: T[], after: T[]) => {
+  const previous = new Map(before.map(row => [row.id, row])), next = new Map(after.map(row => [row.id, row]));
+  return [...before.filter(row => !sameCurriculumData(row, next.get(row.id))), ...after.filter(row => !sameCurriculumData(row, previous.get(row.id)))];
+};
 export const saveAssignments = (items: Assignment[]) => {
+  checkAssignmentPeriods(changedRecords(readAssignmentList(), items));
   localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(items));
   window.dispatchEvent(new Event(CHANGE_EVENT));
 };
 export const getSubmissions = () => readList<PersistedSubmission>(SUBMISSIONS_KEY, []).map(normalizeSubmission);
 export const saveSubmissions = (items: Submission[]) => {
+  const source = readAssignmentData(), ids = new Set(changedRecords(source.submissions, items).map(row => row.assignmentId));
+  checkAssignmentPeriods(source.assignments.filter(row => ids.has(row.id)));
+  if (ids.size > source.assignments.filter(row => ids.has(row.id)).length) throw new AssignmentPeriodError("Источник изменяемого ответа недоступен. Учебный период не удалось проверить.");
   localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(items));
   window.dispatchEvent(new Event(CHANGE_EVENT));
 };
@@ -186,6 +209,7 @@ export const appendLearningDemoRecords = (assignments: Assignment[], submissions
   // Never add mock answers to an existing assignment the user may have changed.
   const addedSubmissions = submissions.filter((item) => addedIds.has(item.assignmentId) && !submissionIds.has(item.id));
   if (!addedAssignments.length) return { assignments: 0, submissions: 0 };
+  checkAssignmentPeriods(addedAssignments);
   try {
     localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify([...currentAssignments, ...addedAssignments]));
     localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify([...currentSubmissions, ...addedSubmissions]));
@@ -205,6 +229,7 @@ export const removeAssignmentRecords = (id: string) => {
   const assignments = getAssignments();
   const submissions = getSubmissions();
   const related = submissions.filter((item) => item.assignmentId === id);
+  checkAssignmentPeriods(assignments.filter(item => item.id === id));
   const previousAssignments = localStorage.getItem(ASSIGNMENTS_KEY);
   const previousSubmissions = localStorage.getItem(SUBMISSIONS_KEY);
   try {
@@ -262,6 +287,9 @@ export const saveAssignmentFile = async (file: File) => {
 };
 
 export const deleteAssignmentFile = async (id: string) => {
+  const source = readAssignmentData();
+  const assignmentIds = new Set(source.submissions.filter(row => row.attachmentId === id || row.attempts?.some(attempt => attempt.attachmentId === id)).map(row => row.assignmentId));
+  checkAssignmentPeriods(source.assignments.filter(row => row.attachmentId === id || assignmentIds.has(row.id)));
   const database = await openDatabase();
   try {
     await new Promise<void>((resolve, reject) => {

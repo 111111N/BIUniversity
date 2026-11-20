@@ -1,0 +1,21 @@
+@use "../../styles/administration" as admin;
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as shared;
+.page { @include admin.workspace; gap: 20px; }
+.toolbar, .list, .form, .lookup { display: grid; gap: 16px; min-width: 0; }
+.lookup { border: 1px solid $color-control-border; padding: 16px; border-radius: 12px; }
+.lookup legend { padding: 0 8px; }
+.actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.toolbar .actions { justify-content: space-between; }
+.card { display: grid; gap: 12px; overflow-wrap: anywhere; }
+.card h2, .card p, .lookup p { margin: 0; }
+.card h2 { font-size: 18px; }
+.note, .choice span { color: $color-text-secondary; font-size: 13px; overflow-wrap: anywhere; }
+.choice { display: grid; gap: 6px; text-align: left; padding: 12px; }
+.field { display: grid; gap: 8px; }
+.field input { @include shared.input; min-height: 44px; width: 100%; box-sizing: border-box; }
+.actions > button, .actions > a, .lookup > button, .choice { @include admin.button; }
+.choice { display: grid; justify-content: stretch; text-align: left; }
+.error { @include admin.notice($color-error); padding: 12px; }
+.history { display: grid; gap: 10px; padding-left: 24px; }
+@media(max-width: 600px) { .lookup { padding: 12px; } .actions > button, .actions > a { flex: 1 1 auto; } }

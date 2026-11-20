@@ -47,7 +47,7 @@ const roleOptions = (Object.keys(ACCOUNT_ROLE_LABELS) as UserRole[]).map((value)
 type Mode = AccountEditorMode;
 type Editor = { account?: PortalAccount; draft: AccountDraft; baseline: string; revision: number; actorId: string; actorRevision: number; mode: Mode; education: EducationEventDetails; educationBaseline: EducationEventDetails; educationOperation: EducationOperation | null; educationGroupRevision?: number };
 type Confirmation = "save" | "block" | "activate" | "issue" | null;
-const accountIntent = (params: URLSearchParams) => JSON.stringify([params.get("account"), params.get("create"), params.get("mode")]);
+const accountIntent = (params: URLSearchParams) => JSON.stringify([params.get("account"), params.get("create"), params.get("mode"), params.get("person")]);
 const detailsEqual = (draft: AccountDraft, account: PortalAccount) => draft.name === account.name && draft.login === account.login && (draft.email ?? "") === (account.email ?? "") && (draft.enrollmentStatus ?? "studying") === (account.enrollmentStatus ?? "studying") && getStudentGroupId(draft) === getStudentGroupId(account) && JSON.stringify(draft.memberships) === JSON.stringify(account.memberships);
 const makeAccountEditor = (actorId: string, target?: PortalAccount, mode: Mode = "details", groupId?: string): Editor => {
   const snapshot = readAccountsState();
@@ -153,11 +153,11 @@ const AdminAccountsPage = () => {
       if (!editor) triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       const nextEditor = makeAccountEditor(currentUser.id, target, mode);
       setEditor(nextEditor); setDetailsReview(null); setEducationReview(null); setPendingSwitch(null); setError(""); setMessage(""); setConfirmation(null);
-      setParams((previous) => { const next = new URLSearchParams(previous); if (next.get("account") !== target?.id) next.delete("auditPage"); if (target) { next.set("account", target.id); next.set("mode", mode); next.delete("create"); } else { next.set("create", "student"); next.delete("account"); next.delete("mode"); } intentRef.current = accountIntent(next); return next; });
+      setParams((previous) => { const next = new URLSearchParams(previous); next.delete("person"); if (next.get("account") !== target?.id) next.delete("auditPage"); if (target) { next.set("account", target.id); next.set("mode", mode); next.delete("create"); } else { next.set("create", "student"); next.delete("account"); next.delete("mode"); } intentRef.current = accountIntent(next); return next; });
     }
     catch (failure) { console.error("Не удалось открыть учётную запись:", failure); setError(failure instanceof Error ? failure.message : "Не удалось открыть учётную запись."); }
   });
-  const close = () => requestAction(() => { setEditor(null); setDetailsReview(null); setEducationReview(null); setPendingSwitch(null); setError(""); setConfirmation(null); setParams((previous) => { const next = new URLSearchParams(previous); next.delete("account"); next.delete("create"); next.delete("mode"); next.delete("auditPage"); intentRef.current = accountIntent(next); return next; }); });
+  const close = () => requestAction(() => { setEditor(null); setDetailsReview(null); setEducationReview(null); setPendingSwitch(null); setError(""); setConfirmation(null); setParams((previous) => { const next = new URLSearchParams(previous); next.delete("account"); next.delete("create"); next.delete("mode"); next.delete("person"); next.delete("auditPage"); intentRef.current = accountIntent(next); return next; }); });
   const openExistingMode = (mode: string) => {
     const latest = accounts.find((entry) => entry.id === account?.id);
     if (!latest) { console.error("Учётная запись для обновления карточки не найдена:", account?.id); setError("Учётная запись больше недоступна. Введённые данные оставлены в форме; вернитесь к списку."); return; }
@@ -257,6 +257,7 @@ const AdminAccountsPage = () => {
   return <div className={`pageContainer ${styles.page}`}>
     <AdministrationReturnNotice />
     <div className={styles.registry} hidden={editorOpen}><div className={styles.toolbar}>
+      <Link className={styles.importLink} to="/admin/people">Реестр людей</Link>
       <SearchField label="Поиск учётных записей" value={query} onChange={(value) => filter("q", value)} placeholder="" />
       <Dropdown label="Тип учётной записи в списке" value={type} options={[{ value: "all", label: "Все типы" }, ...roleOptions]} onChange={(value) => filter("type", value)} />
       <Dropdown label="Статус в списке" value={status} options={[{ value: "all", label: "Все статусы" }, { value: "active", label: "Активные" }, { value: "blocked", label: "Заблокированные" }]} onChange={(value) => filter("status", value)} />
@@ -275,7 +276,7 @@ const AdminAccountsPage = () => {
         {roleRestriction && <p className={styles.error} role="status">{roleRestriction}</p>}
         {editor.mode !== "details" && studentNumber}
         {editor.mode === "create" && editor.draft.role === "teacher" && <p className={styles.assignmentNote}>Предметы и группы преподавателя назначаются в разделе <Link to="/admin/subjects">«Дисциплины»</Link>.</p>}
-        <RecordEditorActions label={editor.mode === "create" ? "Создать учётную запись" : editor.mode === "role" ? "Проверить смену типа" : "Сохранить изменения"} disabled={submitState?.disabled ?? true} busy={busy} onCancel={editor.mode === "role" ? () => changeMode("access") : close} hint={submitState?.hint} />
+        <RecordEditorActions label={editor.mode === "create" ? "Создать учётную запись" : editor.mode === "role" ? "Проверить смену типа" : "Сохранить изменения"} disabled={(submitState?.disabled ?? true) || (editor.mode === "create" && !editor.draft.personId)} busy={busy} onCancel={editor.mode === "role" ? () => changeMode("access") : close} hint={submitState?.hint} />
       </AccountEditorForm>}
       {educationReview && educationEditor && editor.mode === "education" && <EducationRefreshPanel editor={educationEditor} review={educationReview} stale={educationReviewStale} disabled={blocked} busy={busy} onContinue={continueEducation} onRefresh={refreshEducation} onCancel={() => setEducationReview(null)} />}
       {!educationReview && account?.role === "student" && editor.mode === "education" && <>

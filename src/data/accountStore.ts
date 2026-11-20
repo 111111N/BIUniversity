@@ -17,6 +17,9 @@ import { queryTeacherRegistry, type TeacherRegistryQuery, type TeacherRegistryRe
 import { applyStudentBulk, studentBulkSourceKey, type ApplyStudentBulkCommand, type StudentBulkPreview, type StudentBulkRequest } from "../domain/studentBulk";
 import type { StudentBulkAction, StudentBulkReceipt } from "../domain/studentBulkReceipt";
 import { previewStudentBulk } from "../domain/studentBulk";
+import { migrateAccountPeople } from "../domain/accountPeople";
+import { applyPersonCommand, queryPeople, type PeopleQuery, type PersonCommand } from "../domain/people";
+import type { Person, PersonChange } from "../domain/personTypes";
 
 export const ACCOUNTS_STORAGE_KEY = "bi-university-accounts-v1";
 const CHANGE_EVENT = "bi-university-accounts-change";
@@ -29,7 +32,7 @@ export const createInitialAccountsDocument = (): AccountsDocument => ({ version:
 
 const readDocument = (): AccountsDocument => {
   const raw = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
-  return raw === null ? createInitialAccountsDocument() : decodeAccountsDocument(raw);
+  return raw === null ? migrateAccountPeople(createInitialAccountsDocument()) : decodeAccountsDocument(raw);
 };
 export const readAccountsState = (): { accounts: PortalAccount[]; history: AccountsDocument["history"]; studentImports: StudentImportReceipt[]; studentOperations: StudentBulkReceipt[]; educationEvents: StudentEducationEvent[]; revision: number; error: string } => {
   try { const state = readDocument(); return { accounts: state.accounts, history: state.history, studentImports: state.studentImports ?? [], studentOperations: state.studentOperations ?? [], educationEvents: state.educationEvents ?? [], revision: state.revision, error: "" }; }
@@ -51,7 +54,7 @@ const validateAssignments = (memberships: AcademicMembership[], retained: Academ
   if (memberships.some(entry => !catalog.subjects.some(subject => subject.id === entry.subjectId && (isSubjectActive(subject) || entry.groupIds.every(groupId => retained.some(previous => previous.subjectId === entry.subjectId && previous.groupIds.includes(groupId))))))) throw new Error("Архивная дисциплина недоступна для новых назначений. Сначала восстановите дисциплину.");
   if (memberships.some((entry) => entry.groupIds.some((groupId) => !ACADEMIC_GROUPS.some((group) => group.id === groupId && (isGroupActive(group) || retained.some((previous) => previous.subjectId === entry.subjectId && previous.groupIds.includes(groupId)))) || !SUBJECT_GROUP_OFFERINGS.some((offering) => offering.subjectId === entry.subjectId && offering.groupId === groupId)))) throw new Error("Выбрано недоступное сочетание предмета и группы. Архивные группы недоступны для назначений.");
 };
-const saveDocument = (state: AccountsDocument) => { localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(state)); window.dispatchEvent(new Event(CHANGE_EVENT)); };
+const saveDocument = (state: AccountsDocument) => { const serialized = JSON.stringify(state); decodeAccountsDocument(serialized); localStorage.setItem(ACCOUNTS_STORAGE_KEY, serialized); window.dispatchEvent(new Event(CHANGE_EVENT)); };
 const validateStudentGroup = (account: PortalAccount, previous?: PortalAccount) => {
   if (account.role !== "student") return;
   const catalog = refreshAcademicCatalog();
@@ -59,7 +62,10 @@ const validateStudentGroup = (account: PortalAccount, previous?: PortalAccount) 
   if (!ACADEMIC_GROUPS.some((group) => group.id === getStudentGroupId(account))) throw new Error("Учебная группа студента не найдена. Выберите существующую группу.");
   if (!isGroupActive(ACADEMIC_GROUPS.find((group) => group.id === getStudentGroupId(account))!) && (!previous || getStudentGroupId(previous) !== getStudentGroupId(account) || isStudyingStudent(account))) throw new Error("Группа в архиве. Для зачисления или возобновления обучения выберите действующую группу.");
 };
+export type PeopleSnapshot = ReturnType<typeof queryPeople> & { revision: number; actorRevision: number; history: PersonChange[]; historyTotal: number };
 export interface AccountService {
+  listPeople(command: { actorId: string; query: PeopleQuery }): Promise<PeopleSnapshot>;
+  savePerson(command: PersonCommand): Promise<Person>;
   listTeachers(command: { actorId: string; actorRevision: number; query: TeacherRegistryQuery }): Promise<TeacherRegistryResult>;
   getGroupComposition(command: { actorId: string; actorRevision: number; query: GroupCompositionQuery }): Promise<GroupCompositionSnapshot>;
   confirmAdmission(command: ConfirmAdmissionCommand): Promise<PortalAccount>;
@@ -83,6 +89,24 @@ const fingerprintSource = async (source: string) => {
 };
 const importFingerprint = (request: StudentImportRequest) => fingerprintSource(studentImportSourceKey(request));
 export const accountService: AccountService = {
+  async listPeople(command) {
+    try {
+      const state = readDocument(), actor = state.accounts.find(row => row.id === command.actorId);
+      authorizeAccountCommand(state, { actorId: command.actorId, actorRevision: actor?.revision ?? 0, expectedRevision: state.revision });
+      const history = command.query.personId ? state.personHistory!.filter(event => event.personId === command.query.personId) : [];
+      return { ...queryPeople(state, command.query), revision: state.revision, actorRevision: actor!.revision, history: history.slice(-20).reverse(), historyTotal: history.length };
+    } catch (error) { console.error("Не удалось прочитать реестр людей:", error); throw error; }
+  },
+  async savePerson(command) {
+    const input = structuredClone(command);
+    return executeAdministrationWrite(() => {
+      try {
+        const id = crypto.randomUUID();
+        const next = applyPersonCommand(readDocument(), input, id, crypto.randomUUID(), new Date().toISOString());
+        saveDocument(next); return next.persons!.find(row => row.id === (input.type === "create" ? id : input.personId))!;
+      } catch (error) { console.error("Не удалось сохранить человека:", error); throw error; }
+    });
+  },
   async listTeachers(command) {
     try {
       const state = readDocument();
@@ -155,7 +179,7 @@ export const accountService: AccountService = {
       return await executeAdministrationWrite(() => {
         const state = readDocument();
         if (refreshAcademicCatalog().error) throw new Error("Учебный каталог недоступен. Импорт приостановлен.");
-        const plan = applyStudentImport(state, request, ACADEMIC_GROUPS, readGroupCatalogDocument().revision, new Date().toISOString(), request.expectedStudentNumbers.map(() => ({ id: crypto.randomUUID(), changeId: crypto.randomUUID() })));
+        const plan = applyStudentImport(state, request, ACADEMIC_GROUPS, readGroupCatalogDocument().revision, new Date().toISOString(), request.expectedStudentNumbers.map(() => ({ id: crypto.randomUUID(), changeId: crypto.randomUUID(), personId: crypto.randomUUID() })));
         if (!plan.replayed) saveDocument(plan.state);
         return { receipt: plan.receipt, replayed: plan.replayed };
       });
@@ -190,9 +214,10 @@ export const accountService: AccountService = {
   async create(command) {
     return executeAdministrationWrite(async () => {
       try {
+        if (typeof command.draft.personId !== "string" || !command.draft.personId) throw new Error("Перед созданием учётной записи выберите человека в реестре людей.");
         const state = readDocument(); validateAssignments(command.draft.memberships);
         const id = crypto.randomUUID();
-        const next = createAccount(state, command, id, crypto.randomUUID(), new Date().toISOString());
+        const next = createAccount(state, command, id, crypto.randomUUID(), new Date().toISOString(), crypto.randomUUID());
         validateStudentGroup(next.accounts.find((account) => account.id === id)!);
         saveDocument(next); return next.accounts.find((account) => account.id === id)!;
       } catch (error) { console.error("Не удалось создать учётную запись:", error); throw error; }

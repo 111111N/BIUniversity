@@ -1,6 +1,6 @@
 import { isGroupActive, type GroupStatus } from "./groupCatalog";
 import { getManagedWeekKey, getManagedLessonIssues, type ManagedLesson } from "./scheduleManagement";
-import type { AcademicMembership } from "./accounts";
+import { canScheduleTeacher, type ScheduleTeacher } from "./teachingAssignments";
 
 export const resolveScheduleEditingScope = (group: string | null, date: string | null, groups: { id: string; status?: GroupStatus }[], today: string) => {
   const groupId = group === null ? (groups.find(isGroupActive) ?? groups[0])?.id ?? "" : groups.find((entry) => entry.id === group)?.id ?? "";
@@ -15,7 +15,7 @@ export const restoreRemovedScheduleLesson = (lessons: ManagedLesson[], removed: 
   if (lessons.some((lesson) => lesson.id === removed.id || lesson.scheduleId === removed.scheduleId)) throw new Error("Эта пара уже есть в рабочей неделе. Список не изменён.");
   return [...lessons, { ...removed }].sort((a, b) => a.date.localeCompare(b.date) || a.startsAt.localeCompare(b.startsAt));
 };
-export const validateLessonEditor = (lesson: ManagedLesson, weekStart: string, teachers: { id: string; memberships: AcademicMembership[] }[]): LessonEditorErrors => {
+export const validateLessonEditor = (lesson: ManagedLesson, weekStart: string, teachers: ScheduleTeacher[]): LessonEditorErrors => {
   const errors: LessonEditorErrors = {};
   for (const issue of getManagedLessonIssues(lesson)) {
     const field = issue.field === "id" || issue.field === "groupId" ? "form" : issue.field;
@@ -23,6 +23,6 @@ export const validateLessonEditor = (lesson: ManagedLesson, weekStart: string, t
   }
   if (getManagedWeekKey(lesson.date) !== weekStart) errors.date ??= "Выберите дату внутри открытой недели.";
   const teacher = teachers.find((entry) => entry.id === lesson.teacherId);
-  if (!teacher?.memberships.some((membership) => membership.subjectId === lesson.subjectId && membership.groupIds.includes(lesson.groupId))) errors.teacherId ??= "Преподаватель не назначен на эту дисциплину и группу. Проверьте назначения.";
+  if (!teacher || !canScheduleTeacher(teacher, lesson)) errors.teacherId ??= "Проверьте назначение преподавателя на этот тип занятия, дисциплину, группу и дату.";
   return errors;
 };

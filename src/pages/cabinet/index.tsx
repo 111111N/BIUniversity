@@ -1,7 +1,8 @@
 import FileStorage from "../../components/FileStorage";
 import StudyPlan from "../../components/StudyPlan";
 import Tabs from "../../components/Tabs";
-import { STUDY_PLAN_TOTAL_HOURS } from "../../data/studyPlan";
+import useTeachingWorkload from "../../hooks/useTeachingWorkload";
+import { teachingWorkloadSummary } from "../../domain/teachingWorkload";
 import { useRole } from "../../components/RoleContext";
 import { getTeacherProfile } from "../../data/teacherProfiles";
 import { Link } from "react-router-dom";
@@ -12,6 +13,7 @@ import styles from "./index.module.scss";
 
 const Cabinet = () => {
   const { currentUser } = useRole();
+  const workload = teachingWorkloadSummary(useTeachingWorkload(currentUser.id));
   const teacher = getTeacherProfile(currentUser.id);
   const groupCount = new Set(currentUser.memberships.flatMap((membership) => membership.groupIds)).size;
   const { items, activeTab, setActiveTab } = useCabinetTabs();
@@ -32,11 +34,11 @@ const Cabinet = () => {
         </section>
 
         <section className={styles.summaryCard}>
-          <span className={styles.cardLabel}>Текущий семестр</span>
+          <span className={styles.cardLabel}>Учебные назначения</span>
           <div className={styles.summaryItems}>
             <div><strong>{currentUser.memberships.length}</strong><span>дисциплины</span></div>
             <div><strong>{groupCount}</strong><span>групп</span></div>
-            <div><strong>{STUDY_PLAN_TOTAL_HOURS}</strong><span>часов нагрузки</span></div>
+            <div><strong>{workload.value}</strong><span>{workload.caption}</span></div>
           </div>
         </section>
       </div>

@@ -21,9 +21,12 @@ import AttemptAudit from "./AttemptAudit";
 import type { AssessmentAttemptKind, AssessmentCorrection } from "../../domain/assessmentTypes";
 import AttemptCorrections from "./AttemptCorrections";
 import SupervisorChange from "./SupervisorChange";
+import usePeriodLocks from "../../hooks/usePeriodLocks";
 
 interface Props { assessment: Assessment; snapshot: AssessmentSnapshot; actorId: string; role: UserRole; blocked: boolean; refresh(): void; onMessage(message: string): void }
-export default function AssessmentDetails({ assessment, snapshot, actorId, role, blocked, refresh, onMessage }: Props) {
+export default function AssessmentDetails({ assessment, snapshot, actorId, role, blocked: sourceBlocked, refresh, onMessage }: Props) {
+  const periodLocks = usePeriodLocks(assessment.groupId, assessment.attempts.map(row => ({ id: row.id, date: row.date })), assessment.academicPeriod?.term.id);
+  const blocked = sourceBlocked || Boolean(periodLocks.message);
   const [attemptKind, setAttemptKind] = useState<AssessmentAttemptKind | null>(null);
   const [managing, setManaging] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -50,7 +53,8 @@ export default function AssessmentDetails({ assessment, snapshot, actorId, role,
   if (editedAttempt) return <ResultEditor actorId={actorId} snapshot={snapshot} assessment={assessment} attempt={editedAttempt} blocked={blocked} onClose={() => setEditing(null)} onSaved={saved} refresh={refresh} />;
   const latest = assessment.attempts.at(-1);
   const archivedSubject = snapshot.subjects.some(subject => subject.id === assessment.subjectId && subject.status === "archived");
-  const canAddRetake = latest?.state === "published" || (latest?.state === "cancelled" && assessment.attempts.some((attempt) => attempt.state === "published"));
+  const hasDraft = assessment.attempts.some(attempt => attempt.state === "draft");
+  const canAddRetake = !hasDraft && assessment.attempts.some(attempt => attempt.state === "published");
   const confirmed = assessment.attempts.find((attempt) => attempt.id === publishing?.id);
   const publishStale = Boolean(publishing && assessmentContextChanged(publishing.context, snapshot, actorId));
   const publish = async () => {
@@ -61,16 +65,17 @@ export default function AssessmentDetails({ assessment, snapshot, actorId, role,
     finally { setBusy(false); }
   };
   return <>
+    {periodLocks.message && <p role="status" className={styles.note}>{periodLocks.message}</p>}
     <nav className={styles.actions} aria-label="Навигация по аттестациям"><Link className={styles.back} to="/assessments">← К аттестациям</Link></nav>
     <Card as="section" className={styles.detailSummary}><header className={styles.detailHeader}><div><div className={styles.metadata}><span className={styles.kindBadge}>{ASSESSMENT_KIND_LABELS[assessment.kind]}</span><span>{assessment.groupName}</span><span>{assessment.period}</span></div><h2>{assessment.title}</h2>{assessment.subjectName && <p className={styles.note}>{assessment.subjectName}</p>}{assessment.supervisorId && <p className={styles.note}>Научный руководитель: {teacherName(assessment.supervisorId)}</p>}</div>
-      {role === "configurator" && <div className={styles.actions}>{isSupervisedAssessment(assessment.kind) && <button type="button" disabled={blocked || !snapshot.manageableSupervisorAssessmentIds?.includes(assessment.id)} title="Замена доступна до первого сохранённого результата по всей аттестации при наличии текущей попытки." onClick={() => setChangingSupervisor(true)}>Заменить руководителя</button>}<button type="button" disabled={blocked || archivedSubject || !canAddRetake} onClick={() => setAttemptKind("retake")}>Добавить пересдачу</button><button type="button" disabled={blocked || archivedSubject || !canAddRetake} onClick={() => setAttemptKind("commission")}>С комиссией</button></div>}
+      {role === "configurator" && <div className={styles.actions}>{isSupervisedAssessment(assessment.kind) && <button type="button" disabled={blocked || !snapshot.manageableSupervisorAssessmentIds?.includes(assessment.id)} title="Замена доступна до первого сохранённого результата по всей аттестации при наличии текущей попытки." onClick={() => setChangingSupervisor(true)}>Заменить руководителя</button>}<button type="button" disabled={blocked || archivedSubject} onClick={() => setAttemptKind("additional")}>Назначить допсрок</button><button type="button" disabled={blocked || archivedSubject || !canAddRetake} onClick={() => setAttemptKind("retake")}>Добавить пересдачу</button><button type="button" disabled={blocked || archivedSubject || !canAddRetake} onClick={() => setAttemptKind("commission")}>С комиссией</button></div>}
       {role === "configurator" && archivedSubject && <p className={styles.note}>Для назначения новой попытки сначала восстановите дисциплину из архива.</p>}
-      {role === "configurator" && latest?.state === "cancelled" && !canAddRetake && <div className={styles.actions}><button type="button" disabled={blocked || archivedSubject} onClick={() => setAttemptKind("primary")}>Назначить заново</button></div>}
+      {role === "configurator" && latest?.state === "cancelled" && !hasDraft && !canAddRetake && <div className={styles.actions}><button type="button" disabled={blocked || archivedSubject} onClick={() => setAttemptKind("primary")}>Назначить заново</button></div>}
     </header>
     {assessment.academicPeriod ? <p className={styles.note}>Сохранённый учебный период: год {assessment.academicPeriod.year.startsOn} — {assessment.academicPeriod.year.endsOn}; семестр {assessment.academicPeriod.term.startsOn} — {assessment.academicPeriod.term.endsOn}. Последующие изменения справочника не меняют эту ведомость.</p> : <p className={styles.note}>Период сохранён текстом в прежней ведомости; автоматическое сопоставление со справочником не выполнялось.</p>}
     <dl className={styles.detailFacts}><div><dt>Семестр в зачётке</dt><dd>{assessment.recordBook?.semester ?? "Не указан"}</dd></div><div><dt>Объём программы</dt><dd>{assessment.recordBook ? `${assessment.recordBook.hours} ч` : "Не указан"}</dd></div><div><dt>Раздел зачётки</dt><dd>{assessment.recordBook ? assessment.recordBook.category === "elective" ? "Факультатив" : "Основная программа" : "Не указан"}</dd></div><div><dt>Попыток</dt><dd>{assessment.attempts.length}</dd></div></dl>
     {role === "configurator" && <div className={styles.actions}><button type="button" disabled={blocked} onClick={() => setEditingBook(true)}>Реквизиты зачётки</button></div>}
-    {role === "configurator" && latest?.state === "draft" && <p className={styles.note}>Новая попытка станет доступна после публикации предыдущей ведомости или отмены попытки без результатов. Состав участников каждой попытки выбирается отдельно.</p>}
+    {role === "configurator" && hasDraft && <p className={styles.note}>Допсрок основной сдачи можно назначить заранее для выбранных студентов. Пересдача доступна после закрытия незавершённых ведомостей; опубликованные результаты сохраняются.</p>}
     </Card>
     <div className={styles.sectionHeader}><h2>История попыток</h2><span className={styles.note}>Всего: {assessment.attempts.length} · сначала последние</span></div>
     {!assessment.attempts.length && <div className={styles.empty}>Опубликованных результатов пока нет.</div>}

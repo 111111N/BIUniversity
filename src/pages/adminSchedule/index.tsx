@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useRole } from "../../components/RoleContext";
 import AdministrationReturnNotice from "../../components/AdministrationReturnNotice";
+import CalendarNotice from "./CalendarNotice";
 import { isSubjectActive } from "../../domain/subjectCatalog";
 import { inheritChecksReturn } from "../../domain/administrationChecksNavigation";
 import WeekPicker from "../../components/WeekPicker";
@@ -21,12 +22,14 @@ import styles from "./index.module.scss";
 import { isGroupActive } from "../../domain/groupCatalog";
 import CopyWeekDialog from "./CopyWeekDialog";
 import PublicationReview from "./PublicationReview";
+import PublicationArchive from "./PublicationArchive";
 import LessonEditor from "./LessonEditor";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { getWeekActionState, groupScheduleLessons } from "./presentation";
 import { useScheduleAssignmentHandoff } from "../../components/ScheduleAssignmentProvider";
 import { SCHEDULE_RETURN_PARAM } from "../../domain/scheduleAssignmentHandoff";
 import { changesLocation, type UnsavedNavigationCheck } from "../../domain/unsavedNavigation";
+import { subscribeTeachingAssignments } from "../../data/teachingAssignmentsRead";
 
 const freshLesson = (date: string, groupId: string): ManagedLesson => ({
   id: `managed:${crypto.randomUUID()}`, scheduleId: Date.now() * 1000 + Math.floor(Math.random() * 1000),
@@ -60,6 +63,7 @@ const AdminSchedulePage = () => {
   const [busy, setBusy] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [discard, setDiscard] = useState<"lesson" | "week" | null>(null);
   const [discardError, setDiscardError] = useState("");
   const [removedLesson, setRemovedLesson] = useState<ManagedLesson | null>(resumed?.removedLesson ?? null);
@@ -80,6 +84,7 @@ const AdminSchedulePage = () => {
 
   useEffect(() => subscribeManagedSchedule(() => setState(readManagedScheduleState())), []);
   useEffect(() => subscribeAccounts(() => setTeachers(getManagedScheduleTeachers())), []);
+  useEffect(() => subscribeTeachingAssignments(() => setTeachers(getManagedScheduleTeachers())), []);
   useEffect(() => {
     if (editingId || !returnFocusRef.current) return;
     const previous = returnFocusRef.current;
@@ -172,6 +177,7 @@ const AdminSchedulePage = () => {
 
   return <div className={`pageContainer ${styles.page} ${editor ? styles.editing : ""}`}>
     <AdministrationReturnNotice />
+    <CalendarNotice groupId={groupId} weekStart={weekStart} />
     <div className={styles.navigation}><WeekPicker value={parseCalendarDate(weekStart)} onWeekChange={(date) => updateScope("date", toLocalDateKey(date))} /></div>
     <section className={styles.weekPanel} aria-label="Рабочая неделя">
       <div className={styles.scopeRow}>
@@ -180,6 +186,9 @@ const AdminSchedulePage = () => {
           <summary>Действия недели</summary>
           <div className={styles.weekToolsContent}>
             <button type="button" disabled={blocked || Boolean(editor) || stale} onClick={() => { closeWeekTools(); setCopyOpen(true); }}>Копировать из другой недели</button>
+            <button type="button" disabled={busy || Boolean(state.error) || Boolean(catalogError) || dirty || Boolean(editor) || stale} onClick={() => { closeWeekTools(); setArchiveOpen(true); }}>Архив публикаций</button>
+            <button type="button" disabled={busy} onClick={() => { closeWeekTools(); const end = parseCalendarDate(weekStart)!; end.setDate(end.getDate() + 6); navigate(inheritChecksReturn(`/admin/schedule/overview?from=${weekStart}&to=${toLocalDateKey(end)}`, "/admin/schedule", params.toString())); }}>Обзор публикаций</button>
+            <button type="button" disabled={busy} onClick={() => { closeWeekTools(); navigate(inheritChecksReturn("/admin/schedule/templates", "/admin/schedule", params.toString())); }}>Шаблоны расписания</button>
             {(dirty || editorDirty) && <button className={styles.reset} type="button" disabled={busy} onClick={() => { closeWeekTools(); requestReset(); }}>Сбросить правки недели</button>}
             <p>Копирование заменит рабочий список после проверки. Публикация выполняется отдельно.</p>
           </div>
@@ -224,6 +233,7 @@ const AdminSchedulePage = () => {
     <details className={styles.help}><summary>Как сохраняются изменения</summary><ol><li>Примените изменения пары к рабочей неделе.</li><li>Сохраните черновик — он ещё не виден студентам и преподавателям.</li><li>Проверьте изменения и отдельно подтвердите публикацию.</li></ol><p>Публикуется только выбранная группа и неделя. Пустая опубликованная неделя уберёт её занятия из расписания.</p></details>
     {discard && <ConfirmDialog title={discard === 'lesson' ? 'Отменить правки этой пары?' : 'Сбросить все правки недели?'} confirmLabel={discard === 'lesson' ? 'Отменить правки пары' : 'Сбросить правки недели'} cancelLabel="Продолжить редактирование" error={discardError} onCancel={() => { setDiscard(null); setDiscardError(''); }} onConfirm={() => { if (discard === 'lesson') { setEditor(null); setDiscard(null); } else if (reset()) setDiscard(null); }}><p>{discard === 'lesson' ? 'Изменения открытой пары будут отменены. Остальные правки рабочей недели сохранятся.' : 'Изменения рабочей недели и открытой формы будут заменены последним сохранённым состоянием. Сохранённые публикации и отметки журнала не изменятся.'}</p></ConfirmDialog>}
     {copyOpen && <CopyWeekDialog key={scope} snapshot={state.snapshot} groupId={groupId} groupName={ACADEMIC_GROUPS.find((group) => group.id === groupId)?.name ?? groupId} targetWeekStart={weekStart} currentLessonCount={lessons.length} hasUnsavedChanges={dirty} onClose={() => setCopyOpen(false)} onApply={(copied) => { dirtyRef.current = true; setLessons(sortLessons(copied)); setRemovedLesson(null); setCopyOpen(false); setError(""); setMessage("Копия перенесена в рабочую неделю. Проверьте занятия, сохраните черновик и опубликуйте отдельно."); }} />}
+    {archiveOpen && <PublicationArchive key={scope} groupId={groupId} groupName={ACADEMIC_GROUPS.find((group) => group.id === groupId)?.name ?? groupId} weekStart={weekStart} onClose={() => setArchiveOpen(false)} onApply={restored => { dirtyRef.current = true; setLessons(sortLessons(restored)); setRemovedLesson(null); setArchiveOpen(false); setError(""); setMessage("Архивная версия перенесена в рабочий список. Проверьте замечания, сохраните черновик и опубликуйте отдельно."); }} />}
     {confirmPublish && <PublicationReview key={scope} groupId={groupId} groupName={ACADEMIC_GROUPS.find((group) => group.id === groupId)?.name ?? groupId} weekStart={weekStart} revision={revision} onClose={() => setConfirmPublish(false)} onPublished={(snapshot) => { const publishedLessons = getManagedScheduleWeek(snapshot, weekStart, groupId).lessons; dirtyRef.current = false; setLessons(publishedLessons); setSaved(JSON.stringify(publishedLessons)); setState({ snapshot, error: "" }); setRevision(snapshot.revision); setRemovedLesson(null); setConfirmPublish(false); setError(""); setMessage("Неделя опубликована. Расписание и новые занятия журнала обновлены."); }} />}
   </div>;
 };

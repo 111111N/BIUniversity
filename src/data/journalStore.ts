@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { SetStateAction } from "react";
 import type { Grade, Student } from "../components/Attendance/data/students";
 import { createSubjectLessons } from "./lessons";
+import { readGroupCalendarsDocument } from "./groupCalendarRead";
+import { assertCalendarDatesEditable } from "../domain/groupCalendars";
 import { DEMO_GROUPS, DEMO_SUBJECTS, SUBJECTS, getAcademicGroup, getAcademicSubjectDefinition, SUBJECT_GROUP_OFFERINGS } from "./academicCatalog";
 import { JournalDraftConflictError } from "../domain/journalDraft";
 import { createJournalDemoAdditions } from "./demo/journals";
@@ -13,11 +15,29 @@ import type { AcademicLesson } from "../domain/academic";
 import { readManagedScheduleState } from "./managedScheduleStore";
 import useManagedScheduleSnapshot from "../hooks/useManagedScheduleSnapshot";
 import useAccountsSnapshot from "../hooks/useAccountsSnapshot";
+import { isAccountActive } from "../domain/accounts";
+import { canTeachLesson, findTeachingAssignment, hasGeneralTeachingMembership } from "../domain/teachingAssignments";
+import { readTeachingAssignmentsDocument } from "./teachingAssignmentsRead";
 
 export const CURRENT_STUDENT_ID = "anna-smirnova";
 export const JOURNAL_PERIOD = "Сентябрь — ноябрь 2026 · демонстрационные занятия";
 const CHANGE_EVENT = "bi-university-journal-change";
 export const JOURNAL_SCHEMA_VERSION = 2;
+const assertJournalTeachingChanges = (actorId: string, subjectId: string, groupId: string, changes: JournalChange[], lessons: AcademicLesson[]) => {
+  const accounts = readAccountsState();
+  if (accounts.error) throw new Error(accounts.error);
+  const teacher = accounts.accounts.find(row => row.id === actorId && row.role === "teacher" && isAccountActive(row));
+  if (!teacher || !hasGeneralTeachingMembership(teacher, subjectId, groupId)) throw new Error("Назначение преподавателя изменилось. Обновите доступ к журналу.");
+  const document = readTeachingAssignmentsDocument(), scope = findTeachingAssignment(document, teacher.id, subjectId, groupId);
+  if (scope?.mode !== "periods") return;
+  const byId = new Map(lessons.map(lesson => [lesson.id, lesson]));
+  const affected = changes.some(change => change.field === "roster") ? lessons : changes.flatMap(change => {
+    const lesson = change.lessonId ? byId.get(change.lessonId) : undefined;
+    if (!lesson) throw new Error("Не удалось определить тип или дату изменяемого занятия. Сначала восстановите его источник.");
+    return [lesson];
+  });
+  if (affected.some(lesson => !canTeachLesson(document, teacher, lesson))) throw new Error("Изменены занятия вне назначенных вам типов или семестров. Сохраните правки только в доступных ячейках.");
+};
 class JournalWriteError extends Error {}
 export const journalKey = (subject: string, group: string) => `bi-university-journal-v1:${subject}:${group}`;
 const historyKey = (subject: string, group: string) => `bi-university-journal-history-v1:${subject}:${group}`;
@@ -180,6 +200,12 @@ export const appendJournalDemoRecords = (subject: string, group: string, actor: 
   if (history.error) throw new JournalWriteError(history.error);
   const addition = createJournalDemoAdditions(subject, group, migrateLessonKeys(previous, subject, group));
   if (!addition.cells) return { journals: 0, cells: 0, grades: 0 };
+  try {
+    const dates = new Map(createSubjectLessons(subject, group).map(lesson => [lesson.id, lesson.date]));
+    const changes = collectChanges(migrateLessonKeys(previous, subject, group), addition.students, actor);
+    assertJournalTeachingChanges(actor.id, subject, group, changes, createSubjectLessons(subject, group));
+    assertCalendarDatesEditable(readGroupCalendarsDocument(), group, changes.flatMap(change => change.lessonId && dates.has(change.lessonId) ? [dates.get(change.lessonId)!] : []));
+  } catch (error) { console.error("Не удалось проверить период перед добавлением демонстрационных отметок:", error); throw new JournalWriteError(error instanceof Error ? error.message : "Учебный период недоступен. Демонстрационные отметки не добавлены."); }
   const event: JournalChange = {
     id: crypto.randomUUID(), changedAt: new Date().toISOString(), actor,
     studentId: "demo-import", studentName: "Демонстрационный набор", field: "demo", previousValue: null,
@@ -233,6 +259,17 @@ export const useJournal = (subject: string, group: string, actor: JournalActor =
       if (!previous) throw new Error("invalid data");
       const next = typeof action === "function" ? action(previous) : action;
       const changes = collectChanges(previous, next, actor);
+      try {
+        assertJournalTeachingChanges(actor.id, subject, group, changes, createSubjectLessons(subject, group, Date.now(), latestSchedule.snapshot.journal));
+        const dates = new Map(createSubjectLessons(subject, group, Date.now(), latestSchedule.snapshot.journal).map(lesson => [lesson.id, lesson.date]));
+        const calendars = readGroupCalendarsDocument();
+        const changedDates = changes.some(change => change.field === "roster") ? [...dates.values()] : changes.flatMap(change => change.lessonId && dates.has(change.lessonId) ? [dates.get(change.lessonId)!] : []);
+        if (calendars.calendars.some(calendar => calendar.group.id === group && calendar.state === "closed") && changes.some(change => change.lessonId && !dates.has(change.lessonId))) throw new Error("Не удалось определить дату изменяемого занятия. Сначала восстановите его источник; закрытый период не изменён.");
+        assertCalendarDatesEditable(calendars, group, changedDates);
+      } catch (error) {
+        console.error("Не удалось проверить закрытие периода перед сохранением журнала:", error);
+        throw new JournalWriteError(error instanceof Error ? error.message : "Проверка учебного периода недоступна. Журнал не сохранён.");
+      }
       const encoded = encodeJournal(next);
       const currentHistory = readHistoryState(auditKey);
       if (currentHistory.error) throw new JournalWriteError(currentHistory.error);

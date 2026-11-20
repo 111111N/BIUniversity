@@ -6,7 +6,7 @@ export const ASSESSMENT_KIND_LABELS = {
   exam: "Экзамен", pass: "Зачёт", gradedPass: "Зачёт с оценкой", internship: "Практика", thesis: "ВКР", coursework: "Курсовая работа",
 } as const;
 export type AssessmentKind = keyof typeof ASSESSMENT_KIND_LABELS;
-export const ATTEMPT_KIND_LABELS = { primary: "Основная сдача", retake: "Пересдача", commission: "Комиссионная пересдача" } as const;
+export const ATTEMPT_KIND_LABELS = { primary: "Основная сдача", additional: "Дополнительный срок основной сдачи", retake: "Пересдача", commission: "Комиссионная пересдача" } as const;
 export type AssessmentAttemptKind = keyof typeof ATTEMPT_KIND_LABELS;
 export type AssessmentOutcome = { status: "graded"; grade: 2 | 3 | 4 | 5 } | { status: "passed" | "failed" | "absent" };
 export interface AssessmentResult { studentId: string; outcome: AssessmentOutcome | null }
@@ -44,7 +44,7 @@ export interface AssessmentCorrectionEvent {
   id: string; correctionId: string; actorId: string; occurredAt: string;
   action: "opened" | "results-saved" | "published"; results: AssessmentResult[]; reason?: string;
 }
-export interface AssessmentDocument { version: 5 | 6; revision: number; assessments: Assessment[]; history: AssessmentHistoryEntry[]; corrections: AssessmentCorrection[]; correctionHistory: AssessmentCorrectionEvent[] }
+export interface AssessmentDocument { version: 5 | 6 | 7; revision: number; assessments: Assessment[]; history: AssessmentHistoryEntry[]; corrections: AssessmentCorrection[]; correctionHistory: AssessmentCorrectionEvent[] }
 export interface AssessmentCommandContext {
   actorId: string; actorRevision: number; expectedRevision: number;
   accountsRevision: number; groupRevision: number; subjectRevision: number;

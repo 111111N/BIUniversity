@@ -12,6 +12,8 @@ import { createAssessmentStatement } from "../domain/assessmentExport";
 import { readAssessmentAttemptHistory } from "../domain/assessmentHistory";
 import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument, emptyAcademicPeriodsDocument } from "../domain/academicPeriods";
 import { ACADEMIC_PERIODS_CHANGE_EVENT } from "./academicPeriodsStore";
+import { readGroupCalendarsDocument } from "./groupCalendarRead";
+import { assertCalendarDatesEditable } from "../domain/groupCalendars";
 import type { AssessmentDomainContext } from "../domain/assessments";
 
 export { ASSESSMENTS_STORAGE_KEY };
@@ -85,6 +87,8 @@ export const appendAssessmentDemoRecords = (): Promise<{ assessments: number; as
     addedAccount = true;
   }
   const next = appendAssessmentDemo(state, context, now);
+  const calendars = readGroupCalendarsDocument();
+  for (const assessment of next.assessments) if (!state.assessments.some(row => row.id === assessment.id)) assertCalendarDatesEditable(calendars, assessment.groupId, assessment.attempts.map(attempt => attempt.date), assessment.academicPeriod?.term.id);
   const counts = { assessments: next.assessments.length - state.assessments.length, assessmentAttempts: next.assessments.reduce((sum, item) => sum + item.attempts.length, 0) - state.assessments.reduce((sum, item) => sum + item.attempts.length, 0) };
   if (!counts.assessments) return counts;
   const serialized = JSON.stringify(next);
@@ -167,6 +171,13 @@ export const assessmentService: AssessmentService = {
         const next = applyAssessmentCommand(state, input, context, {
           assessmentId: crypto.randomUUID(), attemptId: crypto.randomUUID(), historyId: crypto.randomUUID(), occurredAt: new Date().toISOString(),
         });
+        const calendars = readGroupCalendarsDocument();
+        const target = input.type === "create" ? next.assessments.find(row => !state.assessments.some(previous => previous.id === row.id)) : state.assessments.find(row => row.id === input.assessmentId);
+        if (target) {
+          const dates = "attemptId" in input ? target.attempts.filter(attempt => attempt.id === input.attemptId).map(attempt => attempt.date) : input.type === "add-attempt" ? [input.draft.date] : target.attempts.map(attempt => attempt.date);
+          if (input.type === "update-attempt") dates.push(input.draft.date);
+          assertCalendarDatesEditable(calendars, target.groupId, dates, target.academicPeriod?.term.id);
+        }
         const serialized = JSON.stringify(next);
         decodeAssessmentDocument(serialized);
         try { localStorage.setItem(ASSESSMENTS_STORAGE_KEY, serialized); }

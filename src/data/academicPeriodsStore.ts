@@ -5,6 +5,8 @@ import {
 } from "../domain/academicPeriods";
 import { readAccountsState, subscribeAccounts } from "./accountStore";
 import { executeAdministrationWrite } from "./administrationWrite";
+import { readGroupCalendarsDocument } from "./groupCalendarRead";
+import { calendarClosedMessage } from "../domain/groupCalendars";
 
 export const ACADEMIC_PERIODS_CHANGE_EVENT = "bi-university-academic-periods-change";
 export interface AcademicPeriodsSnapshot extends Omit<AcademicPeriodsDocument, "version" | "history"> { actorRevision: number }
@@ -39,6 +41,8 @@ export const academicPeriodsService: AcademicPeriodsService = {
     return executeAdministrationWrite(() => {
       try {
         const actor = readActor(captured.actorId), state = readDocument();
+        const locked = readGroupCalendarsDocument().calendars.find(calendar => calendar.state === "closed" && (captured.type === "update-term" && calendar.period.term.id === captured.termId || captured.type === "update-year" && calendar.period.year.id === captured.yearId));
+        if (locked) throw new Error(calendarClosedMessage(locked));
         const entityId = captured.type === "update-year" ? captured.yearId : captured.type === "update-term" ? captured.termId : `academic-${crypto.randomUUID()}`;
         const next = executeAcademicPeriodCommand(state, captured, actor, { entityId, eventId: crypto.randomUUID(), occurredAt: new Date().toISOString() });
         localStorage.setItem(ACADEMIC_PERIODS_STORAGE_KEY, JSON.stringify(next));
