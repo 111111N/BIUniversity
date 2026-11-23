@@ -1,6 +1,7 @@
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
-import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import type { BackupDocumentCheck } from "./localBackupDocuments";
 import { getPlannerStorageOwner, PLANNER_STORAGE_KEY } from "./plannerStorage";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 
 export const BACKUP_PLANNER_DOCUMENTS = { planners: { key: PLANNER_STORAGE_KEY, prefix: PLANNER_STORAGE_KEY, label: "Планировщики" } } as const;
 export const isBackupPlannerKey = (key: string) => key.startsWith(PLANNER_STORAGE_KEY);
@@ -22,8 +23,9 @@ export const decodePlannerBackupNotes = (raw: string): Record<string, unknown>[]
 };
 
 /** Archive ownership is checked only against archived accounts, regardless of their current role/status. */
-export const inspectBackupPlanners = async (entries: AdministrativeBackup["localStorage"], accountIds?: ReadonlySet<string>, signal?: AbortSignal) => {
-  const issues: BackupDocumentIssue[] = [];
+export const inspectBackupPlanners = async (entries: Readonly<AdministrativeBackup["localStorage"]>, accountIds?: ReadonlySet<string>, signal?: AbortSignal, completedAt?: string) => {
+  const { issues, add: addIssue } = createBackupIssueCollector("планировщикам");
+  const cutoff = Date.parse(completedAt ?? "");
   let documents = 0; let invalid = 0; let records = 0; let index = 0;
   for (const entry of entries) {
     if (++index % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -33,27 +35,32 @@ export const inspectBackupPlanners = async (entries: AdministrativeBackup["local
     const owner = getPlannerStorageOwner(entry.key);
     if (owner === undefined) {
       invalid++;
-      issues.push({ kind: "planners", level: "error", code: "unsupported-planner-key", referenceId: entry.key, message: "Ключ планировщика не соответствует текущему формату или неоднозначно задаёт владельца. Список не переименован и не объединён с другим." });
+      addIssue({ kind: "planners", level: "error", code: "unsupported-planner-key", referenceId: entry.key, message: "Ключ планировщика не соответствует текущему формату или неоднозначно задаёт владельца. Список не переименован и не объединён с другим." });
       continue;
     }
-    if (!accountIds) issues.push({ kind: "planners", level: "review", code: "unchecked-planner-owner", referenceId: entry.key, message: "Владелец планировщика не проверен: учётные записи отсутствуют или не читаются в архиве. Учётки браузера не подставлялись." });
-    else if (!accountIds.has(owner)) issues.push({ kind: "planners", level: "error", code: "missing-planner-owner", referenceId: entry.key, message: "В архиве нет учётной записи владельца этого планировщика. Задачи не переданы другому пользователю." });
+    if (!accountIds) addIssue({ kind: "planners", level: "review", code: "unchecked-planner-owner", referenceId: entry.key, message: "Владелец планировщика не проверен: учётные записи отсутствуют или не читаются в архиве. Учётки браузера не подставлялись." });
+    else if (!accountIds.has(owner)) addIssue({ kind: "planners", level: "error", code: "missing-planner-owner", referenceId: entry.key, message: "В архиве нет учётной записи владельца этого планировщика. Задачи не переданы другому пользователю." });
     try {
       const notes = decodePlannerBackupNotes(entry.raw); records += notes.length;
       for (const note of notes) {
-        if (date(note.startAt) && date(note.endAt) && Date.parse(note.endAt) <= Date.parse(note.startAt)) issues.push({
+        if (++index % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0));
+        checkBackupAbort(signal);
+        if (Number.isFinite(cutoff) && Date.parse(note.createdAt as string) > cutoff) addIssue({ kind: "planners", level: "error", code: "planner-created-after-cutoff", referenceId: entry.key, recordId: note.id as string, message: "Время создания задачи позже границы проверки набора. Будущая дата начала или окончания задачи сама по себе допустима; запись не изменялась." });
+        if (date(note.startAt) && date(note.endAt) && Date.parse(note.endAt) <= Date.parse(note.startAt)) addIssue({
           kind: "planners", level: "error", code: "invalid-planner-interval", referenceId: entry.key, recordId: note.id as string,
           message: "Время окончания задачи не позже времени начала. Даты не изменены.",
         });
       }
     } catch (error) {
+      checkBackupAbort(signal);
       invalid++;
-      issues.push({ kind: "planners", level: "error", code: "invalid-planner-document", referenceId: entry.key,
+      addIssue({ kind: "planners", level: "error", code: "invalid-planner-document", referenceId: entry.key,
         message: error instanceof SyntaxError ? "Некорректный JSON списка задач. Исходный текст не включён в отчёт." : error instanceof Error ? error.message : "Не удалось проверить список задач планировщика.",
       });
     }
   }
   checkBackupAbort(signal);
+  if (documents && completedAt !== undefined && !Number.isFinite(cutoff)) addIssue({ kind: "planners", level: "review", code: "unchecked-planner-cutoff", message: "Граница времени для проверки создания задач не подтверждена. Время устройства не подставлялось." });
   const checks: BackupDocumentCheck[] = [{ kind: "planners", key: PLANNER_STORAGE_KEY, label: BACKUP_PLANNER_DOCUMENTS.planners.label, documents,
     status: !documents ? "absent" : invalid ? "invalid" : "valid", ...(documents && !invalid ? { records } : {}),
     message: !documents ? "Сохранённых списков планировщика нет в архиве. Демонстрационные задачи не подставляются."

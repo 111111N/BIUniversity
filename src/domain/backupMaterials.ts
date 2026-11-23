@@ -1,5 +1,6 @@
-import { checkBackupAbort, type AdministrativeBackup, type BackupValue } from "./localBackup";
-import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import { BACKUP_LIMITS, checkBackupAbort, type AdministrativeBackup, type BackupValue } from "./localBackup";
+import type { BackupDocumentCheck } from "./localBackupDocuments";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 import { resolveJournalTeachingArea, type ArchivedJournalCatalogs } from "./journalTeachingArea";
 import { inspectArchivedFileIndexes } from "./backupFileIndexes";
 
@@ -10,12 +11,12 @@ const number = (node?: BackupValue) => node?.type === "number" ? node.value : un
 
 /** Read tagged records and declared scopes only; never upgrade a database or infer owners from names. */
 export const inspectArchivedMaterials = async (databases: AdministrativeBackup["databases"], sources: MaterialSources, signal?: AbortSignal) => {
-  const definition = BACKUP_MATERIAL_DOCUMENTS.materials; const issues: BackupDocumentIssue[] = [];
+  const definition = BACKUP_MATERIAL_DOCUMENTS.materials; const { issues, add } = createBackupIssueCollector("материалам");
   const database = databases.find((item) => item.name === "bi-university-cabinet");
   const store = database?.stores.find((item) => item.name === "teacher-files");
   const unchecked = new Set<string>(); let count = 0; let invalid = 0; let read = 0; let matchedScopes = 0; let unresolvedScopes = 0;
-  const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
-  const finding = (level: "error" | "review", code: string, message: string, recordId?: string) => issues.push({ kind: "materials", level, code, message, referenceId: definition.key, recordId });
+  const step = async () => { if (++count > BACKUP_LIMITS.nodes) throw new Error("Проверка материалов превышает предел операций. Частичный результат не создан."); if (count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  const finding = (level: "error" | "review", code: string, message: string, recordId?: string) => add({ kind: "materials", level, code, message, referenceId: definition.key, recordId });
   const uncheckedSource = (target: "accounts" | "subjects" | "catalogs") => {
     if (unchecked.has(target)) return; unchecked.add(target);
     finding("review", `unchecked-material-${target}`, "Часть областей материалов не проверена: нужный документ учёток, дисциплин или групп отсутствует либо не читается в архиве. Справочники браузера, встроенные записи и имена не подставлялись.");

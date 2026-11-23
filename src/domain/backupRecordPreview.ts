@@ -5,7 +5,7 @@ import { getAccountBackupDefinition } from "./backupAccountComparison";
 import { getCatalogBackupDefinition } from "./backupCatalogComparison";
 import { getLearningBackupDefinition } from "./backupLearningComparison";
 import { getScheduleBackupDefinition } from "./backupScheduleComparison";
-import { compareBackupJournalRecords, getJournalBackupDefinition } from "./backupJournalComparison";
+import { compareBackupJournalRecords, compareBackupJournalSnapshotRecords, getJournalBackupDefinition } from "./backupJournalComparison";
 import { BACKUP_LIMITS, checkBackupAbort } from "./localBackup";
 import { isBackupVisualPreferenceKey, readBackupVisualPreferencePreview } from "./backupVisualPreferences";
 import { compareBackupNotificationRecords, getNotificationBackupDefinition } from "./backupNotificationComparison";
@@ -49,9 +49,10 @@ export const readBackupRecordPreview = async (archive: BackupRecordEntries, brow
   if (reference.storage === "localStorage") return readBackupVisualPreferencePreview(archive, browser, reference.key, signal);
   const definition = definitionFor(reference.collection)!;
   const relevant = (entries: BackupRecordEntries) => entries.filter(entry => entry.key === reference.key
-    || (definition.collection === "journal-history" && ["bi-university-group-catalog-v1", "bi-university-subject-catalog-v1"].includes(entry.key))
+    || (["journal-history", "journal-students"].includes(definition.collection) && ["bi-university-group-catalog-v1", "bi-university-subject-catalog-v1"].includes(entry.key))
     || (definition.collection === "notifications" && entry.key === "bi-university-accounts-v1"));
   const comparison = definition.collection === "journal-history" ? await compareBackupJournalRecords(relevant(archive), relevant(browser), signal)
+    : definition.collection === "journal-students" ? await compareBackupJournalSnapshotRecords(relevant(archive), relevant(browser), signal)
     : definition.collection === "notifications" ? await compareBackupNotificationRecords(relevant(archive), relevant(browser), signal)
     : await compareBackupRecords(relevant(archive), relevant(browser), definition, signal);
   const confirmed = comparison.differences.find(item => getBackupDifferenceKey(item) === getBackupDifferenceKey(difference));
@@ -65,7 +66,7 @@ export const readBackupRecordPreview = async (archive: BackupRecordEntries, brow
   };
   const before = read(archive, "archive"), after = read(browser, "browser");
   const labels: Record<string, string> = getAcademicBackupDefinition(definition.collection) ? ACADEMIC_COMPARISON_LABELS : getScheduleCatalogBackupDefinition(definition.collection) ? SCHEDULE_CATALOG_COMPARISON_LABELS : definition.collection === "notifications" ? NOTIFICATION_LABELS
-    : getAssessmentBackupDefinition(definition.collection) ? { ...ASSESSMENT_COMPARISON_LABELS, ...(definition.collection.startsWith("assessment-correction") ? { reason: "Причина исправления" } : {}) } : definition.collection === "subject-history" ? { ...LABELS, origin: "Происхождение снимка" } : definition.collection.startsWith("schedule-") ? { ...LABELS, ...SCHEDULE_CATALOG_COMPARISON_LABELS } : LABELS;
+    : getAssessmentBackupDefinition(definition.collection) ? { ...ASSESSMENT_COMPARISON_LABELS, ...(definition.collection.startsWith("assessment-correction") ? { reason: "Причина исправления" } : {}) } : definition.collection === "journal-students" ? { ...LABELS, attendance: "Отметки посещаемости", grades: "Оценки" } : definition.collection === "subject-history" ? { ...LABELS, origin: "Происхождение снимка" } : definition.collection.startsWith("schedule-") ? { ...LABELS, ...SCHEDULE_CATALOG_COMPARISON_LABELS } : LABELS;
   const rows = confirmed.fields.filter(field => field !== "other").map(field => ({ field, label: labels[field] ?? "Реквизиты", archive: text(before, field), browser: text(after, field) }));
   if (JSON.stringify(rows).length * 2 > 128 * 1024) throw new Error("Значения слишком велики для просмотра. Частичный текст не показан; сохраните исходный архив для отдельного разбора.");
   checkBackupAbort(signal);

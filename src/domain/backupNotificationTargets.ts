@@ -89,7 +89,10 @@ export const createArchivedNotificationTargetCheck = async (sources: ArchivedNot
       const scheduleTarget = inspectArchivedScheduleHref(href);
       if (scheduleTarget !== "outside") {
         stats.outside++; schedule.targets++;
-        if (scheduleTarget === "readable") schedule.readable++;
+        if (scheduleTarget === "readable") {
+          schedule.readable++; schedule.unresolved++;
+          finding("review", "unconfirmed-notification-schedule-target", "Параметры перехода в расписание читаются, но не задают постоянный ID занятия. Наличие конкретной цели и доступ получателя на дату уведомления требуют отдельного подтверждения; результат поиска по названию не использовался как доказательство.");
+        }
         else {
           schedule.unresolved++;
           finding("review", "ambiguous-notification-schedule-target", "Параметры ссылки расписания нельзя однозначно прочитать: проверьте маршрут, календарную дату, тип поиска, запрос и повторяющиеся параметры. Исходный адрес не раскрыт и не исправлен.");
@@ -128,6 +131,6 @@ export const createArchivedNotificationTargetCheck = async (sources: ArchivedNot
     if (matched) stats.matched++; else stats.unresolved++;
   };
   const summary = () => `Целей заданий и ответов: ${stats.targets}; сопоставлено: ${stats.matched}; не подтверждено: ${stats.unresolved}; ссылок вне этой сверки: ${stats.outside}. Учебных областей ссылок журнала: ${areas.targets}; сопоставлено: ${areas.matched}; не подтверждено: ${areas.unresolved}. Сверяются ID цели, задания ответа и учебной области, а не права получателя или доступность на дату уведомления. Наличие области в каталогах не подтверждает содержимое журнала, оценки или материалы. Общие разделы и другие типы целей не подтверждаются этой сверкой. Адреса не открывались и не изменялись.`;
-  const completeSummary = () => `${summary()} Ссылок расписания: ${schedule.targets}; формат читается: ${schedule.readable}; не подтверждён: ${schedule.unresolved}. Проверка параметров не подтверждает наличие занятий, результат поиска или права получателя; текущая дата и данные браузера не подставлялись.`;
+  const completeSummary = () => `${summary()} Ссылок расписания: ${schedule.targets}; формат читается: ${schedule.readable}; цель требует подтверждения: ${schedule.unresolved}. Проверка параметров не подтверждает наличие занятий, результат поиска или права получателя; текущая дата и данные браузера не подставлялись.`;
   return { inspect, summary: completeSummary };
 };

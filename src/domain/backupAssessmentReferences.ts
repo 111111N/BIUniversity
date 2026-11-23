@@ -1,12 +1,11 @@
-import { decodeAccountsDocument } from "./accounts";
 import type { AssessmentDocument } from "./assessmentTypes";
-import { decodeGroupCatalog } from "./groupCatalog";
-import { decodeSubjectCatalog } from "./subjectCatalog";
-import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, encodeBackupValue } from "./localBackup";
-import { canonicalBackupValue } from "./localBackupValidation";
+import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget } from "./localBackup";
 import type { BackupRecordEntries } from "./backupRecordComparison";
 import { createAssessmentPeriodHistoryLookup } from "./assessmentPeriods";
 import { resolveBackupPeriodSelection, type PeriodRecordChoice } from "./backupPeriodSelection";
+import { resolveBackupBaseSelection, type BaseRecordChoice, type BaseSelectionReview } from "./backupBaseSelection";
+import { BACKUP_BASE_DOCUMENTS } from "./backupBaseSelectionDefinitions";
+import { getBackupDifferenceKey } from "./backupComparison";
 
 export type AssessmentReferenceTarget = "accounts" | "groups" | "subjects";
 export interface AssessmentReferenceChoice { collection: AssessmentReferenceTarget; id: string; version: "archive" | "browser" }
@@ -15,26 +14,27 @@ export interface AssessmentReferenceIssue {
   target?: AssessmentReferenceTarget | "periods"; referenceId?: string; message: string;
 }
 export interface AssessmentReferenceReview {
-  scope: "assessment-reference-presence";
-  status: "references-present" | "blocked";
+  scope: "assessment-reference-presence"; status: "references-present" | "blocked";
   counts: { references: number; found: number; missing: number; unresolved: number; unavailable: number };
-  issues: AssessmentReferenceIssue[];
+  issues: AssessmentReferenceIssue[]; baseSources?: BaseSelectionReview[];
 }
 export const ASSESSMENT_REFERENCE_LABELS: Record<AssessmentReferenceTarget | "periods", string> = { accounts: "Учётная запись", groups: "Группа", subjects: "Дисциплина", periods: "Учебный период" };
-const DEFINITIONS = {
-  accounts: { key: "bi-university-accounts-v1", prefix: "bi-university-accounts-", read: (raw: string) => decodeAccountsDocument(raw).accounts },
-  groups: { key: "bi-university-group-catalog-v1", prefix: "bi-university-group-catalog-", read: (raw: string) => decodeGroupCatalog(raw).groups },
-  subjects: { key: "bi-university-subject-catalog-v1", prefix: "bi-university-subject-catalog-", read: (raw: string) => decodeSubjectCatalog(raw).subjects },
-} as const;
+const TARGETS: readonly AssessmentReferenceTarget[] = ["accounts", "groups", "subjects"];
+const DEFINITIONS = BACKUP_BASE_DOCUMENTS.filter(definition => (TARGETS as readonly string[]).includes(definition.kind));
 
-/** Checks exact IDs in selected cards only; does not infer historical roles or membership. */
+/** Full saved sources must agree with the choice. Presence never proves historical roles. */
 export async function inspectSelectedAssessmentReferences(
   document: AssessmentDocument, archive: BackupRecordEntries, browser: BackupRecordEntries,
-  choices: readonly AssessmentReferenceChoice[], signal?: AbortSignal, periodChoices: readonly PeriodRecordChoice[] = [],
+  choices: readonly AssessmentReferenceChoice[], signal?: AbortSignal, periodChoices: readonly PeriodRecordChoice[] = [], baseChoices?: readonly BaseRecordChoice[],
 ): Promise<AssessmentReferenceReview> {
   checkBackupAbort(signal);
-  const result: AssessmentReferenceReview = { scope: "assessment-reference-presence", status: "blocked", counts: { references: 0, found: 0, missing: 0, unresolved: 0, unavailable: 0 }, issues: [] };
+  const result: AssessmentReferenceReview = { scope: "assessment-reference-presence", status: "blocked", counts: { references: 0, found: 0, missing: 0, unresolved: 0, unavailable: 0 }, issues: [], baseSources: [] };
   const refs: Record<AssessmentReferenceTarget, Set<string>> = { accounts: new Set(), groups: new Set(), subjects: new Set() };
+  const issueBudget = createBackupBudget();
+  const issue = (value: AssessmentReferenceIssue) => {
+    if (result.issues.length >= BACKUP_LIMITS.records) throw new Error("Замечаний к ссылкам аттестаций больше 25 000. Частичный результат не создан.");
+    addBackupText(issueBudget, JSON.stringify(value)); result.issues.push(value);
+  };
   let steps = 0;
   const step = async () => { if (++steps % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   const account = (id: string | null | undefined) => { if (id !== null && id !== undefined) refs.accounts.add(id); };
@@ -58,89 +58,64 @@ export async function inspectSelectedAssessmentReferences(
   for (const correction of document.corrections) { await step(); account(correction.openedBy); account(correction.publishedBy); }
   for (const event of document.correctionHistory) { await step(); account(event.actorId); }
   result.counts.references = Object.values(refs).reduce((sum, ids) => sum + ids.size, 0);
-  const selected = new Map<string, AssessmentReferenceChoice>();
+  const grouped = new Map(DEFINITIONS.map(definition => [definition.key, [] as BaseRecordChoice[]]));
+  const legacy: BaseRecordChoice[] = [], legacySeen = new Set<string>();
+  if (!Array.isArray(choices) || choices.length > BACKUP_LIMITS.records) { issue({ code: "invalid-choice", message: "Выбор справочников некорректен или превышает предел проверки." }); return result; }
   for (const choice of choices) {
-    await step(); const key = JSON.stringify([choice.collection, choice.id]);
-    if (!Object.hasOwn(DEFINITIONS, choice.collection) || !["archive", "browser"].includes(choice.version) || selected.has(key)) {
-      result.issues.push({ code: "invalid-choice", message: "Выбор справочников устарел или содержит неоднозначные версии. Проверьте файл и выбор заново." });
-      return result;
-    }
-    selected.set(key, choice);
+    await step();
+    if (!choice || !TARGETS.includes(choice.collection) || typeof choice.id !== "string" || !choice.id || !["archive", "browser"].includes(choice.version)) { issue({ code: "invalid-choice", message: "Выбор справочников содержит неподдерживаемую запись или версию." }); return result; }
+    const definition = DEFINITIONS.find(value => value.kind === choice.collection)!;
+    const key = getBackupDifferenceKey({ kind: "different", area: "", id: choice.id, reference: { storage: "localStorage-record", key: definition.key, collection: choice.collection, id: choice.id } });
+    if (legacySeen.has(key)) { issue({ code: "invalid-choice", message: "Выбор карточек справочника повторяется. Проверьте файл заново." }); return result; }
+    legacySeen.add(key); legacy.push({ key, version: choice.version });
   }
-  const textBudget = createBackupBudget(), valueBudget = createBackupBudget();
-  const read = async (entries: BackupRecordEntries, target: AssessmentReferenceTarget) => {
-    const definition = DEFINITIONS[target], matches = [];
-    for (const entry of entries) {
-      await step(); if (!entry.key.startsWith(definition.prefix)) continue;
-      addBackupText(textBudget, entry.key); addBackupText(textBudget, entry.raw); matches.push(entry);
+  const fullChoices = baseChoices ?? legacy, seen = new Set<string>(), choiceBudget = createBackupBudget();
+  const fullCards = new Map<string, BaseRecordChoice["version"]>();
+  if (!Array.isArray(fullChoices) || fullChoices.length > BACKUP_LIMITS.records) { issue({ code: "invalid-choice", message: "Выбор полных базовых источников превышает предел проверки." }); return result; }
+  for (const choice of fullChoices) {
+    await step();
+    let address: unknown;
+    try { address = JSON.parse(choice?.key); } catch { address = null; }
+    if (!choice || typeof choice.key !== "string" || !["archive", "browser"].includes(choice.version) || seen.has(choice.key) || !Array.isArray(address) || address[0] !== "localStorage-record" || address[1] !== "different" || !grouped.has(address[2])) { issue({ code: "invalid-choice", message: "Выбор базовых источников устарел или содержит неоднозначный адрес. Проверьте файл заново." }); return result; }
+    addBackupText(choiceBudget, choice.key); seen.add(choice.key); grouped.get(address[2])!.push(choice);
+    if ((TARGETS as readonly string[]).includes(address[3])) fullCards.set(choice.key, choice.version);
+  }
+  if (baseChoices && (fullCards.size !== legacy.length || legacy.some(choice => fullCards.get(choice.key) !== choice.version))) { issue({ code: "invalid-choice", message: "Выбор карточек и полного базового источника различается. Проверьте файл и выбор заново." }); return result; }
+  for (const target of TARGETS) {
+    const ids = refs[target]; if (!ids.size) continue;
+    const definition = DEFINITIONS.find(value => value.kind === target)!;
+    const source = await resolveBackupBaseSelection(archive, browser, grouped.get(definition.key)!, definition, signal);
+    result.baseSources!.push(source.review);
+    if (source.review.status !== "matched" || !source.document) {
+      const invalid = source.review.issues.some(value => value.code === "invalid-source"), absent = source.review.status === "absent";
+      if (invalid || absent) result.counts.unavailable += ids.size; else result.counts.unresolved += ids.size;
+      issue({ code: absent ? "missing-source" : invalid ? "invalid-source" : "unresolved-reference", target, message: "Полный базовый источник не подтверждён. Ссылки не засчитаны по отдельным карточкам; причины показаны в проверке источника." });
+      continue;
     }
-    if (!matches.length) return null;
-    if (matches.length !== 1 || matches[0].key !== definition.key) throw new Error("Unsupported reference source");
-    const rows = definition.read(matches[0].raw), indexed = new Map<string, { row: object; fingerprint?: string }>();
-    for (const row of rows) {
-      await step();
-      if (++valueBudget.records > BACKUP_LIMITS.records) throw new Error("Too many reference records");
-      if (refs[target].has(row.id)) indexed.set(row.id, { row });
-    }
-    return indexed;
-  };
-  for (const target of Object.keys(DEFINITIONS) as AssessmentReferenceTarget[]) {
-    const ids = refs[target];
-    if (!ids.size) continue;
-    let left: Awaited<ReturnType<typeof read>>, right: Awaited<ReturnType<typeof read>>;
-    try { left = await read(archive, target); right = await read(browser, target); }
-    catch (error) {
-      checkBackupAbort(signal);
-      if (!(error instanceof Error)) throw error;
-      result.counts.unavailable += ids.size;
-      result.issues.push({ code: "invalid-source", target, message: "Один из справочников не читается, превышает предел проверки или содержит повторяющийся/неподдерживаемый ключ. Ссылки не подтверждены; другой источник не подставлялся." }); continue;
-    }
-    if (!left && !right) {
-      result.counts.unavailable += ids.size;
-      result.issues.push({ code: "missing-source", target, message: "Справочник отсутствует и в архиве, и в снимке браузера. Встроенные примеры и совпадения названий не использовались." }); continue;
-    }
+    const rows = definition.collections.find(value => value.collection === target)!.read(source.document);
+    const available = new Set<string>();
+    for (const row of rows) { await step(); available.add((row as { id: string }).id); }
     for (const id of ids) {
-      await step(); const a = left?.get(id), b = right?.get(id), choice = selected.get(JSON.stringify([target, id]));
-      if (!a && !b) {
-        result.counts.missing++; result.issues.push({ code: "missing-reference", target, referenceId: id, message: "ID участника, автора или учебного справочника не найден ни в одной сохранённой версии. Сопоставление по имени не выполнялось." }); continue;
-      }
-      if (a && b) {
-        a.fingerprint ??= canonicalBackupValue(await encodeBackupValue(a.row, valueBudget, signal));
-        b.fingerprint ??= canonicalBackupValue(await encodeBackupValue(b.row, valueBudget, signal));
-        if (a.fingerprint !== b.fingerprint) {
-          if (!choice) {
-            result.counts.unresolved++; result.issues.push({ code: "unresolved-reference", target, referenceId: id, message: "Версии связанной карточки различаются. Просмотрите значения и выберите источник в сравнении справочника." }); continue;
-          }
-        } else if (choice) {
-          result.counts.unresolved++; result.issues.push({ code: "invalid-choice", target, referenceId: id, message: "Выбор больше не соответствует различающимся версиям карточки. Проверьте файл заново." }); continue;
-        }
-      } else if (choice) {
-        result.counts.unresolved++; result.issues.push({ code: "invalid-choice", target, referenceId: id, message: "Карточка сохранилась только в одном источнике, но для неё остался выбор конфликта. Проверьте файл заново." }); continue;
-      }
-      result.counts.found++;
+      await step();
+      if (available.has(id)) result.counts.found++;
+      else { result.counts.missing++; issue({ code: "missing-reference", target, referenceId: id, message: "ID участника, автора или учебного справочника отсутствует в выбранном полном источнике. Сопоставление по имени не выполнялось." }); }
     }
   }
   const linked = document.assessments.filter(row => row.academicPeriod);
   if (linked.length) {
     result.counts.references += linked.length;
-    try {
-      const selected = await resolveBackupPeriodSelection(archive, browser, periodChoices, signal);
-      if (!selected.document) {
-        const unavailable = selected.review.issues.some(issue => issue.code === "invalid-source" || issue.code === "missing-source");
-        if (unavailable) result.counts.unavailable += linked.length; else result.counts.unresolved += linked.length;
-        for (const issue of selected.review.issues) result.issues.push({ code: issue.code === "invalid-source" || issue.code === "missing-source" ? issue.code : "unresolved-reference", target: "periods", message: issue.message });
-      } else {
-        const periodExists = createAssessmentPeriodHistoryLookup(selected.document);
-        for (const assessment of linked) {
-          await step();
-          if (periodExists(assessment.academicPeriod!, assessment.attempts[0].createdAt)) result.counts.found++;
-          else { result.counts.missing++; result.issues.push({ code: "missing-reference", target: "periods", referenceId: assessment.academicPeriod!.term.id, message: "Сохранённый снимок периода не найден в истории справочника на указанной ревизии. Совпадающее имя не заменяет историческую связь." }); }
-        }
+    const selected = await resolveBackupPeriodSelection(archive, browser, periodChoices, signal);
+    if (!selected.document) {
+      const unavailable = selected.review.issues.some(value => value.code === "invalid-source" || value.code === "missing-source");
+      if (unavailable) result.counts.unavailable += linked.length; else result.counts.unresolved += linked.length;
+      for (const value of selected.review.issues) issue({ code: value.code === "invalid-source" || value.code === "missing-source" ? value.code : "unresolved-reference", target: "periods", message: value.message });
+    } else {
+      const periodExists = createAssessmentPeriodHistoryLookup(selected.document);
+      for (const assessment of linked) {
+        await step();
+        if (periodExists(assessment.academicPeriod!, assessment.attempts[0].createdAt)) result.counts.found++;
+        else { result.counts.missing++; issue({ code: "missing-reference", target: "periods", referenceId: assessment.academicPeriod!.term.id, message: "Сохранённый снимок периода не найден в истории справочника на указанной ревизии. Совпадающее имя не заменяет историческую связь." }); }
       }
-    } catch (error) {
-      checkBackupAbort(signal); if (!(error instanceof Error)) throw error;
-      result.counts.unavailable += linked.length;
-      result.issues.push({ code: "invalid-source", target: "periods", message: "Один из источников периодов не читается, превышает предел проверки или содержит неоднозначные ключи. Другой источник не подставлялся." });
     }
   }
   checkBackupAbort(signal);

@@ -25,6 +25,7 @@ const definitionFor = (key: string): { label: string; values: Readonly<Record<st
   return undefined;
 };
 export const isBackupVisualPreferenceKey = (key: string) => definitionFor(key) !== undefined;
+export const getBackupVisualPreferenceLabel = (key: string) => definitionFor(key)?.label;
 export const isSupportedBackupVisualPreferenceValue = (key: string, raw: string) => {
   const definition = definitionFor(key);
   return definition !== undefined && Object.hasOwn(definition.values, raw);

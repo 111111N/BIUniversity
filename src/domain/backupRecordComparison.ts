@@ -30,7 +30,7 @@ const DEFAULT_ERRORS = {
   output: "Результат сравнения записей превышает лимит 16 МиБ. Частичный результат не создан.",
   incomplete: "В результате сравнения записей отсутствует часть данных. Проверьте архив заново; неполный отчёт не скачан.",
 };
-const DECODE_REASONS: Partial<Record<BackupRecordDefinition<string>["collection"], BackupUncomparedDocument["reason"]>> = { "submission-attempts": "missing-history", "education-events": "missing-education-history", "journal-history": "unresolved-journal-area", notifications: "unresolved-notification-source" };
+const DECODE_REASONS: Partial<Record<BackupRecordDefinition<string>["collection"], BackupUncomparedDocument["reason"]>> = { "submission-attempts": "missing-history", "education-events": "missing-education-history", "journal-history": "unresolved-journal-area", "journal-students": "unresolved-journal-area", notifications: "unresolved-notification-source" };
 export type BackupRecordEntries = readonly AdministrativeBackup["localStorage"][number][];
 type EncodedObject = Extract<BackupValue, { type: "object" }>;
 interface ComparedRecord { id: string; parentId?: string; scope?: { subjectId: string; groupId: string }; value: EncodedObject }

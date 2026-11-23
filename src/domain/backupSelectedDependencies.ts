@@ -11,28 +11,48 @@ import { SCHEDULE_TEMPLATES_KEY, type ScheduleTemplatesDocument } from "./schedu
 import type { AcademicPeriodsDocument } from "./academicPeriods";
 import type { BackupRecordEntries } from "./backupRecordComparison";
 import type { BackupDocumentIssue } from "./localBackupDocuments";
-import { addBackupText, checkBackupAbort, createBackupBudget, encodeBackupValue } from "./localBackup";
+import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, encodeBackupValue } from "./localBackup";
 import { canonicalBackupValue } from "./localBackupValidation";
 import { inspectArchivedCurricula } from "./backupCurricula";
 import { inspectArchivedGroupCalendars } from "./backupGroupCalendars";
 import { inspectArchivedTeachingAssignments } from "./backupTeachingAssignments";
 import { inspectArchivedRooms } from "./backupRooms";
 import { inspectArchivedScheduleTemplates } from "./backupScheduleTemplates";
+import type { SelectedBaseDocuments } from "./backupBaseSelection";
+import { inspectSelectedBaseDependencies } from "./backupSelectedBaseDependencies";
+import { ASSESSMENTS_STORAGE_KEY, type AssessmentDocument } from "./assessmentTypes";
+import { inspectAssessmentDependencies } from "./backupAssessmentDependencies";
+import type { SelectedListSources } from "./backupListSelection";
+import { inspectBackupPlanners } from "./backupPlannerDocuments";
+import { inspectBackupNotifications } from "./backupNotificationDocuments";
+import { inspectBackupJournals } from "./backupJournalDocuments";
+import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
+import { inspectLearningDependencies } from "./backupLearningDependencies";
+import { inspectBackupSettings } from "./backupSettingsDocuments";
 
 export interface SelectedDependenciesReview { scope: "selected-document-dependencies"; status: "blocked" | "checks-complete"; checkedAt: string; issues: BackupDocumentIssue[]; counts: { errors: number; unconfirmed: number } }
 
 /** Existing inspectors run against candidates only. Differing unsolved base documents are never given priority. */
-export async function inspectSelectedBackupDependencies(archive: BackupRecordEntries, browser: BackupRecordEntries, selected: ReadonlyMap<string, object>, periods: AcademicPeriodsDocument | undefined, checkedAt: string, signal?: AbortSignal, unavailable: readonly BackupDocumentIssue[] = []): Promise<SelectedDependenciesReview> {
+export async function inspectSelectedBackupDependencies(archive: BackupRecordEntries, browser: BackupRecordEntries, selected: ReadonlyMap<string, object>, periods: AcademicPeriodsDocument | undefined, checkedAt: string, signal?: AbortSignal, unavailable: readonly BackupDocumentIssue[] = [], baseDocuments?: SelectedBaseDocuments, lists?: SelectedListSources, preferences?: BackupRecordEntries): Promise<SelectedDependenciesReview> {
   checkBackupAbort(signal);
   if (!Number.isFinite(Date.parse(checkedAt))) throw new Error("Не удалось определить момент проверки выбранных зависимостей.");
-  const issues: BackupDocumentIssue[] = [], seen = new Set<string>(), textBudget = createBackupBudget(), valueBudget = createBackupBudget();
+  const issues: BackupDocumentIssue[] = [], seen = new Set<string>(), textBudget = createBackupBudget(), valueBudget = createBackupBudget(), issueBudget = createBackupBudget();
   const issue = (item: BackupDocumentIssue) => {
     const key = JSON.stringify([item.kind, item.code, item.recordId, item.referenceId]);
-    if (seen.has(key)) return; seen.add(key);
-    issues.push({ ...item, message: item.message.replace(/в архиве/gu, "в выбранном наборе").replace(/из архива/gu, "из проверяемого набора").replace(/завершения архива/gu, "момента проверки выбранных данных").replace(/после завершения резервной копии/gu, "после момента проверки выбранных данных") });
+    if (seen.has(key)) return;
+    if (issues.length >= BACKUP_LIMITS.records) throw new Error("Замечаний к выбранным зависимостям больше 25 000. Частичный результат не создан.");
+    const finding = { ...item, message: item.message.replace(/в архиве/gu, "в выбранном наборе").replace(/из архива/gu, "из проверяемого набора").replace(/завершения архива/gu, "момента проверки выбранных данных").replace(/после завершения резервной копии/gu, "после момента проверки выбранных данных").replace(/на дату архива/gu, "на момент проверки выбранных данных").replace(/дата завершения архива/gu, "момент проверки выбранных данных") };
+    addBackupText(issueBudget, JSON.stringify(finding)); seen.add(key); issues.push(finding);
   };
   unavailable.forEach(issue);
   const compatible = async <T extends object>(key: string, prefix: string, decode: (raw: string) => T) => {
+    if (baseDocuments) {
+      const result = baseDocuments.get(key);
+      if (!result || result.review.status === "blocked") return { state: "unresolved" as const };
+      if (result.review.status === "absent") return { state: "compatible" as const, document: undefined };
+      if (!result.document) return { state: "invalid" as const };
+      return { state: "compatible" as const, document: result.document as T };
+    }
     const read = (entries: BackupRecordEntries) => {
       const rows = entries.filter(row => row.key.startsWith(prefix));
       if (!rows.length) return undefined;
@@ -56,6 +76,18 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
     if (needed && state !== "compatible") issue({ kind, level: "review", code: `unresolved-selected-base-${kind}`, message: state === "invalid" ? "Базовый документ повреждён, неоднозначен или превышает предел проверки. Поддерживаемая версия не подставлялась из другого источника." : "Базовые документы источников различаются. Выбор отдельных карточек не подтверждает их полную историю, метаданные и связанные записи; требуется итоговое согласование." });
   }
   const accountIds = accounts.document && new Set(accounts.document.accounts.map(row => row.id)), groupIds = groups.document && new Set(groups.document.groups.map(row => row.id)), subjectIds = subjects.document && new Set(subjects.document.subjects.map(row => row.id));
+  const assessments = selected.get(ASSESSMENTS_STORAGE_KEY) as AssessmentDocument | undefined;
+  if (preferences) for (const finding of (await inspectBackupSettings(preferences, accounts.document?.accounts, signal)).issues) issue(finding);
+  await inspectSelectedBaseDependencies({ accounts: accounts.document, groups: groups.document, subjects: subjects.document, schedule: schedule.document, rooms, assessments }, checkedAt, issue, signal);
+  if (assessments) for (const finding of await inspectAssessmentDependencies(assessments, { accountIds, groupIds, subjectIds, periods }, checkedAt, signal)) issue(finding);
+  if (lists) {
+    const assignments = lists.assignments.length ? decodeBackupAssignments(lists.assignments[0].raw) : undefined;
+    const submissions = lists.submissions.length ? decodeBackupSubmissions(lists.submissions[0].raw) : undefined;
+    for (const finding of await inspectLearningDependencies(assignments, submissions, { accountIds, subjectIds, groupIds, unconfirmedAttachments: true }, checkedAt, signal)) issue(finding);
+    for (const finding of (await inspectBackupPlanners(lists.planners, accountIds, signal, checkedAt)).issues) issue(finding);
+    for (const finding of (await inspectBackupNotifications(lists.notifications, accountIds, signal, { subjectIds, groupIds, assignments, submissions }, checkedAt)).issues) issue(finding);
+    for (const finding of (await inspectBackupJournals(lists.journals, signal, { subjectIds, groupIds, lessonSource: { schedule: schedule.document }, peopleSource: { accountIds }, unavailableJournalKeys: lists.unavailableJournalKeys, completedAt: checkedAt })).issues) issue(finding);
+  }
   let steps = 0;
   if (periods) for (const event of periods.history) {
     if (++steps % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0)); checkBackupAbort(signal);
@@ -70,7 +102,7 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
     if (Date.parse(event.occurredAt) > Date.parse(checkedAt)) issue({ kind: "educationDirectories", level: "error", code: "selected-directory-event-after-check", recordId: event.id, message: "Событие программы/формы датировано позже момента проверки выбранных данных." });
   }
   if (directories?.history.length) issue({ kind: "educationDirectories", level: "review", code: "unconfirmed-selected-directory-authority", message: "Наличие автора не подтверждает его исторические полномочия на изменение программы или формы обучения." });
-  if (curricula) for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds, subjectIds, directories, periods }, checkedAt, signal)) issue(finding);
+  if (curricula) for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds, subjectIds, subjects: subjects.document, directories, periods }, checkedAt, signal)) issue(finding);
   if (calendars) for (const finding of await inspectArchivedGroupCalendars(calendars, { accountIds, groupIds, periods }, checkedAt, signal)) issue(finding);
   if (teaching) for (const finding of await inspectArchivedTeachingAssignments(teaching, { accountIds, groupIds, subjectIds, periods, schedule: schedule.document }, checkedAt, signal)) issue(finding);
   else if (schedule.document && [...schedule.document.published.flatMap(week => week.lessons), ...schedule.document.journal, ...(schedule.document.publications?.flatMap(version => version.week.lessons) ?? [])].some(lesson => lesson.teachingAssignmentId)) issue({ kind: "teachingAssignments", level: "error", code: "missing-selected-teaching-source", message: "Расписание ссылается на версии назначений, но выбранный источник назначений отсутствует или не согласован со своей историей." });

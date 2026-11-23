@@ -1,6 +1,6 @@
 import type { SavedAssignment, SavedSubmission } from "./assignmentStorage";
-import { checkBackupAbort, type AdministrativeBackup, type BackupValue } from "./localBackup";
-import type { BackupDocumentIssue } from "./localBackupDocuments";
+import { BACKUP_LIMITS, checkBackupAbort, type AdministrativeBackup, type BackupValue } from "./localBackup";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 import { inspectArchivedFileIndexes } from "./backupFileIndexes";
 
 const DATABASE = "bi-university-learning-files";
@@ -16,10 +16,10 @@ export const inspectArchivedLearningAttachments = async (
   assignments: readonly SavedAssignment[] | undefined, submissions: readonly SavedSubmission[] | undefined,
   databases: AdministrativeBackup["databases"], signal?: AbortSignal,
 ) => {
-  const issues: BackupDocumentIssue[] = []; const references: Reference[] = []; let count = 0;
+  const { issues, add } = createBackupIssueCollector("учебным файлам"); const references: Reference[] = []; let count = 0;
   const stats = { assignments: { references: 0, found: 0, comparedNames: 0 }, submissions: { references: 0, found: 0, comparedNames: 0 } };
-  const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
-  const finding = (kind: Kind, level: "error" | "review", code: string, message: string, referenceId: string, recordId?: string) => issues.push({ kind, level, code, message, referenceId, recordId });
+  const step = async () => { if (++count > BACKUP_LIMITS.nodes) throw new Error("Проверка учебных файлов превышает предел операций. Частичный результат не создан."); if (count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  const finding = (kind: Kind, level: "error" | "review", code: string, message: string, referenceId: string, recordId?: string) => add({ kind, level, code, message, referenceId, recordId });
   const reference = (kind: Kind, attachment: Attachment, path: string[], context: string) => {
     if (attachment.attachmentId === undefined) {
       if (attachment.attachmentName?.trim()) finding(kind, "review", "learning-attachment-name-only", "Сохранено имя вложения без ID файла. Связь не подтверждена; файл по имени не подбирался.", SOURCES[kind], JSON.stringify(path));

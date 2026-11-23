@@ -1,4 +1,5 @@
-import { checkBackupAbort, type AdministrativeBackup, type BackupStoreMetadata, type BackupValue } from "./localBackup";
+import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, type AdministrativeBackup, type BackupStoreMetadata, type BackupValue } from "./localBackup";
+import { createBackupFindingCollector } from "./backupIssueCollector";
 
 type RecordEntry = AdministrativeBackup["databases"][number]["stores"][number]["records"][number];
 export interface FileIndexIssue { level: "error"; code: "file-unique-index-conflict" | "invalid-file-index-schema"; message: string; recordId: string }
@@ -56,9 +57,10 @@ const arrayKey = (children: IndexKey[]): IndexKey => ["array", children];
 
 /** Compare current index keys in the archive, without creating indexes or promising future writes. */
 export const inspectArchivedFileIndexes = async (records: readonly RecordEntry[], indexes: readonly BackupStoreMetadata["indexes"][number][], signal?: AbortSignal) => {
-  const issues: FileIndexIssue[] = []; const unique = indexes.filter((index) => index.unique);
+  const { issues, add } = createBackupFindingCollector<FileIndexIssue>("файловым индексам", finding => JSON.stringify([finding.code, finding.recordId]));
+  const tokenBudget = createBackupBudget(), unique = indexes.filter((index) => index.unique);
   let checked = 0; let unchecked = 0; let invalidNonunique = 0; let count = 0;
-  const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  const step = async () => { if (++count > BACKUP_LIMITS.nodes) throw new Error("Проверка файловых индексов превышает предел операций. Частичный результат не создан."); if (count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   const key = async (node: BackupValue | undefined): Promise<IndexKey | undefined> => {
     await step();
     if (node?.type === "string") return ["string", node.value];
@@ -76,7 +78,7 @@ export const inspectArchivedFileIndexes = async (records: readonly RecordEntry[]
     await step();
     if (Array.isArray(index.keyPath) && (index.multiEntry || !index.keyPath.length)) {
       if (index.unique) unchecked++; else invalidNonunique++;
-      issues.push({ level: "error", code: "invalid-file-index-schema", recordId: JSON.stringify(["index", index.name]),
+      add({ level: "error", code: "invalid-file-index-schema", recordId: JSON.stringify(["index", index.name]),
         message: `Схема дополнительного ${index.unique ? "уникального " : ""}индекса недопустима: составной путь не может быть пустым или сочетаться с multiEntry. Индекс не создавался, схема не исправлялась.`,
       }); continue;
     }
@@ -106,11 +108,13 @@ export const inspectArchivedFileIndexes = async (records: readonly RecordEntry[]
       const recordId = record.key.type === "string" ? record.key.value : `row:${position + 1}`;
       let conflict: string | undefined;
       for (const token of tokens) {
-        await step(); const previous = seen.get(token);
+        await step();
+        if (tokenBudget.textBytes + token.length * 2 > BACKUP_LIMITS.textBytes) throw new Error("Ключи файловых индексов превышают предел проверки 16 МиБ. Частичный результат не создан.");
+        addBackupText(tokenBudget, token); const previous = seen.get(token);
         if (previous !== undefined) conflict ??= previous;
         else seen.set(token, recordId);
       }
-      if (conflict !== undefined) issues.push({ level: "error", code: "file-unique-index-conflict",
+      if (conflict !== undefined) add({ level: "error", code: "file-unique-index-conflict",
         recordId: JSON.stringify(["index", index.name, conflict, recordId]),
         message: "В сохранённых файловых записях повторяется ключ дополнительного уникального индекса. Такой набор несовместим с его ограничением. Значения индекса, имена и содержимое файлов не включены в отчёт; записи не объединялись и не удалялись.",
       });

@@ -1,6 +1,7 @@
 import { BACKUP_LIMITS, checkBackupAbort, type BackupStoreMetadata, type BackupValue } from "./localBackup";
 import type { BackupDifference } from "./backupComparison";
 import { assertBackupMaterialAreaComparison, type BackupMaterialAreaComparison } from "./backupMaterialArea";
+import { BACKUP_FILE_RECORD_FIELDS } from "./backupFileSchemaCoverage";
 
 export const BACKUP_FILE_FIELDS = ["name", "type", "size", "createdAt", "scope", "category", "uploadedBy", "description", "pinned", "fileName", "lastModified", "content"] as const;
 export type BackupFileField = typeof BACKUP_FILE_FIELDS[number];
@@ -52,7 +53,7 @@ const read = (source: FileSource, kind: Kind) => {
       if (["scope", "category", "uploadedBy", "description"].some(key => fields.has(key) && !["undefined", "string"].includes(fields.get(key)!.type))) return undefined;
       const pinned = fields.get("pinned"); if (pinned && !["undefined", "boolean"].includes(pinned.type)) return undefined;
     }
-    const allowed = kind === "material" ? ["id", "blob", "name", "type", "size", "createdAt", "scope", "category", "uploadedBy", "description", "pinned"] : ["id", "blob", "name", "type", "size", "scope"];
+    const allowed: readonly string[] = BACKUP_FILE_RECORD_FIELDS[kind];
     unknown = [...fields.keys()].some(key => !allowed.includes(key));
     for (const key of allowed) if (key !== "id" && key !== "blob" && fields.has(key)) metadata.set(key, fields.get(key)!);
     blob = fields.get("blob");

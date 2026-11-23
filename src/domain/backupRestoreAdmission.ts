@@ -1,5 +1,5 @@
-import { isPortalStorageKey } from "./localBackup";
-import { BACKUP_DOCUMENTS, type BackupDocumentKind, type BackupDocumentReview } from "./localBackupDocuments";
+import type { BackupDocumentKind, BackupDocumentReview } from "./localBackupDocuments";
+import { inspectBackupDocumentReviewIntegrity } from "./backupDocumentReviewIntegrity";
 
 export interface BackupRestoreBlocker {
   category: "error" | "unconfirmed" | "unchecked" | "incomplete-review";
@@ -24,14 +24,12 @@ const REMAINING_CHECKS = Object.freeze([
   "Разрешить все конфликты и проверить зависимости итогового набора с сохранением записей только из браузера.",
   "Повторно проверить права и актуальность всех хранилищ перед применением; подготовить пробный прогон и откат.",
 ]);
-const statuses = ["valid", "invalid", "absent"] as const;
-
 /** A document preflight is a necessary condition, never an authorization to write. */
 export function assessBackupRestoreAdmission(review: BackupDocumentReview): BackupRestoreAdmission {
   const blockers: BackupRestoreBlocker[] = [];
-  let complete = true;
-  for (const issue of review.issues) {
-    if (!Object.hasOwn(BACKUP_DOCUMENTS, issue.kind) || !["error", "review"].includes(issue.level)) { complete = false; continue; }
+  const integrity = inspectBackupDocumentReviewIntegrity(review), invalidIssues = new Set<BackupDocumentKind>();
+  for (const issue of integrity.issues) {
+    if (issue.level === "error" && issue.code === "invalid-document") invalidIssues.add(issue.kind);
     blockers.push({
       category: issue.level === "error" ? "error" : "unconfirmed", code: issue.code, kind: issue.kind,
       message: issue.message, ...(issue.referenceId !== undefined ? { referenceId: issue.referenceId } : {}),
@@ -39,24 +37,15 @@ export function assessBackupRestoreAdmission(review: BackupDocumentReview): Back
     });
   }
   // Invalid documents remain blockers even if an older result omitted their matching issue.
-  for (const check of review.checks) {
-    if (!Object.hasOwn(BACKUP_DOCUMENTS, check.kind) || !statuses.includes(check.status)) { complete = false; continue; }
-    if (check.status === "invalid" && !review.issues.some((issue) => issue.kind === check.kind && issue.level === "error" && issue.code === "invalid-document")) {
+  for (const check of integrity.checks) {
+    if (check.status === "invalid" && !invalidIssues.has(check.kind)) {
       blockers.push({ category: "error", code: "invalid-document", kind: check.kind, key: check.key, message: check.message });
     }
   }
-  const keys = review.uncheckedKeys ?? [];
-  const seen = new Set<string>();
-  for (const key of keys) {
-    if (!isPortalStorageKey(key) || seen.has(key)) { complete = false; continue; }
-    seen.add(key);
+  for (const key of integrity.uncheckedKeys) {
     blockers.push({ category: "unchecked", code: "unchecked-document", key, message: "Внутренняя схема локального документа не проверена." });
   }
-  if (statuses.some((status) => review.counts[status] !== review.checks.filter((check) => check.status === status).length)
-    || review.counts.errors !== review.issues.filter((issue) => issue.level === "error").length
-    || review.counts.reviews !== review.issues.filter((issue) => issue.level === "review").length
-    || review.counts.unchecked !== keys.length) complete = false;
-  if (!complete) blockers.push({ category: "incomplete-review", code: "incomplete-review", message: "Результат проверки неполон или устарел. Проверьте исходный архив заново." });
+  if (!integrity.complete) blockers.push({ category: "incomplete-review", code: "incomplete-review", message: "Результат проверки неполон, несовместим или превышает предел проверки. Проверьте исходный архив заново." });
   const counts: BackupRestoreAdmission["counts"] = { error: 0, unconfirmed: 0, unchecked: 0, "incomplete-review": 0 };
   for (const blocker of blockers) counts[blocker.category]++;
   return {

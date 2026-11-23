@@ -1,7 +1,8 @@
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
-import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import type { BackupDocumentCheck } from "./localBackupDocuments";
 import { isLocalNotificationHref } from "./localNotificationHref";
 import { createArchivedNotificationTargetCheck, type ArchivedNotificationTargets } from "./backupNotificationTargets";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 
 export const BACKUP_NOTIFICATION_DOCUMENTS = { notifications: { key: "bi-university-demo-notifications", prefix: "bi-university-demo-notifications", label: "Уведомления" } } as const;
 export const isBackupNotificationKey = (key: string) => key.startsWith(BACKUP_NOTIFICATION_DOCUMENTS.notifications.prefix);
@@ -43,8 +44,9 @@ export const decodeBackupNotifications = (raw: string) => {
 };
 
 /** Validate archived notifications without generating IDs, assigning legacy roles or sanitizing saved links. */
-export const inspectBackupNotifications = async (entries: AdministrativeBackup["localStorage"], accountIds?: ReadonlySet<string>, signal?: AbortSignal, targetSources?: ArchivedNotificationTargets) => {
-  const issues: BackupDocumentIssue[] = [];
+export const inspectBackupNotifications = async (entries: Readonly<AdministrativeBackup["localStorage"]>, accountIds?: ReadonlySet<string>, signal?: AbortSignal, targetSources?: ArchivedNotificationTargets, completedAt?: string) => {
+  const { issues, add: addIssue } = createBackupIssueCollector("уведомлениям");
+  const cutoff = Date.parse(completedAt ?? "");
   const targets = await createArchivedNotificationTargetCheck(targetSources, signal);
   let documents = 0; let invalid = 0; let records = 0; let index = 0;
   const definition = BACKUP_NOTIFICATION_DOCUMENTS.notifications;
@@ -55,14 +57,14 @@ export const inspectBackupNotifications = async (entries: AdministrativeBackup["
     documents++;
     if (entry.key !== definition.key) {
       invalid++;
-      issues.push({ kind: "notifications", level: "error", code: "unsupported-notification-key", referenceId: entry.key, message: "Ключ уведомлений не поддерживается текущей версией. Он не заменяет известный список уведомлений." });
+      addIssue({ kind: "notifications", level: "error", code: "unsupported-notification-key", referenceId: entry.key, message: "Ключ уведомлений не поддерживается текущей версией. Он не заменяет известный список уведомлений." });
       continue;
     }
     let rows: Record<string, unknown>[];
     try { rows = decodeBackupNotifications(entry.raw); }
     catch (error) {
       invalid++;
-      issues.push({ kind: "notifications", level: "error", code: "invalid-notification-document", referenceId: entry.key,
+      addIssue({ kind: "notifications", level: "error", code: "invalid-notification-document", referenceId: entry.key,
         message: error instanceof SyntaxError ? "Некорректный JSON уведомлений. Исходный текст не включён в отчёт." : error instanceof Error ? error.message : "Не удалось проверить список уведомлений.",
       });
       continue;
@@ -71,10 +73,11 @@ export const inspectBackupNotifications = async (entries: AdministrativeBackup["
     for (const [rowIndex, row] of rows.entries()) {
       if (rowIndex % 128 === 0) { await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); }
       const recordId = nonempty(row.id) ? row.id : undefined;
-      const finding = (level: "error" | "review", code: string, message: string) => issues.push({
+      const finding = (level: "error" | "review", code: string, message: string) => addIssue({
         kind: "notifications", level, code: recordId ? code : `${code}-row-${rowIndex + 1}`, referenceId: entry.key, recordId,
         message: recordId ? message : `Запись №${rowIndex + 1}: ${message}`,
       });
+      if (Number.isFinite(cutoff) && Date.parse(row.createdAt as string) > cutoff) finding("error", "notification-created-after-cutoff", "Уведомление создано позже границы проверки набора. Дата связанного занятия или задания не использовалась вместо момента создания уведомления.");
       if (!recordId) finding("review", "legacy-notification-id", "У старого уведомления нет постоянного ID. Идентификатор не создавался; перед восстановлением нужна проверка совместимости.");
       const recipient = nonempty(row.recipientUserId) ? row.recipientUserId.trim() : nonempty(row.userId) ? row.userId.trim() : undefined;
       if (!recipient) finding("review", "legacy-notification-recipient", "Уведомление адресовано роли без ID получателя. Учётная запись не выбиралась автоматически; требуется отдельная проверка принадлежности.");
@@ -87,6 +90,7 @@ export const inspectBackupNotifications = async (entries: AdministrativeBackup["
     }
   }
   checkBackupAbort(signal);
+  if (documents && completedAt !== undefined && !Number.isFinite(cutoff)) addIssue({ kind: "notifications", level: "review", code: "unchecked-notification-cutoff", message: "Граница времени для проверки создания уведомлений не подтверждена. Время устройства не подставлялось." });
   const checks: BackupDocumentCheck[] = [{ kind: "notifications", key: definition.key, label: definition.label, documents,
     status: !documents ? "absent" : invalid ? "invalid" : "valid", ...(documents && !invalid ? { records } : {}),
     message: !documents ? "Сохранённых уведомлений нет в архиве. Встроенные примеры не подставляются."

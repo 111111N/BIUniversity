@@ -1,4 +1,4 @@
-import { BACKUP_JOURNAL_DOCUMENTS, decodeBackupJournalHistory } from "./backupJournalDocuments";
+import { BACKUP_JOURNAL_DOCUMENTS, decodeBackupJournalHistory, decodeBackupJournalRows, getBackupJournalKind } from "./backupJournalDocuments";
 import { decodeGroupCatalog } from "./groupCatalog";
 import { decodeSubjectCatalog } from "./subjectCatalog";
 import { resolveJournalTeachingArea } from "./journalTeachingArea";
@@ -19,7 +19,16 @@ const definition: BackupRecordDefinition<JournalHistoryComparedField> = {
     return rows;
   },
 };
-const indexAreas = async (entries: BackupRecordEntries, signal?: AbortSignal) => {
+const SNAPSHOT_FIELDS = ["name", "attendance", "grades"] as const;
+export type JournalSnapshotComparedField = typeof SNAPSHOT_FIELDS[number] | "other";
+export type BackupJournalSnapshotComparison = BackupRecordComparison<JournalSnapshotComparedField>;
+const snapshotDefinition: BackupRecordDefinition<JournalSnapshotComparedField> = {
+  collection: "journal-students", label: "Строки журнала", fields: SNAPSHOT_FIELDS,
+  matchesKey: key => getBackupJournalKind(key) === "journals",
+  supportsKey: key => key.startsWith(BACKUP_JOURNAL_DOCUMENTS.journals.key) && key.length > BACKUP_JOURNAL_DOCUMENTS.journals.key.length,
+  decode: raw => decodeBackupJournalRows(raw) as object[],
+};
+const indexAreas = async (entries: BackupRecordEntries, definition: BackupRecordDefinition<string>, prefix: string, signal?: AbortSignal) => {
   const sources = new Map<string, string[]>(); let bytes = 0, steps = 0;
   for (const entry of entries) {
     if (++steps % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0)); checkBackupAbort(signal);
@@ -37,13 +46,13 @@ const indexAreas = async (entries: BackupRecordEntries, signal?: AbortSignal) =>
   const areas = new Map<string, string | null>();
   for (const key of sources.keys()) {
     if (!definition.supportsKey(key)) continue;
-    const area = await resolveJournalTeachingArea(key.slice(document.key.length), catalogs, signal);
+    const area = await resolveJournalTeachingArea(key.slice(prefix.length), catalogs, signal);
     areas.set(key, area.status === "matched" ? JSON.stringify([area.subjectId, area.groupId]) : null);
   }
   return areas;
 };
-export const compareBackupJournalRecords = async (archive: BackupRecordEntries, browser: BackupRecordEntries, signal?: AbortSignal): Promise<BackupJournalComparison> => {
-  const areas = { archive: await indexAreas(archive, signal), browser: await indexAreas(browser, signal) };
+async function compareScopedRecords<Field extends string>(archive: BackupRecordEntries, browser: BackupRecordEntries, definition: BackupRecordDefinition<Field>, prefix: string, signal?: AbortSignal): Promise<BackupRecordComparison<Field>> {
+  const areas = { archive: await indexAreas(archive, definition, prefix, signal), browser: await indexAreas(browser, definition, prefix, signal) };
   return compareBackupRecords(archive, browser, {
     ...definition,
     decode: (raw, key, source) => {
@@ -52,6 +61,9 @@ export const compareBackupJournalRecords = async (archive: BackupRecordEntries, 
       return definition.decode(raw, key, source);
     },
   }, signal);
-};
+}
+export const compareBackupJournalRecords = (archive: BackupRecordEntries, browser: BackupRecordEntries, signal?: AbortSignal): Promise<BackupJournalComparison> => compareScopedRecords(archive, browser, definition, document.key, signal);
+export const compareBackupJournalSnapshotRecords = (archive: BackupRecordEntries, browser: BackupRecordEntries, signal?: AbortSignal): Promise<BackupJournalSnapshotComparison> => compareScopedRecords(archive, browser, snapshotDefinition, BACKUP_JOURNAL_DOCUMENTS.journals.key, signal);
 export const assertCompleteJournalComparison = (review: BackupJournalComparison) => assertCompleteBackupRecordComparison(review, definition);
-export const getJournalBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => collection === definition.collection ? definition : undefined;
+export const assertCompleteJournalSnapshotComparison = (review: BackupJournalSnapshotComparison) => assertCompleteBackupRecordComparison(review, snapshotDefinition);
+export const getJournalBackupDefinition = (collection: string): BackupRecordDefinition<string> | undefined => collection === definition.collection ? definition : collection === snapshotDefinition.collection ? snapshotDefinition : undefined;

@@ -6,6 +6,7 @@ import { canonicalBackupValue } from "./localBackupValidation";
 import type { BackupRecordEntries } from "./backupRecordComparison";
 import { inspectSelectedAssessmentReferences, type AssessmentReferenceChoice, type AssessmentReferenceReview } from "./backupAssessmentReferences";
 import type { PeriodRecordChoice } from "./backupPeriodSelection";
+import type { BaseRecordChoice } from "./backupBaseSelection";
 
 const COLLECTIONS = ["assessments", "history", "corrections", "correctionHistory"] as const;
 export type AssessmentSelectionCollection = typeof COLLECTIONS[number];
@@ -14,9 +15,10 @@ export interface AssessmentSelectionReview {
   scope: "assessment-document";
   status: "consistent" | "blocked";
   counts: { same: number; archiveOnly: number; browserOnly: number; conflicts: number; unresolved: number };
+  countsComplete: boolean;
   revisions: { archive: number | null; browser: number | null; candidate?: number };
   records?: Record<AssessmentSelectionCollection, number>;
-  issues: { code: "invalid-source" | "invalid-choice" | "unresolved-conflicts" | "inconsistent-selection" | "unresolved-references"; message: string }[];
+  issues: { code: "invalid-source" | "missing-source" | "invalid-choice" | "unresolved-conflicts" | "inconsistent-selection" | "unresolved-references"; message: string }[];
   references?: AssessmentReferenceReview;
 }
 type Row = AssessmentDocument[AssessmentSelectionCollection][number];
@@ -57,14 +59,17 @@ const orderRows = (selected: Map<string, IndexedRow>, sources: readonly Map<stri
   return result;
 };
 
-/** Pure preflight: no candidate data or permission to restore leaves this function. */
-export async function reviewBackupAssessmentSelection(
+type ReferenceCheck = { choices: readonly AssessmentReferenceChoice[]; periodChoices?: readonly PeriodRecordChoice[]; baseChoices?: readonly BaseRecordChoice[] };
+interface AssessmentSelectionResult { review: AssessmentSelectionReview; document?: AssessmentDocument }
+
+/** Internal candidate stays within preflight orchestration; services return only the review. */
+export async function resolveBackupAssessmentSelection(
   archive: BackupRecordEntries, browser: BackupRecordEntries, choices: readonly AssessmentRecordChoice[], signal?: AbortSignal,
-  referenceCheck?: { choices: readonly AssessmentReferenceChoice[]; periodChoices?: readonly PeriodRecordChoice[] },
-): Promise<AssessmentSelectionReview> {
+  referenceCheck?: ReferenceCheck,
+): Promise<AssessmentSelectionResult> {
   checkBackupAbort(signal);
-  const result: AssessmentSelectionReview = { scope: "assessment-document", status: "blocked", counts: { same: 0, archiveOnly: 0, browserOnly: 0, conflicts: 0, unresolved: 0 }, revisions: { archive: null, browser: null }, issues: [] };
-  const reject = (code: AssessmentSelectionReview["issues"][number]["code"], message: string) => { result.issues.push({ code, message }); return result; };
+  const result: AssessmentSelectionReview = { scope: "assessment-document", status: "blocked", counts: { same: 0, archiveOnly: 0, browserOnly: 0, conflicts: 0, unresolved: 0 }, countsComplete: false, revisions: { archive: null, browser: null }, issues: [] };
+  const reject = (code: AssessmentSelectionReview["issues"][number]["code"], message: string): AssessmentSelectionResult => { result.issues.push({ code, message }); return { review: result }; };
   const read = (entries: BackupRecordEntries) => {
     const matches = entries.filter(entry => isBackupAssessmentKey(entry.key));
     const budget = createBackupBudget();
@@ -77,6 +82,8 @@ export async function reviewBackupAssessmentSelection(
   try { a = read(archive); b = read(browser); }
   catch { return reject("invalid-source", "Один из документов аттестаций не читается или содержит неподдерживаемый ключ. Проверьте исходные данные; повреждённый документ не считается пустым."); }
   result.revisions = { archive: a?.revision ?? null, browser: b?.revision ?? null };
+  if (!Array.isArray(choices) || choices.length > BACKUP_LIMITS.records) return reject("invalid-choice", "Выбор аттестаций некорректен или превышает предел проверки.");
+  if (!a && !b) return choices.length ? reject("invalid-choice", "Выбор относится к отсутствующему источнику аттестаций. Проверьте файл заново.") : reject("missing-source", "Аттестации отсутствуют в обоих источниках. Пустой согласованный документ не создавался.");
   const budget = createBackupBudget(); let steps = 0;
   const checkpoint = async () => { if (++steps % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   const index = async (rows: readonly Row[]) => {
@@ -90,8 +97,10 @@ export async function reviewBackupAssessmentSelection(
   };
   const choiceMap = new Map<string, AssessmentRecordChoice>();
   for (const choice of choices) {
-    await checkpoint(); const key = identity(choice.collection, choice.id);
-    if (!COLLECTIONS.includes(choice.collection) || !["archive", "browser"].includes(choice.version) || choiceMap.has(key)) return reject("invalid-choice", "Выбор версий неполон или устарел. Просмотрите различия и выберите версии заново.");
+    await checkpoint();
+    if (!choice || typeof choice.id !== "string" || !choice.id || !COLLECTIONS.includes(choice.collection) || !["archive", "browser"].includes(choice.version)) return reject("invalid-choice", "Выбор версий неполон или устарел. Просмотрите различия и выберите версии заново.");
+    const key = identity(choice.collection, choice.id);
+    if (choiceMap.has(key)) return reject("invalid-choice", "Выбор версий повторяется. Просмотрите различия и выберите версии заново.");
     choiceMap.set(key, choice);
   }
   const candidate = emptyAssessmentDocument();
@@ -121,6 +130,7 @@ export async function reviewBackupAssessmentSelection(
     Object.assign(candidate, { [collection]: ordered });
   }
   checkBackupAbort(signal);
+  result.countsComplete = true;
   if (usedChoices.size !== choices.length) return reject("invalid-choice", "Выбор относится к отсутствующему или уже совпадающему конфликту. Проверьте файл заново.");
   if (result.counts.unresolved) return reject("unresolved-conflicts", "Выберите версию каждого различающегося ID аттестации, её истории и исправлений после просмотра значений.");
   candidate.revision = candidate.history.length + candidate.correctionHistory.length;
@@ -132,9 +142,17 @@ export async function reviewBackupAssessmentSelection(
   result.revisions.candidate = candidate.revision;
   result.records = { assessments: candidate.assessments.length, history: candidate.history.length, corrections: candidate.corrections.length, correctionHistory: candidate.correctionHistory.length };
   if (referenceCheck) {
-    result.references = await inspectSelectedAssessmentReferences(candidate, archive, browser, referenceCheck.choices, signal, referenceCheck.periodChoices);
+    result.references = await inspectSelectedAssessmentReferences(candidate, archive, browser, referenceCheck.choices, signal, referenceCheck.periodChoices, referenceCheck.baseChoices);
     if (result.references.status === "blocked") return reject("unresolved-references", "Наличие всех ссылок в выбранных справочниках пока не подтверждено. Проверьте замечания к учёткам, группам, дисциплинам и учебным периодам.");
   }
   result.status = "consistent";
-  return result;
+  return { review: result, document: candidate };
+}
+
+/** Pure preflight: no candidate data or permission to restore leaves this function. */
+export async function reviewBackupAssessmentSelection(
+  archive: BackupRecordEntries, browser: BackupRecordEntries, choices: readonly AssessmentRecordChoice[], signal?: AbortSignal,
+  referenceCheck?: ReferenceCheck,
+): Promise<AssessmentSelectionReview> {
+  return (await resolveBackupAssessmentSelection(archive, browser, choices, signal, referenceCheck)).review;
 }

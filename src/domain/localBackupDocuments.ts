@@ -19,7 +19,7 @@ import { inspectArchivedRooms } from "./backupRooms";
 import { decodeManagedSchedule, MANAGED_SCHEDULE_KEY, type ManagedScheduleSnapshot } from "./scheduleManagement";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
-import { getSubmissionConsistencyIssues } from "./submissionConsistency";
+import { inspectLearningDependencies } from "./backupLearningDependencies";
 import { BACKUP_JOURNAL_DOCUMENTS, getBackupJournalKind, inspectBackupJournals } from "./backupJournalDocuments";
 import { BACKUP_PLANNER_DOCUMENTS, inspectBackupPlanners, isBackupPlannerKey } from "./backupPlannerDocuments";
 import { BACKUP_NOTIFICATION_DOCUMENTS, inspectBackupNotifications, isBackupNotificationKey } from "./backupNotificationDocuments";
@@ -28,6 +28,7 @@ import { BACKUP_MESSAGING_DOCUMENTS, inspectBackupMessaging, isBackupMessagingKe
 import { inspectArchivedLearningAttachments } from "./backupLearningAttachments";
 import { BACKUP_MATERIAL_DOCUMENTS, inspectArchivedMaterials } from "./backupMaterials";
 import { inspectArchivedGroupStates } from "./backupGroupStates";
+import { inspectArchivedGroupHistory } from "./backupGroupHistory";
 import { inspectArchivedScheduleConflicts } from "./backupScheduleConflicts";
 import { inspectArchivedStudentNumbers } from "./backupStudentNumbers";
 import { inspectArchivedStudentNumberHistory } from "./backupStudentNumberHistory";
@@ -35,6 +36,8 @@ import { inspectArchivedStudentOperations } from "./backupStudentOperations";
 import { indexArchivedAccountHistory } from "./backupAccountHistory";
 import { inspectArchivedStudentImports } from "./backupStudentImports";
 import { BACKUP_ASSESSMENT_DOCUMENTS, inspectBackupAssessments, isBackupAssessmentKey } from "./backupAssessmentDocuments";
+import { createBackupIssueCollector } from "./backupIssueCollector";
+import { inspectArchivedFileSchemaCoverage } from "./backupFileSchemaCoverage";
 
 export const BACKUP_CORE_DOCUMENTS = {
   accounts: { key: "bi-university-accounts-v1", prefix: "bi-university-accounts-", label: "Учётные записи" },
@@ -79,13 +82,14 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   checkBackupAbort(signal);
   const rows = new Map(archive.localStorage.map((entry) => [entry.key, entry.raw]));
   const uncheckedKeys: string[] = [];
-  const result: BackupDocumentReview = { checks: [], issues: [], uncheckedKeys, counts: { valid: 0, invalid: 0, absent: 0, unchecked: 0, errors: 0, reviews: 0 } };
+  const findings = createBackupIssueCollector("проверке документов архива");
+  const result: BackupDocumentReview = { checks: [], issues: findings.issues, uncheckedKeys, counts: { valid: 0, invalid: 0, absent: 0, unchecked: 0, errors: 0, reviews: 0 } };
   const seen = new Set<string>();
   const issue = (value: BackupDocumentIssue) => {
     const id = JSON.stringify([value.kind, value.code, value.referenceId ?? "", value.recordId ?? ""]);
-    if (seen.has(id)) return; seen.add(id);
+    if (seen.has(id)) return;
+    findings.add(value); seen.add(id);
     if (value.level === "error") result.counts.errors++; else result.counts.reviews++;
-    result.issues.push(value);
   };
   const addReview = (review: Pick<BackupDocumentReview, "checks" | "issues">) => {
     for (const check of review.checks) { result.checks.push(check); result.counts[check.status]++; }
@@ -171,6 +175,9 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const groupCheck = result.checks.find((check) => check.kind === "groups");
   if (groupCheck) groupCheck.message += ` ${groupStates.summary}`;
   for (const finding of groupStates.issues) issue(finding);
+  const groupHistory = await inspectArchivedGroupHistory(groups, signal);
+  if (groupCheck) groupCheck.message += ` ${groupHistory.summary}`;
+  for (const finding of groupHistory.issues) issue(finding);
   const scheduleConflicts = await inspectArchivedScheduleConflicts(schedule, signal, rooms);
   const scheduleCheck = result.checks.find((check) => check.kind === "schedule");
   if (scheduleCheck) scheduleCheck.message += ` ${scheduleConflicts.summary}`;
@@ -182,15 +189,24 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const groupIds = groups ? new Set([...baseline.groupIds, ...groups.groups.map((group) => group.id)]) : undefined;
   const savedGroupIds = new Set(groups?.groups.map((group) => group.id) ?? []);
   const subjectIds = subjects ? new Set(subjects.subjects.map((subject) => subject.id)) : undefined;
-  addReview(await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, periods }, archive.completedAt, signal));
+  const assessmentReview = await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, periods, accounts, subjects, schedule }, archive.completedAt, signal);
+  addReview(assessmentReview);
+  const subjectCheck = result.checks.find(check => check.kind === "subjects");
+  if (subjectCheck) subjectCheck.message += ` ${assessmentReview.subjectStateSummary}`;
   addReview(await inspectBackupJournals(archive.localStorage, signal, {
-    groupIds: groups ? savedGroupIds : undefined, subjectIds, lessonSource: { schedule }, peopleSource: { accountIds },
+    groupIds: groups ? savedGroupIds : undefined, subjectIds, lessonSource: { schedule }, peopleSource: { accountIds }, completedAt: archive.completedAt,
   }));
-  addReview(await inspectBackupPlanners(archive.localStorage, accountIds, signal));
-  addReview(await inspectBackupNotifications(archive.localStorage, accountIds, signal, { assignments, submissions, subjectIds, groupIds: groups ? savedGroupIds : undefined }));
+  addReview(await inspectBackupPlanners(archive.localStorage, accountIds, signal, archive.completedAt));
+  addReview(await inspectBackupNotifications(archive.localStorage, accountIds, signal, { assignments, submissions, subjectIds, groupIds: groups ? savedGroupIds : undefined }, archive.completedAt));
   addReview(await inspectBackupSettings(archive.localStorage, accounts?.accounts, signal));
-  addReview(await inspectBackupMessaging(archive.localStorage, accountIds, signal, archive.databases));
+  addReview(await inspectBackupMessaging(archive.localStorage, accountIds, signal, archive.databases, archive.completedAt));
   addReview(await inspectArchivedMaterials(archive.databases, { accountIds, subjectIds, groupIds: groups ? savedGroupIds : undefined }, signal));
+  const fileSchemas = await inspectArchivedFileSchemaCoverage(archive.databases, signal);
+  for (const finding of fileSchemas.issues) issue(finding);
+  for (const summary of fileSchemas.summaries) {
+    const check = result.checks.find(item => item.kind === summary.kind);
+    if (check) check.message += ` ${summary.message}`;
+  }
   let builtInGroups = false; let count = 0;
   const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
   if (groupCalendars) {
@@ -199,7 +215,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   }
   if (curricula) {
     result.checks.find(row => row.kind === "curricula")!.records = curricula.plans.length + curricula.bindings.length;
-    for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, directories: educationDirectories, periods }, archive.completedAt, signal)) issue(finding);
+    for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, subjects, directories: educationDirectories, periods }, archive.completedAt, signal)) issue(finding);
   }
   if (educationDirectories) {
     result.checks.find(row => row.kind === "educationDirectories")!.records = educationDirectories.programs.length + educationDirectories.forms.length;
@@ -256,29 +272,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
       }
     }
   }
-  if (assignments) {
-    for (const assignment of assignments) {
-      await step();
-      if (assignment.subjectId) reference("assignments", "subject", assignment.subjectId);
-      if (assignment.groupId) reference("assignments", "group", assignment.groupId);
-      if (!assignment.subjectId || !assignment.groupId) issue({ level: "review", kind: "assignments", code: "legacy-identifiers", referenceId: assignment.id, message: "У старого задания отсутствует ID дисциплины или группы. Названия не заменяются данными браузера; соответствие требует отдельной проверки." });
-    }
-  }
-  if (submissions) {
-    const assignmentIds = assignments ? new Set(assignments.map((assignment) => assignment.id)) : undefined;
-    const workflows = new Set<string>();
-    for (const submission of submissions) {
-      await step();
-      for (const finding of getSubmissionConsistencyIssues(submission)) issue({ ...finding, kind: "submissions", referenceId: submission.id });
-      if (!assignmentIds) issue({ level: "review", kind: "submissions", code: "unchecked-assignment", message: "Связи ответов с заданиями не проверены: список заданий отсутствует или не читается." });
-      else if (!assignmentIds.has(submission.assignmentId)) issue({ level: "error", kind: "submissions", code: "missing-assignment", referenceId: submission.assignmentId, message: "Ответ ссылается на задание, которого нет в архиве." });
-      if (!accountIds) issue({ level: "review", kind: "submissions", code: "unchecked-student", message: "Владельцы ответов не проверены: учётные записи отсутствуют или не читаются." });
-      else if (!accountIds.has(submission.studentId)) issue({ level: "error", kind: "submissions", code: "missing-student", referenceId: submission.studentId, message: "Ответ ссылается на учётную запись студента, которой нет в архиве." });
-      const workflow = JSON.stringify([submission.assignmentId, submission.studentId]);
-      if (workflows.has(workflow)) issue({ level: "review", kind: "submissions", code: "duplicate-workflow", referenceId: submission.id, message: "Для одного студента и задания найдено несколько карточек ответа. Нужно проверить, как сохранить их истории; записи не объединены." });
-      workflows.add(workflow);
-    }
-  }
+  for (const finding of await inspectLearningDependencies(assignments, submissions, { accountIds, groupIds, subjectIds, referenceAssignment: (target, id) => reference("assignments", target, id) }, archive.completedAt, signal)) issue(finding);
   if (builtInGroups) issue({ level: "review", kind: "groups", code: "built-in-groups", message: "Часть ссылок совпадает со встроенными группами текущего приложения, но их определения отсутствуют в архиве. Совместимость исходной версии ещё не подтверждена." });
   checkBackupAbort(signal);
   return result;

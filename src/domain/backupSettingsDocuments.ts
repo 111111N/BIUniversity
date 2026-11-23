@@ -1,6 +1,8 @@
 import { isUserRole, type CurrentUser } from "./accounts";
-import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
-import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import { checkBackupAbort } from "./localBackup";
+import type { BackupRecordEntries } from "./backupRecordComparison";
+import type { BackupDocumentCheck } from "./localBackupDocuments";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 import { BACKUP_VISUAL_PREFERENCE_KEYS, getBackupSchedulePreferenceOwner, isSupportedBackupVisualPreferenceValue } from "./backupVisualPreferences";
 
 const THEME = BACKUP_VISUAL_PREFERENCE_KEYS.theme;
@@ -14,12 +16,12 @@ export const isBackupSettingKey = (key: string) => FIXED_KEYS.some((known) => ke
 type Account = Pick<CurrentUser, "id" | "role" | "status">;
 
 /** Read only archived scalar preferences; never apply themes, select accounts or choose fallbacks. */
-export const inspectBackupSettings = async (entries: AdministrativeBackup["localStorage"], accounts?: readonly Account[], signal?: AbortSignal) => {
+export const inspectBackupSettings = async (entries: BackupRecordEntries, accounts?: readonly Account[], signal?: AbortSignal) => {
   const accountMap = accounts === undefined ? undefined : new Map(accounts.map((account) => [account.id, account]));
   const settings = new Map<string, string>();
-  const issues: BackupDocumentIssue[] = [];
+  const { issues, add } = createBackupIssueCollector("настройкам браузера");
   let keys = 0; let invalid = 0; let index = 0;
-  const finding = (level: "error" | "review", code: string, key: string, message: string) => issues.push({ kind: "settings", level, code, referenceId: key, message });
+  const finding = (level: "error" | "review", code: string, key: string, message: string) => add({ kind: "settings", level, code, referenceId: key, message });
   const checkOwner = (key: string, owner: string) => {
     if (!accountMap) finding("review", "unchecked-setting-account", key, "Связь настройки с учётной записью не проверена: учётки отсутствуют или не читаются в архиве. Данные браузера не подставлялись.");
     else if (!accountMap.has(owner)) finding("error", "missing-setting-account", key, "Настройка ссылается на учётную запись, которой нет в архиве. Другой пользователь не выбирался.");

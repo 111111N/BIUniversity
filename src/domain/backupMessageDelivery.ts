@@ -1,6 +1,6 @@
 import type { MessageAttachment, MessagingState, StoredMessage } from "../data/messageStore";
-import { checkBackupAbort } from "./localBackup";
-import type { BackupDocumentIssue } from "./localBackupDocuments";
+import { BACKUP_LIMITS, checkBackupAbort } from "./localBackup";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 
 export interface ArchivedMessageMailbox { ownerId: string; state?: MessagingState }
 export interface ArchivedAttachmentSide { mailbox: string; dialog: string; messageId: number; attachments: readonly MessageAttachment[] }
@@ -29,13 +29,15 @@ const REPLY_REVIEWS = {
 
 /** Compare only validated v3 mailboxes with unambiguous owners; never borrow copies from v1/v2. */
 export const inspectArchivedMessageDelivery = async (mailboxes: ReadonlyMap<string, ArchivedMessageMailbox>, accountIds?: ReadonlySet<string>, signal?: AbortSignal, onAttachmentPair?: (pair: ArchivedAttachmentPair) => void) => {
-  const issues: BackupDocumentIssue[] = [];
+  const { issues, add } = createBackupIssueCollector("копиям сообщений");
   const owners = new Map<string, MailboxIndex[]>();
-  let comparedPairs = 0; let count = 0;
-  const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
-  const finding = (level: "error" | "review", code: string, mailbox: string, contact: string, message: string, row?: StoredMessage) => issues.push({
+  let comparedPairs = 0; let count = 0; let records = 0;
+  const step = async () => { if (++count > BACKUP_LIMITS.nodes) throw new Error("Сверка копий сообщений превышает предел шагов. Частичный результат не создан."); if (count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  const finding = (level: "error" | "review", code: string, mailbox: string, contact: string, message: string, row?: StoredMessage) => add({
     kind: "messaging", level, code, referenceId: "bi-university-messages-v3", recordId: JSON.stringify(row ? [mailbox, contact, row.id] : [mailbox, contact]), message,
   });
+  checkBackupAbort(signal);
+  if (mailboxes.size > BACKUP_LIMITS.records) throw new Error("Ящиков переписки больше 25 000. Частичный результат не создан.");
   for (const [key, mailbox] of mailboxes) {
     await step();
     const indexed: MailboxIndex = { ...mailbox, key, groups: new Set(mailbox.state?.groups?.map((group) => group.id)), threads: new Map() };
@@ -43,7 +45,9 @@ export const inspectArchivedMessageDelivery = async (mailboxes: ReadonlyMap<stri
     for (const [contact, rows] of Object.entries(mailbox.state?.messages ?? {})) {
       await step(); const byDelivery = new Map<string, StoredMessage[]>(); const byNumber = new Map<number, StoredMessage>();
       for (const row of rows) {
-        await step(); byNumber.set(row.id, row); if (row.deliveryId === undefined) continue;
+        await step();
+        if (++records > BACKUP_LIMITS.records) throw new Error("Копий сообщений для сверки больше 25 000. Частичный результат не создан.");
+        byNumber.set(row.id, row); if (row.deliveryId === undefined) continue;
         const copies = byDelivery.get(row.deliveryId) ?? []; copies.push(row); byDelivery.set(row.deliveryId, copies);
       }
       indexed.threads.set(contact, { byDelivery, byNumber });

@@ -12,6 +12,7 @@ import { getUncheckedLearningDocuments } from "../../domain/backupLearningCompar
 import ScheduleComparisonReview from "./ScheduleComparisonReview";
 import { getUncheckedScheduleDocuments } from "../../domain/backupScheduleComparison";
 import JournalComparisonReview from "./JournalComparisonReview";
+import JournalSnapshotComparisonReview from "./JournalSnapshotComparisonReview";
 import RestoreAdmissionReview from "./RestoreAdmissionReview";
 import NotificationComparisonReview from "./NotificationComparisonReview";
 import AssessmentComparisonReview from "./AssessmentComparisonReview";
@@ -44,6 +45,7 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
     { count: uncheckedLearning, label: "Списки заданий и ответов сравнены не полностью" },
     { count: result?.scheduleComparison ? getUncheckedScheduleDocuments(result.scheduleComparison) : 0, label: "Документы расписания не сравнены" },
     { count: result?.journalComparison?.counts.uncheckedDocuments ?? 0, label: "Источники истории журналов не сравнены" },
+    { count: result?.journalSnapshotComparison?.counts.uncheckedDocuments ?? 0, label: "Снимки журналов не сравнены" },
     { count: result?.notificationComparison?.counts.uncheckedDocuments ?? 0, label: "Списки уведомлений не сравнены" },
     { count: result?.assessmentComparison ? getUncheckedAssessmentDocuments(result.assessmentComparison) : 0, label: "Документы аттестаций не сравнены" },
   ].filter(({ count }) => count > 0).map(({ count, label }) => `${label}: ${count}.`).join(" ");
@@ -93,6 +95,7 @@ export default function InspectionPanel({ file, busy, progress, error, result, u
       {result.academicComparison && <AcademicComparisonReview key={`academic:${result.sha256}:${result.inspectedAt}`} review={result.academicComparison} inspection={result} />}
       {(result.academicComparison && [result.academicComparison.programs, result.academicComparison.plans, result.academicComparison.calendars, result.academicComparison.teaching].some(section => section.counts.documents > 0) || result.scheduleCatalogComparison && [result.scheduleCatalogComparison.rooms, result.scheduleCatalogComparison.templates].some(section => section.counts.documents > 0)) && <DocumentSelectionReview key={`document-selection:${result.sha256}:${result.inspectedAt}`} inspection={result} />}
       {result.journalComparison && <JournalComparisonReview key={`journal:${result.sha256}:${result.inspectedAt}`} review={result.journalComparison} />}
+      {result.journalSnapshotComparison && <JournalSnapshotComparisonReview key={`journal-snapshot:${result.sha256}:${result.inspectedAt}`} review={result.journalSnapshotComparison} />}
       {result.notificationComparison && <NotificationComparisonReview key={`notifications:${result.sha256}:${result.inspectedAt}`} review={result.notificationComparison} />}
       {result.assessmentComparison && <AssessmentComparisonReview key={`assessments:${result.sha256}:${result.inspectedAt}`} review={result.assessmentComparison} inspection={result} />}
       <details className={styles.details}><summary>Что проверено и какие есть ограничения</summary><div>

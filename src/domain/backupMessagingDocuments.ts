@@ -1,7 +1,8 @@
 import type { MessagingState, StoredMessage } from "../data/messageStore";
 import { isUserRole } from "./accounts";
-import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
-import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, type AdministrativeBackup } from "./localBackup";
+import type { BackupDocumentCheck } from "./localBackupDocuments";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 import { inspectArchivedMessageDelivery, type ArchivedAttachmentPair, type ArchivedMessageMailbox } from "./backupMessageDelivery";
 import { inspectArchivedReplyChains } from "./backupReplyChains";
 import { inspectArchivedMessageAttachments, type ArchivedMessageAttachmentReference } from "./backupMessageAttachments";
@@ -14,7 +15,7 @@ export const isBackupMessagingKey = (key: string) => key.startsWith(PREFIX);
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const nonblank = (value: unknown): value is string => typeof value === "string" && Boolean(value.trim());
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
-const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(nonblank);
+const strings = (value: unknown): value is string[] => Array.isArray(value) && value.length <= BACKUP_LIMITS.records && value.every(nonblank);
 const duplicates = (values: readonly unknown[]) => new Set(values).size !== values.length;
 const unread = (value: unknown) => value === undefined || (record(value) && ["students", "teachers", "groups"].every((tab) => value[tab] === undefined || (Number.isSafeInteger(value[tab]) && (value[tab] as number) >= 0)));
 const ownerOf = (key: string) => {
@@ -39,13 +40,19 @@ const message = (value: unknown): value is StoredMessage => {
 };
 
 /** Read all archive generations independently. Never resolve demo users, deliver messages or merge mailboxes. */
-export const inspectBackupMessaging = async (entries: AdministrativeBackup["localStorage"], accountIds?: ReadonlySet<string>, signal?: AbortSignal, databases?: AdministrativeBackup["databases"]) => {
-  const issues: BackupDocumentIssue[] = [];
+export const inspectBackupMessaging = async (entries: AdministrativeBackup["localStorage"], accountIds?: ReadonlySet<string>, signal?: AbortSignal, databases?: AdministrativeBackup["databases"], completedAt?: string) => {
+  const { issues, add } = createBackupIssueCollector("переписке");
+  const inputBudget = createBackupBudget(), cutoff = completedAt === undefined ? NaN : Date.parse(completedAt);
   const attachmentReferences: ArchivedMessageAttachmentReference[] = [];
   const currentMailboxes = new Map<string, ArchivedMessageMailbox>();
-  let documents = 0; let invalid = 0; let records = 0; let index = 0;
-  const step = async () => { if (++index % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
-  const finding = (level: "error" | "review", code: string, key: string, message: string, recordId?: string) => issues.push({ kind: "messaging", level, code, referenceId: key, recordId, message });
+  let documents = 0; let invalid = 0; let records = 0; let inspectedMessages = 0; let index = 0;
+  const step = async () => { if (++index > BACKUP_LIMITS.nodes) throw new Error("Проверка переписки превышает предел шагов. Частичный результат не создан."); if (index % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  const finding = (level: "error" | "review", code: string, key: string, message: string, recordId?: string) => add({ kind: "messaging", level, code, referenceId: key, recordId, message });
+  const inspectTime = (kind: "message" | "group", key: string, recordId: string, value: number) => {
+    if (!Number.isFinite(new Date(value).getTime())) finding("error", "invalid-message-group-date", key, "Дата создания беседы выходит за допустимый диапазон даты. Значение не исправлялось.", recordId);
+    else if (!Number.isFinite(cutoff)) finding("review", "unchecked-messaging-cutoff", key, "Время завершения архива не подтверждено для проверки дат переписки. Текущие часы не подставлялись.");
+    else if (value > cutoff) finding("error", kind === "message" ? "message-sent-after-cutoff" : "message-group-created-after-cutoff", key, kind === "message" ? "Сохранённая дата отправки сообщения позже завершения архива. Сообщение и дата не изменены." : "Сохранённая дата создания беседы позже завершения архива. Беседа и её состав не изменены.", recordId);
+  };
   const owner = (key: string, mailbox: string, id: string) => {
     if (!accountIds) finding("review", "unchecked-message-owner", key, "Владелец переписки не проверен: учётки отсутствуют или не читаются в архиве. Данные браузера не подставлялись.", mailbox);
     else if (!accountIds.has(id)) finding("error", "missing-message-owner", key, "В архиве нет учётной записи владельца переписки. Сообщения не переданы другому пользователю.", mailbox);
@@ -55,8 +62,13 @@ export const inspectBackupMessaging = async (entries: AdministrativeBackup["loca
     if (!record(value) || !strings(value.dialogIds) || !record(value.messages)
       || (value.leftGroupIds !== undefined && !strings(value.leftGroupIds))
       || !unread(value.unread)
-      || (value.groups !== undefined && (!Array.isArray(value.groups) || !value.groups.every((group: unknown) => record(group) && nonblank(group.id) && nonblank(group.name) && strings(group.memberIds) && finite(group.createdAt))))) {
+      || (value.groups !== undefined && (!Array.isArray(value.groups) || value.groups.length > BACKUP_LIMITS.records))) {
       fail(); return false;
+    }
+    for (const group of value.groups ?? []) {
+      await step();
+      if (!record(group) || !nonblank(group.id) || !nonblank(group.name) || !Array.isArray(group.memberIds) || group.memberIds.length > BACKUP_LIMITS.records || !finite(group.createdAt)) { fail(); return false; }
+      for (const member of group.memberIds) { await step(); if (!nonblank(member)) { fail(); return false; } }
     }
     for (const [dialog, rows] of Object.entries(value.messages)) {
       await step();
@@ -64,6 +76,7 @@ export const inspectBackupMessaging = async (entries: AdministrativeBackup["loca
       const ids = new Set<number>();
       for (const row of rows) {
         await step();
+        if (++inspectedMessages > BACKUP_LIMITS.records) throw new Error("Сохранённых копий сообщений больше 25 000. Частичный результат не создан.");
         if (!message(row) || ids.has(row.id)) { fail(); return false; }
         ids.add(row.id);
       }
@@ -74,6 +87,7 @@ export const inspectBackupMessaging = async (entries: AdministrativeBackup["loca
     for (const group of state.groups ?? []) {
       await step();
       const id = JSON.stringify([mailbox, group.id]);
+      inspectTime("group", key, id, group.createdAt);
       if (duplicates(group.memberIds)) finding("error", "duplicate-message-members", key, "В беседе повторяются ID участников. Состав не изменён.", id);
       if (!accountIds || group.memberIds.some((member) => !accountIds.has(member))) finding("review", "unchecked-message-members", key, "Не все участники беседы подтверждены учётками архива. Возможны встроенные профили; состав и права требуют отдельной проверки.", id);
     }
@@ -88,22 +102,28 @@ export const inspectBackupMessaging = async (entries: AdministrativeBackup["loca
       const ownerId = ownerOf(mailbox);
       const role = mailbox.slice(MAILBOX.length, mailbox.indexOf(":", MAILBOX.length));
       const expectedScope = ownerId === undefined ? undefined : `${role}:${encodeURIComponent(ownerId)}:${encodeURIComponent(dialog)}`;
-      const ids = new Set(rows.map((row) => row.id)); const deliveries = new Set<string>();
+      const ids = new Set(rows.map((row) => row.id)); const deliveries = new Set<string>(); let undated = false;
       for (const row of rows) {
         await step();
         const rowId = JSON.stringify([mailbox, dialog, row.id]);
+        if (row.sentAt === undefined) undated = true;
+        else inspectTime("message", key, rowId, Date.parse(row.sentAt));
         if (row.replyTo !== undefined && (!ids.has(row.replyTo) || row.replyTo === row.id)) finding("review", "unchecked-message-reply", key, "Исходное сообщение ответа не найдено в этом диалоге или ссылка ведёт на сам ответ. Возможное удаление и историю нужно проверить; ссылка не изменена.", rowId);
         if (row.deliveryId !== undefined && deliveries.has(row.deliveryId)) finding("error", "duplicate-message-delivery", key, "В одном диалоге повторяется ID доставки. Сообщения не объединялись и повторно не отправлялись.", rowId);
         if (row.deliveryId !== undefined) deliveries.add(row.deliveryId);
         if (duplicates(row.attachments?.map((file) => file.id) ?? [])) finding("error", "duplicate-message-attachments", key, "В сообщении повторяются ID вложений. Файлы не читались и не удалялись.", rowId);
         if (databases !== undefined) for (const attachment of row.attachments ?? []) attachmentReferences.push({ key, mailbox, dialog, messageId: row.id, expectedScope, attachment });
       }
-      for (const chain of await inspectArchivedReplyChains(rows, signal)) finding(chain.level, chain.code, key, chain.message, JSON.stringify([mailbox, dialog, chain.id]));
+      if (undated) finding("review", "undated-message-thread", key, "У части сообщений диалога нет сохранённой даты отправки. Время на экране и номера не подтверждают дату или хронологию; дата не достраивалась.", id);
+      for (const chain of await inspectArchivedReplyChains(rows, signal)) { await step(); finding(chain.level, chain.code, key, chain.message, JSON.stringify([mailbox, dialog, chain.id])); }
     }
     return true;
   };
+  checkBackupAbort(signal);
+  if (entries.length > BACKUP_LIMITS.records) throw new Error("Источник переписки превышает 25 000 локальных записей. Частичный результат не создан.");
   for (const entry of entries) {
     await step(); if (!isBackupMessagingKey(entry.key)) continue;
+    addBackupText(inputBudget, entry.key); addBackupText(inputBudget, entry.raw);
     documents++;
     let parsed: unknown;
     try { parsed = JSON.parse(entry.raw); }
@@ -133,14 +153,14 @@ export const inspectBackupMessaging = async (entries: AdministrativeBackup["loca
   }
   const attachmentPairs: ArchivedAttachmentPair[] = [];
   const delivery = await inspectArchivedMessageDelivery(currentMailboxes, accountIds, signal, databases === undefined ? undefined : (pair) => { attachmentPairs.push(pair); });
-  for (const issue of delivery.issues) issues.push(issue);
+  for (const issue of delivery.issues) { await step(); add(issue); }
   const attachments = databases === undefined ? undefined : await inspectArchivedMessageAttachments(attachmentReferences, databases, signal, attachmentPairs);
-  if (attachments) for (const issue of attachments.issues) issues.push(issue);
+  if (attachments) for (const issue of attachments.issues) { await step(); add(issue); }
   checkBackupAbort(signal);
   const checks: BackupDocumentCheck[] = [{ kind: "messaging", key: DATABASE, label: BACKUP_MESSAGING_DOCUMENTS.messaging.label, documents,
     status: !documents ? "absent" : invalid ? "invalid" : "valid", ...(documents && !invalid ? { records } : {}),
     message: (!documents ? "Сохранённой переписки нет в архиве. Примеры диалогов не подставляются."
-      : `Документов: ${documents}; прочитано: ${documents - invalid}; не читается: ${invalid}. Сообщения посчитаны по всем сохранённым копиям без объединения. Сопоставлено пар личных сообщений в общем документе: ${delivery.comparedPairs}. Сверяются только однозначные ID доставки и владельцы из архива; отсутствие второй копии не доказывает сбой отправки. Ссылки ответов сопоставляются по ID доставки сохранённых исходных сообщений. Цепочки проверяются на циклы и расхождения дат. История перенумерации и права участников ещё не проверены.`)
+      : `Документов: ${documents}; прочитано: ${documents - invalid}; не читается: ${invalid}. Сообщения посчитаны по всем сохранённым копиям без объединения. Сопоставлено пар личных сообщений в общем документе: ${delivery.comparedPairs}. Сверяются только однозначные ID доставки и владельцы из архива; отсутствие второй копии не доказывает сбой отправки. Ссылки ответов сопоставляются по ID доставки сохранённых исходных сообщений. Цепочки проверяются на циклы и расхождения дат. Сохранённые даты проверяются по заданной границе архива; неизвестная граница и отсутствующие даты отмечаются отдельно. История перенумерации и права участников ещё не проверены.`)
       + (attachments ? ` ${attachments.summary}` : " Файловые записи не переданы этой проверке; наличие и принадлежность вложений не проверены."),
   }];
   return { checks, issues };

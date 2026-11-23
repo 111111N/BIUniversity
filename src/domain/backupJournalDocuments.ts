@@ -1,5 +1,6 @@
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
-import type { BackupDocumentCheck, BackupDocumentIssue } from "./localBackupDocuments";
+import { createBackupIssueCollector } from "./backupIssueCollector";
+import type { BackupDocumentCheck } from "./localBackupDocuments";
 import type { JournalChange } from "../data/journalStore";
 import { getJournalHistoryValueIssues } from "./journalHistoryValues";
 import { inspectJournalHistoryChain } from "./journalHistoryChain";
@@ -19,6 +20,8 @@ type Kind = keyof typeof BACKUP_JOURNAL_DOCUMENTS;
 interface JournalContext extends ArchivedJournalCatalogs {
   lessonSource?: { schedule?: ManagedScheduleSnapshot };
   peopleSource?: { accountIds?: ReadonlySet<string> };
+  unavailableJournalKeys?: readonly string[];
+  completedAt?: string;
 }
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === "string" && Boolean(value.trim());
@@ -33,7 +36,7 @@ const validActor = (value: unknown) => isRecord(value) && nonempty(value.id) && 
 export const getBackupJournalKind = (key: string): Kind | undefined => key.startsWith(BACKUP_JOURNAL_DOCUMENTS.journalHistory.prefix)
   ? "journalHistory" : key.startsWith(BACKUP_JOURNAL_DOCUMENTS.journals.prefix) ? "journals" : undefined;
 
-const decodeJournalRows = (raw: string): unknown[] => {
+export const decodeBackupJournalRows = (raw: string): unknown[] => {
   const parsed: unknown = JSON.parse(raw);
   const rows = isRecord(parsed) && parsed.version === 2 ? parsed.students : parsed;
   if (!Array.isArray(rows) || !rows.every((row: unknown) => isRecord(row) && nonempty(row.id) && typeof row.name === "string"
@@ -58,8 +61,8 @@ export const decodeBackupJournalHistory = (raw: string): JournalChange[] => {
 };
 
 /** Inspect every saved list as-is; never consult accounts, create demos or migrate lesson keys. */
-export const inspectBackupJournals = async (entries: AdministrativeBackup["localStorage"], signal?: AbortSignal, catalogs?: JournalContext) => {
-  const issues: BackupDocumentIssue[] = [];
+export const inspectBackupJournals = async (entries: Readonly<AdministrativeBackup["localStorage"]>, signal?: AbortSignal, catalogs?: JournalContext) => {
+  const { issues, add: addIssue } = createBackupIssueCollector("журналам");
   const checks: BackupDocumentCheck[] = [];
   const stats: Record<Kind, { documents: number; invalid: number; records: number }> = {
     journals: { documents: 0, invalid: 0, records: 0 }, journalHistory: { documents: 0, invalid: 0, records: 0 },
@@ -67,7 +70,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
   let count = 0; let historyComparisons = 0;
   let snapshotComparisons = 0; let unresolvedCells = 0;
   const journals = new Map<string, Student[]>(); const histories = new Map<string, JournalChange[]>();
-  const journalKeys = new Set<string>();
+  const journalKeys = new Set<string>(catalogs?.unavailableJournalKeys);
   const areas = { journals: { matched: 0, unresolved: 0 }, journalHistory: { matched: 0, unresolved: 0 } };
   const lessonStats = { journals: { matched: 0, unresolved: 0 }, journalHistory: { matched: 0, unresolved: 0 } };
   const peopleStats = { journals: { matched: 0, missing: 0, unchecked: 0 }, journalHistory: { matched: 0, missing: 0, unchecked: 0 } };
@@ -83,7 +86,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
     current.documents++;
     if (!entry.key.startsWith(definition.key) || !entry.key.slice(definition.key.length)) {
       current.invalid++;
-      issues.push({ kind, level: "error", code: "unsupported-journal-key", referenceId: entry.key, message: "Ключ журнала или истории не поддерживается либо не содержит учебную область. Список не заменён данными браузера." });
+      addIssue({ kind, level: "error", code: "unsupported-journal-key", referenceId: entry.key, message: "Ключ журнала или истории не поддерживается либо не содержит учебную область. Список не заменён данными браузера." });
       continue;
     }
     let area: JournalTeachingArea = { status: "unavailable" };
@@ -92,7 +95,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
       if (area.status === "matched") areas[kind].matched++;
       else {
         areas[kind].unresolved++;
-        issues.push({ kind, level: "review", code: `${area.status}-journal-area`, referenceId: entry.key,
+        addIssue({ kind, level: "review", code: `${area.status}-journal-area`, referenceId: entry.key,
           message: area.status === "unavailable"
             ? "Учебная область ключа не проверена: каталог дисциплин или групп отсутствует либо не читается в архиве. Справочники браузера и встроенные группы не подставлялись."
             : area.status === "ambiguous"
@@ -103,13 +106,13 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
     }
     let rows: unknown[];
     try {
-      rows = kind === "journals" ? decodeJournalRows(entry.raw) : decodeBackupJournalHistory(entry.raw);
+      rows = kind === "journals" ? decodeBackupJournalRows(entry.raw) : decodeBackupJournalHistory(entry.raw);
       const ids = rows.map((row) => (row as { id: string }).id);
       if (new Set(ids).size !== ids.length) throw new Error("В списке журнала или истории повторяются ID записей. Дубликаты не объединялись и не удалялись.");
       current.records += rows.length;
     } catch (error) {
       current.invalid++;
-      issues.push({ kind, level: "error", code: "invalid-journal-document", referenceId: entry.key,
+      addIssue({ kind, level: "error", code: "invalid-journal-document", referenceId: entry.key,
         message: error instanceof SyntaxError ? "Некорректный JSON внутри списка. Исходное содержимое не включено в отчёт." : error instanceof Error ? error.message : "Не удалось проверить список журнала или истории.",
       });
       continue;
@@ -128,7 +131,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
       };
       const people = await inspectJournalPeopleReferences(references(), catalogs.peopleSource.accountIds, signal);
       peopleStats[kind].matched += people.matched; peopleStats[kind].missing += people.missing; peopleStats[kind].unchecked += people.unchecked;
-      for (const finding of people.issues) issues.push({ ...finding, kind, referenceId: entry.key });
+      for (const finding of people.issues) addIssue({ ...finding, kind, referenceId: entry.key });
     }
     if (lessonIndex) {
       const references = function* (): Generator<JournalLessonReference> {
@@ -142,7 +145,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
       };
       const lessons = await inspectJournalLessonReferences(references(), lessonIndex, area, signal);
       lessonStats[kind].matched += lessons.matched; lessonStats[kind].unresolved += lessons.unresolved;
-      for (const finding of lessons.issues) issues.push({ ...finding, kind, referenceId: entry.key });
+      for (const finding of lessons.issues) addIssue({ ...finding, kind, referenceId: entry.key });
     }
     if (kind === "journals") journals.set(entry.key, rows as Student[]);
     if (kind === "journalHistory") {
@@ -151,16 +154,18 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
         const contexts = await inspectJournalActorContexts(rows as JournalChange[], area, signal);
         actorStats.consistent += contexts.consistent; actorStats.conflicting += contexts.conflicting;
         actorStats.incomplete += contexts.incomplete; actorStats.uncheckedArea += contexts.uncheckedArea;
-        for (const finding of contexts.issues) issues.push({ kind, level: finding.level, code: finding.code, message: finding.message, referenceId: entry.key, recordId: finding.id });
+        for (const finding of contexts.issues) addIssue({ kind, level: finding.level, code: finding.code, message: finding.message, referenceId: entry.key, recordId: finding.id });
       }
       for (const row of rows as JournalChange[]) {
         await step();
-        for (const finding of getJournalHistoryValueIssues(row)) issues.push({ ...finding, kind, referenceId: entry.key, recordId: row.id });
+        if (catalogs?.completedAt !== undefined && Date.parse(row.changedAt) > Date.parse(catalogs.completedAt)) addIssue({ kind, level: "error", code: "journal-event-after-cutoff", referenceId: entry.key, recordId: row.id, message: "Изменение журнала датировано позже границы проверки набора. Дата занятия не менялась и не использовалась вместо времени сохранения события." });
+        for (const finding of getJournalHistoryValueIssues(row)) addIssue({ ...finding, kind, referenceId: entry.key, recordId: row.id });
       }
       const chain = await inspectJournalHistoryChain(rows as JournalChange[], signal); historyComparisons += chain.comparedPairs;
-      for (const finding of chain.issues) issues.push({ kind, level: finding.level, code: finding.code, message: finding.message, referenceId: entry.key, recordId: finding.id });
+      for (const finding of chain.issues) addIssue({ kind, level: finding.level, code: finding.code, message: finding.message, referenceId: entry.key, recordId: finding.id });
     }
   }
+  if (catalogs?.completedAt !== undefined && !Number.isFinite(Date.parse(catalogs.completedAt)) && stats.journalHistory.documents) addIssue({ kind: "journalHistory", level: "review", code: "unchecked-journal-cutoff", message: "Граница времени проверки истории журнала не подтверждена. Время устройства не подставлялось." });
   for (const [key, rows] of histories) {
     await step();
     const journalKey = BACKUP_JOURNAL_DOCUMENTS.journals.key + key.slice(BACKUP_JOURNAL_DOCUMENTS.journalHistory.key.length);
@@ -168,7 +173,7 @@ export const inspectBackupJournals = async (entries: AdministrativeBackup["local
     const snapshot = await inspectJournalHistorySnapshot(rows, students ? { status: "readable", students }
       : { status: journalKeys.has(journalKey) ? "invalid" : "absent" }, signal);
     snapshotComparisons += snapshot.comparedCells; unresolvedCells += snapshot.unresolvedCells;
-    for (const finding of snapshot.issues) issues.push({ kind: "journalHistory", level: finding.level, code: finding.code, message: finding.message,
+    for (const finding of snapshot.issues) addIssue({ kind: "journalHistory", level: finding.level, code: finding.code, message: finding.message,
       referenceId: key, ...(finding.id === undefined ? {} : { recordId: finding.id }),
     });
   }

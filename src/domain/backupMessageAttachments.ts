@@ -1,6 +1,6 @@
 import type { MessageAttachment } from "../data/messageStore";
-import { checkBackupAbort, type AdministrativeBackup, type BackupValue } from "./localBackup";
-import type { BackupDocumentIssue } from "./localBackupDocuments";
+import { BACKUP_LIMITS, checkBackupAbort, type AdministrativeBackup, type BackupValue } from "./localBackup";
+import { createBackupIssueCollector } from "./backupIssueCollector";
 import type { ArchivedAttachmentPair } from "./backupMessageDelivery";
 import { inspectArchivedFileIndexes } from "./backupFileIndexes";
 
@@ -17,11 +17,11 @@ const referenceToken = (key: string, mailbox: string, dialog: string, messageId:
 
 /** Read validated tagged archive values only. Never decode a Blob or consult IndexedDB. */
 export const inspectArchivedMessageAttachments = async (references: readonly ArchivedMessageAttachmentReference[], databases: AdministrativeBackup["databases"], signal?: AbortSignal, pairs: readonly ArchivedAttachmentPair[] = []) => {
-  const issues: BackupDocumentIssue[] = [];
+  const { issues, add } = createBackupIssueCollector("вложениям переписки");
   const files = new Map<string, FileRecord | null>(); let count = 0;
   const validReferences = new Map<string, FileRecord>();
-  const step = async () => { if (++count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
-  const finding = (level: "error" | "review", code: string, message: string, referenceId: string, recordId?: string) => issues.push({ kind: "messaging", level, code, message, referenceId, recordId });
+  const step = async () => { if (++count > BACKUP_LIMITS.nodes) throw new Error("Проверка вложений переписки превышает предел операций. Частичный результат не создан."); if (count % 128 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); };
+  const finding = (level: "error" | "review", code: string, message: string, referenceId: string, recordId?: string) => add({ kind: "messaging", level, code, message, referenceId, recordId });
   checkBackupAbort(signal);
   const database = databases.find((item) => item.name === DATABASE);
   const store = database?.stores.find((item) => item.name === "attachments");
@@ -65,11 +65,13 @@ export const inspectArchivedMessageAttachments = async (references: readonly Arc
     if (file.name !== attachment.name || file.type !== attachment.type || file.size !== attachment.size) finding("error", "message-attachment-metadata-mismatch", "Метаданные вложения в сообщении расходятся с файловой записью. Имена, типы и размеры не включены в замечание; записи не исправлялись.", reference.key, recordId);
     else if (file.consistent && reference.expectedScope !== undefined && file.scope === reference.expectedScope) validReferences.set(referenceToken(reference.key, reference.mailbox, reference.dialog, reference.messageId, attachment.id), file);
   }
-  let comparedPairs = 0;
+  let comparedPairs = 0, comparedBytes = 0;
   const contentCache = new Map<string, boolean>();
   const sameContent = async (left: ArchivedBlob, right: ArchivedBlob) => {
     checkBackupAbort(signal);
     if (left.size !== right.size || left.base64.length !== right.base64.length) return false;
+    comparedBytes += left.size;
+    if (comparedBytes > BACKUP_LIMITS.binaryBytes) throw new Error("Повторная сверка содержимого вложений превышает 64 МиБ. Частичный результат не создан.");
     // Canonical Base64 has already been checked by archive validation; compare encoded bytes, not File metadata.
     const chunkSize = 262_144;
     for (let offset = 0; offset < left.base64.length; offset += chunkSize) {

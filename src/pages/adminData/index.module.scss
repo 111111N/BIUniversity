@@ -2,6 +2,8 @@
 @use "../../styles/administration" as admin;
 
 .page { @include admin.workspace; display: grid; gap: 18px; max-width: 1000px; }
+.baseSources { display: grid; gap: 12px; margin: 20px 0; > h3, > .hint { margin: 0; } }
+.baseSource { padding: 14px; border: 1px solid $color-border; border-radius: 10px; min-width: 0; overflow-wrap: anywhere; h4 { margin: 0 0 8px; font-size: 14px; } p, ul { margin: 8px 0 0; font-size: 13px; line-height: 1.65; } ul { padding-left: 20px; } }
 .fileAreaReview {
   margin-top: 10px;
   summary { min-height: 44px; box-sizing: border-box; padding: 10px 0; cursor: pointer; font-size: 13px; line-height: 1.6; color: $color-text-light; overflow-wrap: anywhere; &:focus-visible { outline: 2px solid $color-accent-primary; outline-offset: 3px; border-radius: 4px; } }

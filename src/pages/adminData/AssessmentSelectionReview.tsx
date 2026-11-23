@@ -5,6 +5,7 @@ import type { AssessmentSelectionReview as Review } from "../../domain/backupAss
 import { ConflictChoiceContext, ConflictPreviewContext } from "./ConflictPreviewContext";
 import { subscribeConflictPreviewChanges } from "./conflictPreviewSubscriptions";
 import styles from "./index.module.scss";
+import AssessmentStructureSummary from "./AssessmentStructureSummary";
 import AssessmentReferencesReview from "./AssessmentReferencesReview";
 
 export default function AssessmentSelectionReview({ inspection }: { inspection: BackupInspection }) {
@@ -41,10 +42,7 @@ export default function AssessmentSelectionReview({ inspection }: { inspection: 
     <div className={styles.actions}><button type="button" disabled={!active || current?.busy} onClick={() => void validate()}>{current?.busy ? "Проверяем выбранные версии…" : "Проверить выбранные аттестации"}</button></div>
     {current?.error && <p className={styles.error} role="alert">{current.error}</p>}
     {current?.review && <div role="status" aria-live="polite">
-      <p>{current.review.status === "consistent" ? "Выбранные аттестации согласованы со своей историей." : "Выбранный набор аттестаций требует проверки."}</p>
-      {current.review.issues.map(issue => <p key={issue.code}>{issue.message}</p>)}
-      <p className={styles.hint}>Конфликтов: {current.review.counts.conflicts}. Без выбора: {current.review.counts.unresolved}. Записей только из браузера: {current.review.counts.browserOnly}.</p>
-      {current.review.records && <p className={styles.hint}>Аттестаций: {current.review.records.assessments}. Событий истории: {current.review.records.history}. Исправлений: {current.review.records.corrections}. Событий исправлений: {current.review.records.correctionHistory}. Ревизия проверяемого набора: {current.review.revisions.candidate}.</p>}
+      <AssessmentStructureSummary review={current.review} />
       {current.review.references && <AssessmentReferencesReview review={current.review.references} />}
       <p className={styles.hint}>Исторические полномочия и связи с остальными выбранными документами требуют подтверждения. Проверка периодов не объединяет расходящиеся ветви истории. Восстановление всего архива остаётся недоступным; данные не изменены.</p>
     </div>}
