@@ -20,7 +20,7 @@ export async function inspectArchivedGroupCalendars(document: GroupCalendarsDocu
   }
   if (document.history.length) {
     if (!Number.isFinite(Date.parse(completedAt))) issue({ level: "review", code: "unchecked-calendar-cutoff", message: "Время завершения архива не подтверждено для проверки истории календаря." });
-    issue({ level: "review", code: "unconfirmed-calendar-authority", message: "Исторические полномочия закрытия/переоткрытия, исторические реквизиты групп и согласованность расписания/ведомостей/журнала с состоянием периода требуют отдельной проверки. Восстановление не разрешено." });
+    issue({ level: "review", code: "unconfirmed-calendar-authority", message: "Исторические полномочия закрытия/переоткрытия, исторические реквизиты групп, ранние публикации без точного события и согласованность остальных учебных действий с состоянием периода требуют отдельной проверки. Восстановление не разрешено." });
   }
   return issues;
 }

@@ -15,7 +15,7 @@ import { ACADEMIC_COMPARISON_LABELS, getAcademicBackupDefinition } from "./backu
 
 type RecordPreviewReference = Extract<BackupDifferenceReference, { storage: "localStorage-record" | "localStorage-child-record" | "localStorage-journal-record" }>;
 export type BackupPreviewReference = RecordPreviewReference | Extract<BackupDifferenceReference, { storage: "localStorage" }>;
-export interface BackupRecordPreview { reference: BackupPreviewReference; collectionLabel: string; rows: { field: string; label: string; archive: string; browser: string }[]; hasUnpreviewedFields: boolean }
+export interface BackupRecordPreview { reference: BackupPreviewReference | Extract<BackupDifferenceReference, { storage: "indexedDB" }>; collectionLabel: string; rows: { field: string; label: string; archive: string; browser: string }[]; hasUnpreviewedFields: boolean; mode?: "file-metadata"; checkedAt?: string }
 const definitionFor = (collection: string) => getPlannerBackupDefinition(collection) ?? getAccountBackupDefinition(collection) ?? getCatalogBackupDefinition(collection) ?? getLearningBackupDefinition(collection) ?? getScheduleBackupDefinition(collection) ?? getJournalBackupDefinition(collection) ?? getNotificationBackupDefinition(collection) ?? getAssessmentBackupDefinition(collection) ?? getScheduleCatalogBackupDefinition(collection) ?? getAcademicBackupDefinition(collection);
 export const canPreviewBackupDifference = (difference: BackupDifference): difference is BackupDifference & { reference: BackupPreviewReference } => {
   const reference = difference.reference;

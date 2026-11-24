@@ -111,8 +111,12 @@ export const executeGroupCalendarCommand = (source: GroupCalendarsDocument, comm
 };
 
 export const calendarClosedMessage = (calendar: GroupCalendar) => `${calendar.group.name}: ${calendar.period.term.name} закрыт. Настройщик должен переоткрыть период с указанием причины.`;
+export const calendarRestrictsPeriodUpdate = (calendar: GroupCalendar, entity: "year" | "term", id: string): boolean =>
+  calendar.state === "closed" && (entity === "term" ? calendar.period.term.id === id : calendar.period.year.id === id);
+export const calendarRestrictsEditing = (calendar: GroupCalendar, groupId: string, dates: readonly string[], termId?: string): boolean =>
+  calendar.group.id === groupId && calendar.state === "closed" && (calendar.period.term.id === termId || dates.some(date => date >= calendar.period.term.startsOn && date <= calendar.period.term.endsOn));
 export const assertCalendarDatesEditable = (document: GroupCalendarsDocument, groupId: string, dates: string[], termId?: string) => {
-  const blocked = document.calendars.find(row => row.group.id === groupId && row.state === "closed" && (row.period.term.id === termId || dates.some(date => date >= row.period.term.startsOn && date <= row.period.term.endsOn)));
+  const blocked = document.calendars.find(row => calendarRestrictsEditing(row, groupId, dates, termId));
   if (blocked) fail(calendarClosedMessage(blocked));
 };
 export const getCalendarDayIssue = (calendar: GroupCalendar, date: string): string | null => {

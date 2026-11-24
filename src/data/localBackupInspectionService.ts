@@ -163,7 +163,7 @@ export const createBackupInspectionService = (dependencies: BackupDependencies) 
       warnings.push("Файловые базы повторно сверены отдельными чтениями. Это не общий атомарный снимок: перед будущим применением потребуется новая проверка всех источников.");
       const inspection: BackupInspection = { actor: { id: command.actorId, revision: command.actorRevision }, filename: command.file.name, source: archive.source, completedAt: archive.completedAt, inspectedAt: new Date().toISOString(), sha256, totals: archive.totals, warnings, documents, comparison, plannerComparison, catalogComparison, accountComparison, learningComparison, scheduleComparison, scheduleCatalogComparison, academicComparison, journalComparison, journalSnapshotComparison, notificationComparison, assessmentComparison };
       if (currentGeneration !== generation) throw new DOMException("Проверка заменена новым файлом.", "AbortError");
-      bindBackupInspectionPreview(inspection, command.file, before);
+      bindBackupInspectionPreview(inspection, command.file, before, fileSnapshots);
       previous = inspection;
       return inspection;
     } catch (error) {

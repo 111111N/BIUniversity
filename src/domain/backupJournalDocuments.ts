@@ -11,6 +11,9 @@ import type { ManagedScheduleSnapshot } from "./scheduleManagement";
 import { createArchivedJournalLessonIndex, inspectJournalLessonReferences, type JournalLessonReference } from "./journalLessonReferences";
 import { inspectJournalPeopleReferences, type JournalPersonReference } from "./journalPeopleReferences";
 import { inspectJournalActorContexts } from "./journalActorContexts";
+import type { AcademicPeriodsDocument } from "./academicPeriods";
+import type { GroupCalendarsDocument } from "./groupCalendarTypes";
+import { inspectArchivedJournalCalendars } from "./backupJournalCalendars";
 
 export const BACKUP_JOURNAL_DOCUMENTS = {
   journals: { key: "bi-university-journal-v1:", prefix: "bi-university-journal-", label: "Журналы" },
@@ -22,6 +25,7 @@ interface JournalContext extends ArchivedJournalCatalogs {
   peopleSource?: { accountIds?: ReadonlySet<string> };
   unavailableJournalKeys?: readonly string[];
   completedAt?: string;
+  calendarSource?: { calendars?: GroupCalendarsDocument; periods?: AcademicPeriodsDocument };
 }
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === "string" && Boolean(value.trim());
@@ -70,6 +74,7 @@ export const inspectBackupJournals = async (entries: Readonly<AdministrativeBack
   let count = 0; let historyComparisons = 0;
   let snapshotComparisons = 0; let unresolvedCells = 0;
   const journals = new Map<string, Student[]>(); const histories = new Map<string, JournalChange[]>();
+  const historyAreas = new Map<string, JournalTeachingArea>();
   const journalKeys = new Set<string>(catalogs?.unavailableJournalKeys);
   const areas = { journals: { matched: 0, unresolved: 0 }, journalHistory: { matched: 0, unresolved: 0 } };
   const lessonStats = { journals: { matched: 0, unresolved: 0 }, journalHistory: { matched: 0, unresolved: 0 } };
@@ -150,6 +155,7 @@ export const inspectBackupJournals = async (entries: Readonly<AdministrativeBack
     if (kind === "journals") journals.set(entry.key, rows as Student[]);
     if (kind === "journalHistory") {
       histories.set(entry.key, rows as JournalChange[]);
+      historyAreas.set(entry.key, area);
       if (catalogs) {
         const contexts = await inspectJournalActorContexts(rows as JournalChange[], area, signal);
         actorStats.consistent += contexts.consistent; actorStats.conflicting += contexts.conflicting;
@@ -177,6 +183,15 @@ export const inspectBackupJournals = async (entries: Readonly<AdministrativeBack
       referenceId: key, ...(finding.id === undefined ? {} : { recordId: finding.id }),
     });
   }
+  let calendarSummary = "";
+  if (catalogs?.calendarSource) {
+    const sources = function* () {
+      for (const [key, changes] of histories) yield { key, changes, area: historyAreas.get(key) ?? { status: "unavailable" as const } };
+    };
+    const calendars = await inspectArchivedJournalCalendars(sources(), catalogs.lessonSource?.schedule, catalogs.calendarSource.calendars, catalogs.calendarSource.periods, catalogs.completedAt, signal);
+    calendarSummary = ` ${calendars.summary}`;
+    for (const finding of calendars.issues) addIssue(finding);
+  }
   checkBackupAbort(signal);
   for (const kind of Object.keys(stats) as Kind[]) {
     const current = stats[kind]; const definition = BACKUP_JOURNAL_DOCUMENTS[kind];
@@ -196,7 +211,8 @@ export const inspectBackupJournals = async (entries: Readonly<AdministrativeBack
             : " Ссылки на учётки студентов и авторов не проверялись.")
           + (kind !== "journalHistory" ? "" : catalogs
             ? ` Сохранённый контекст автора: соответствует текущему контракту ${actorStats.consistent}; расходится ${actorStats.conflicting}; не хватает данных ${actorStats.incomplete}; не определена область ${actorStats.uncheckedArea}. Это сверка утверждений внутри события, а не подтверждение реальных прав на его дату.`
-            : " Сохранённый контекст автора не сверялся с контрактом записи журнала."),
+            : " Сохранённый контекст автора не сверялся с контрактом записи журнала.")
+          + (kind === "journalHistory" ? calendarSummary : ""),
     });
   }
   return { checks, issues };

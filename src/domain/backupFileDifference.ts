@@ -69,6 +69,13 @@ const read = (source: FileSource, kind: Kind) => {
   }
   return { metadata, blob, unknown };
 };
+export const readBackupFileMetadata = (source: FileSource) => {
+  const kind = kindOf(source.database, source.store.name);
+  if (!kind || !supported(source, kind)) throw new Error("Схема файловой версии не поддерживается для просмотра метаданных.");
+  const record = read(source, kind);
+  if (!record || record.unknown) throw new Error("Файловая версия не прошла полную проверку известных метаданных либо содержит неподдерживаемые поля.");
+  return record.metadata;
+};
 const sameScalar = (a?: BackupValue, b?: BackupValue) => a === undefined || b === undefined ? a === b
   : a.type === b.type && (a.type === "undefined" || ("value" in a && "value" in b && a.value === b.value));
 const sameContent = async (a: SavedBlob, b: SavedBlob, signal?: AbortSignal) => {

@@ -22,6 +22,8 @@ import type { SelectedBaseDocuments } from "./backupBaseSelection";
 import { inspectSelectedBaseDependencies } from "./backupSelectedBaseDependencies";
 import { ASSESSMENTS_STORAGE_KEY, type AssessmentDocument } from "./assessmentTypes";
 import { inspectAssessmentDependencies } from "./backupAssessmentDependencies";
+import { inspectArchivedAssessmentCalendars } from "./backupAssessmentCalendars";
+import { inspectArchivedAcademicPeriodCalendars } from "./backupAcademicPeriodCalendars";
 import type { SelectedListSources } from "./backupListSelection";
 import { inspectBackupPlanners } from "./backupPlannerDocuments";
 import { inspectBackupNotifications } from "./backupNotificationDocuments";
@@ -29,6 +31,7 @@ import { inspectBackupJournals } from "./backupJournalDocuments";
 import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
 import { inspectLearningDependencies } from "./backupLearningDependencies";
 import { inspectBackupSettings } from "./backupSettingsDocuments";
+import { inspectArchivedScheduleCalendars } from "./backupScheduleCalendars";
 
 export interface SelectedDependenciesReview { scope: "selected-document-dependencies"; status: "blocked" | "checks-complete"; checkedAt: string; issues: BackupDocumentIssue[]; counts: { errors: number; unconfirmed: number } }
 
@@ -80,13 +83,14 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
   if (preferences) for (const finding of (await inspectBackupSettings(preferences, accounts.document?.accounts, signal)).issues) issue(finding);
   await inspectSelectedBaseDependencies({ accounts: accounts.document, groups: groups.document, subjects: subjects.document, schedule: schedule.document, rooms, assessments }, checkedAt, issue, signal);
   if (assessments) for (const finding of await inspectAssessmentDependencies(assessments, { accountIds, groupIds, subjectIds, periods }, checkedAt, signal)) issue(finding);
+  if (assessments) for (const finding of (await inspectArchivedAssessmentCalendars(assessments, calendars, periods, checkedAt, signal)).issues) issue(finding);
   if (lists) {
     const assignments = lists.assignments.length ? decodeBackupAssignments(lists.assignments[0].raw) : undefined;
     const submissions = lists.submissions.length ? decodeBackupSubmissions(lists.submissions[0].raw) : undefined;
     for (const finding of await inspectLearningDependencies(assignments, submissions, { accountIds, subjectIds, groupIds, unconfirmedAttachments: true }, checkedAt, signal)) issue(finding);
     for (const finding of (await inspectBackupPlanners(lists.planners, accountIds, signal, checkedAt)).issues) issue(finding);
     for (const finding of (await inspectBackupNotifications(lists.notifications, accountIds, signal, { subjectIds, groupIds, assignments, submissions }, checkedAt)).issues) issue(finding);
-    for (const finding of (await inspectBackupJournals(lists.journals, signal, { subjectIds, groupIds, lessonSource: { schedule: schedule.document }, peopleSource: { accountIds }, unavailableJournalKeys: lists.unavailableJournalKeys, completedAt: checkedAt })).issues) issue(finding);
+    for (const finding of (await inspectBackupJournals(lists.journals, signal, { subjectIds, groupIds, lessonSource: { schedule: schedule.document }, peopleSource: { accountIds }, unavailableJournalKeys: lists.unavailableJournalKeys, completedAt: checkedAt, calendarSource: { calendars, periods } })).issues) issue(finding);
   }
   let steps = 0;
   if (periods) for (const event of periods.history) {
@@ -95,6 +99,7 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
     if (Date.parse(event.occurredAt) > Date.parse(checkedAt)) issue({ kind: "periods", level: "error", code: "selected-period-event-after-check", recordId: event.id, message: "Событие учебного периода датировано позже момента проверки выбранных данных." });
   }
   if (periods?.history.length) issue({ kind: "periods", level: "review", code: "unconfirmed-selected-period-authority", message: "Наличие автора не подтверждает его исторические полномочия на изменение учебного периода." });
+  if (periods) for (const finding of (await inspectArchivedAcademicPeriodCalendars(periods, calendars, checkedAt, signal)).issues) issue(finding);
   if (directories) for (const event of directories.history) {
     if (++steps % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0));
     checkBackupAbort(signal);
@@ -104,6 +109,7 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
   if (directories?.history.length) issue({ kind: "educationDirectories", level: "review", code: "unconfirmed-selected-directory-authority", message: "Наличие автора не подтверждает его исторические полномочия на изменение программы или формы обучения." });
   if (curricula) for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds, subjectIds, subjects: subjects.document, directories, periods }, checkedAt, signal)) issue(finding);
   if (calendars) for (const finding of await inspectArchivedGroupCalendars(calendars, { accountIds, groupIds, periods }, checkedAt, signal)) issue(finding);
+  for (const finding of (await inspectArchivedScheduleCalendars(schedule.document, calendars, periods, checkedAt, signal)).issues) issue(finding);
   if (teaching) for (const finding of await inspectArchivedTeachingAssignments(teaching, { accountIds, groupIds, subjectIds, periods, schedule: schedule.document }, checkedAt, signal)) issue(finding);
   else if (schedule.document && [...schedule.document.published.flatMap(week => week.lessons), ...schedule.document.journal, ...(schedule.document.publications?.flatMap(version => version.week.lessons) ?? [])].some(lesson => lesson.teachingAssignmentId)) issue({ kind: "teachingAssignments", level: "error", code: "missing-selected-teaching-source", message: "Расписание ссылается на версии назначений, но выбранный источник назначений отсутствует или не согласован со своей историей." });
   if (rooms || schedule.document) for (const finding of await inspectArchivedRooms(rooms, { accountIds, schedule: schedule.document }, checkedAt, signal)) issue(finding);

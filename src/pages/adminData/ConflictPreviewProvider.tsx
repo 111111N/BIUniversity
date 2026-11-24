@@ -30,14 +30,16 @@ export default function ConflictPreviewProvider({ inspection, active, children }
     if (!active || !inspection || (!choices.size && (state?.inspection !== inspection || !state.preview || state.error))) return;
     const target = state?.inspection === inspection ? state.difference : validationTarget.current;
     if (!target) return;
-    const check = () => {
+    const check = (invalidateFile = false) => {
       if (!backupConflictPreviewService.isCurrent({ inspection, difference: target, actorId: inspection.actor.id, actorRevision: inspection.actor.revision })) {
         setChoiceState({ inspection, values: EMPTY_CHOICES }); clearBackupConflictChoices(inspection);
         setChoiceNotice("Данные или доступ изменились. Черновик выбора сброшен; проверьте файл заново.");
         setState(current => current?.inspection === inspection ? { ...current, preview: null, error: "Данные или доступ изменились. Значения скрыты; проверьте файл заново." } : current);
+      } else if (invalidateFile && state?.preview?.mode === "file-metadata") {
+        setState(current => current?.inspection === inspection ? { ...current, preview: null, error: "После изменения данных или возврата на страницу файловые метаданные нужно сверить заново. Закройте окно и повторите просмотр; при изменении файлов потребуется новая инспекция." } : current);
       }
     };
-    const unsubscribe = subscribeConflictPreviewChanges(check); check(); return unsubscribe;
+    const unsubscribe = subscribeConflictPreviewChanges(() => check(true)); check(); return unsubscribe;
   }, [inspection, active, state, choices]);
   const open = async (difference: BackupDifference) => {
     if (!inspection || !active || operation.current) return;

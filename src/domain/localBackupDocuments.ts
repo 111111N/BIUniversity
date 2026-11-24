@@ -38,6 +38,8 @@ import { inspectArchivedStudentImports } from "./backupStudentImports";
 import { BACKUP_ASSESSMENT_DOCUMENTS, inspectBackupAssessments, isBackupAssessmentKey } from "./backupAssessmentDocuments";
 import { createBackupIssueCollector } from "./backupIssueCollector";
 import { inspectArchivedFileSchemaCoverage } from "./backupFileSchemaCoverage";
+import { inspectArchivedScheduleCalendars } from "./backupScheduleCalendars";
+import { inspectArchivedAcademicPeriodCalendars } from "./backupAcademicPeriodCalendars";
 
 export const BACKUP_CORE_DOCUMENTS = {
   accounts: { key: "bi-university-accounts-v1", prefix: "bi-university-accounts-", label: "Учётные записи" },
@@ -182,6 +184,9 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const scheduleCheck = result.checks.find((check) => check.kind === "schedule");
   if (scheduleCheck) scheduleCheck.message += ` ${scheduleConflicts.summary}`;
   for (const finding of scheduleConflicts.issues) issue(finding);
+  const publicationCalendars = await inspectArchivedScheduleCalendars(schedule, groupCalendars, periods, archive.completedAt, signal);
+  if (scheduleCheck) scheduleCheck.message += ` ${publicationCalendars.summary}`;
+  for (const finding of publicationCalendars.issues) issue(finding);
   const learningFiles = await inspectArchivedLearningAttachments(assignments, submissions, archive.databases, signal);
   for (const check of result.checks) if (check.kind === "assignments" || check.kind === "submissions") check.message += ` ${learningFiles.summaries[check.kind]}`;
   for (const finding of learningFiles.issues) issue(finding);
@@ -189,12 +194,12 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const groupIds = groups ? new Set([...baseline.groupIds, ...groups.groups.map((group) => group.id)]) : undefined;
   const savedGroupIds = new Set(groups?.groups.map((group) => group.id) ?? []);
   const subjectIds = subjects ? new Set(subjects.subjects.map((subject) => subject.id)) : undefined;
-  const assessmentReview = await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, periods, accounts, subjects, schedule }, archive.completedAt, signal);
+  const assessmentReview = await inspectBackupAssessments(archive.localStorage, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, periods, accounts, subjects, schedule, groupCalendars }, archive.completedAt, signal);
   addReview(assessmentReview);
   const subjectCheck = result.checks.find(check => check.kind === "subjects");
   if (subjectCheck) subjectCheck.message += ` ${assessmentReview.subjectStateSummary}`;
   addReview(await inspectBackupJournals(archive.localStorage, signal, {
-    groupIds: groups ? savedGroupIds : undefined, subjectIds, lessonSource: { schedule }, peopleSource: { accountIds }, completedAt: archive.completedAt,
+    groupIds: groups ? savedGroupIds : undefined, subjectIds, lessonSource: { schedule }, peopleSource: { accountIds }, completedAt: archive.completedAt, calendarSource: { calendars: groupCalendars, periods },
   }));
   addReview(await inspectBackupPlanners(archive.localStorage, accountIds, signal, archive.completedAt));
   addReview(await inspectBackupNotifications(archive.localStorage, accountIds, signal, { assignments, submissions, subjectIds, groupIds: groups ? savedGroupIds : undefined }, archive.completedAt));
@@ -233,6 +238,9 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   if (periods) {
     const check = result.checks.find(row => row.kind === "periods")!;
     check.records = periods.years.length + periods.terms.length;
+    const calendarReview = await inspectArchivedAcademicPeriodCalendars(periods, groupCalendars, archive.completedAt, signal);
+    check.message += ` ${calendarReview.summary}`;
+    for (const finding of calendarReview.issues) issue(finding);
     for (const event of periods.history) {
       await step();
       if (!accountIds) issue({ kind: "periods", level: "review", code: "unchecked-period-author", recordId: event.id, referenceId: event.actorId, message: "Автор изменения учебного периода не проверен: учётные записи отсутствуют или не читаются в архиве." });

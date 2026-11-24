@@ -7,6 +7,8 @@ import type { AccountsDocument } from "./accounts";
 import type { SubjectCatalogDocument } from "./subjectCatalog";
 import type { ManagedScheduleSnapshot } from "./scheduleManagement";
 import { inspectArchivedSubjectStates } from "./backupSubjectStates";
+import type { GroupCalendarsDocument } from "./groupCalendarTypes";
+import { inspectArchivedAssessmentCalendars } from "./backupAssessmentCalendars";
 
 export const BACKUP_ASSESSMENT_DOCUMENTS = {
   assessments: { key: ASSESSMENTS_STORAGE_KEY, prefix: "bi-university-assessments-", label: "Аттестации и ведомости" },
@@ -16,6 +18,7 @@ export interface BackupAssessmentSources extends AssessmentDependencySources {
   accounts?: AccountsDocument;
   subjects?: SubjectCatalogDocument;
   schedule?: ManagedScheduleSnapshot;
+  groupCalendars?: GroupCalendarsDocument;
 }
 
 /** Check archived IDs, never today's role, membership or name as proof of historical access. */
@@ -54,7 +57,13 @@ export async function inspectBackupAssessments(
           : "Не читается схема аттестаций: проверьте версию, ID, состав, результаты, комиссию и согласованность истории. Записи не исправлялись." });
     }
   }
-  if (document && !invalid) for (const finding of await inspectAssessmentDependencies(document, sources, completedAt, signal)) issue(finding);
+  let calendarSummary = "";
+  if (document && !invalid) {
+    for (const finding of await inspectAssessmentDependencies(document, sources, completedAt, signal)) issue(finding);
+    const calendarReview = await inspectArchivedAssessmentCalendars(document, sources.groupCalendars, sources.periods, completedAt, signal);
+    calendarSummary = ` ${calendarReview.summary}`;
+    for (const finding of calendarReview.issues) issue(finding);
+  }
   const subjectStates = await inspectArchivedSubjectStates(sources.subjects, {
     accounts: sources.accounts, schedule: sources.schedule, assessments: invalid ? undefined : document,
   }, completedAt, signal);
@@ -65,6 +74,6 @@ export async function inspectBackupAssessments(
     ...(document && !invalid ? { revision: document.revision, records: document.assessments.length } : {}),
     message: !documents ? "Аттестации не сохранены в архиве. Данные браузера и примеры не подставляются."
       : invalid ? "Документ аттестаций не прошёл проверку схемы или версии ключа. Исходные данные сохранены."
-        : "Схема ведомостей, пересдач, комиссий и истории прочитана; ссылки проверены только по архивным справочникам. Это не подтверждение полномочий и не разрешение на восстановление.",
+        : "Схема ведомостей, пересдач, комиссий и истории прочитана; ссылки проверены только по архивным справочникам. Это не подтверждение полномочий и не разрешение на восстановление." + calendarSummary,
   }] };
 }

@@ -2,7 +2,7 @@ import type { BackupInspection } from "./localBackupInspectionService";
 import { capturePortalStorage, createBrowserBackupDependencies, type BackupCommand, type BackupDependencies } from "./localBackupService";
 import { canPreviewBackupDifference, readBackupRecordPreview } from "../domain/backupRecordPreview";
 import { getBackupDifferenceKey, type BackupDifference } from "../domain/backupComparison";
-import { addBackupText, checkBackupAbort, createBackupBudget, type AdministrativeBackup } from "../domain/localBackup";
+import { addBackupText, BACKUP_DATABASES, checkBackupAbort, createBackupBudget, type AdministrativeBackup } from "../domain/localBackup";
 import { validateAdministrativeBackup } from "../domain/localBackupValidation";
 import { resolveBackupAssessmentSelection, reviewBackupAssessmentSelection, type AssessmentRecordChoice, type AssessmentSelectionCollection } from "../domain/backupAssessmentSelection";
 import { ASSESSMENTS_STORAGE_KEY } from "../domain/assessmentTypes";
@@ -19,11 +19,13 @@ import { BACKUP_BASE_DOCUMENTS } from "../domain/backupBaseSelectionDefinitions"
 import { resolveBackupListSelection } from "../domain/backupListSelection";
 import { resolveBackupVisualPreferenceSelection } from "../domain/backupVisualPreferenceSelection";
 import { isBackupVisualPreferenceKey } from "../domain/backupVisualPreferences";
+import { canPreviewBackupFileMetadata, readBackupFileMetadataPreview } from "../domain/backupFileMetadataPreview";
+import { captureBackupDatabaseSnapshot, fingerprintBackupDatabaseSnapshot } from "./localBackupDatabaseSnapshot";
 
 export type BackupConflictVersion = "archive" | "browser";
-interface Snapshot { file: File; sha256: string; actorId: string; actorRevision: number; current: AdministrativeBackup["localStorage"]; allowed: Set<string>; reviewed: Set<string>; choices: Map<string, BackupConflictVersion>; choiceRevision: number }
+interface Snapshot { file: File; sha256: string; actorId: string; actorRevision: number; current: AdministrativeBackup["localStorage"]; fileSnapshots: ReadonlyMap<string, string>; allowed: Set<string>; reviewed: Set<string>; choices: Map<string, BackupConflictVersion>; choiceRevision: number }
 const snapshots = new WeakMap<BackupInspection, Snapshot>();
-export const bindBackupInspectionPreview = (inspection: BackupInspection, file: File, current: AdministrativeBackup["localStorage"]) => {
+export const bindBackupInspectionPreview = (inspection: BackupInspection, file: File, current: AdministrativeBackup["localStorage"], fileSnapshots: ReadonlyMap<string, string> = new Map()) => {
   const lists: (readonly BackupDifference[] | undefined)[] = [inspection.plannerComparison?.differences, inspection.catalogComparison?.groups.differences, inspection.catalogComparison?.subjects.differences, inspection.catalogComparison?.groupHistory?.differences, inspection.catalogComparison?.subjectHistory?.differences, inspection.accountComparison?.differences, inspection.accountComparison?.history?.differences, inspection.accountComparison?.education?.differences, inspection.learningComparison?.assignments.differences, inspection.learningComparison?.submissions.differences, inspection.learningComparison?.attempts?.differences, inspection.scheduleComparison?.drafts.differences, inspection.scheduleComparison?.published.differences, inspection.scheduleComparison?.journal?.differences, inspection.journalComparison?.differences];
   lists.push(inspection.notificationComparison?.differences);
   lists.push(inspection.journalSnapshotComparison?.differences);
@@ -32,7 +34,7 @@ export const bindBackupInspectionPreview = (inspection: BackupInspection, file: 
   lists.push(inspection.assessmentComparison?.corrections?.differences, inspection.assessmentComparison?.correctionHistory?.differences);
   for (const section of SCHEDULE_CATALOG_SECTIONS) lists.push(inspection.scheduleCatalogComparison?.[section].differences);
   for (const section of ACADEMIC_COMPARISON_SECTIONS) lists.push(inspection.academicComparison?.[section].differences);
-  snapshots.set(inspection, { file, sha256: inspection.sha256, actorId: inspection.actor.id, actorRevision: inspection.actor.revision, current: current.map(entry => ({ ...entry })), allowed: new Set([...inspection.comparison.differences, ...lists.flatMap(list => list ?? [])].filter(canPreviewBackupDifference).map(getBackupDifferenceKey)), reviewed: new Set(), choices: new Map(), choiceRevision: 0 });
+  snapshots.set(inspection, { file, sha256: inspection.sha256, actorId: inspection.actor.id, actorRevision: inspection.actor.revision, current: current.map(entry => ({ ...entry })), fileSnapshots: new Map(fileSnapshots), allowed: new Set([...inspection.comparison.differences, ...lists.flatMap(list => list ?? [])].filter(item => canPreviewBackupDifference(item) || canPreviewBackupFileMetadata(item)).map(getBackupDifferenceKey)), reviewed: new Set(), choices: new Map(), choiceRevision: 0 });
 };
 export const releaseBackupInspectionPreview = (inspection: BackupInspection | null) => { if (inspection) snapshots.delete(inspection); };
 export const clearBackupConflictChoices = (inspection: BackupInspection | null) => { const snapshot = inspection ? snapshots.get(inspection) : undefined; if (snapshot) { snapshot.reviewed.clear(); snapshot.choices.clear(); snapshot.choiceRevision++; } };
@@ -46,7 +48,8 @@ const resolveBinding = (command: BackupSelectionReviewCommand) => {
 };
 const resolveSnapshot = (command: BackupConflictPreviewCommand) => {
   const snapshot = resolveBinding(command);
-  if (!canPreviewBackupDifference(command.difference) || !snapshot.allowed.has(getBackupDifferenceKey(command.difference))) throw new Error(STALE);
+  if ((!canPreviewBackupDifference(command.difference) && !canPreviewBackupFileMetadata(command.difference)) || !snapshot.allowed.has(getBackupDifferenceKey(command.difference))) throw new Error(STALE);
+  if (canPreviewBackupFileMetadata(command.difference) && !snapshot.fileSnapshots.has(command.difference.reference.database)) throw new Error(STALE);
   return snapshot;
 };
 const captureCurrent = (dependencies: BackupDependencies, snapshot: Snapshot) => {
@@ -205,6 +208,7 @@ export const createBackupConflictPreviewService = (dependencies: BackupDependenc
     try {
       checkBackupAbort(command.signal); dependencies.authorize(command);
       const snapshot = resolveSnapshot(command), key = getBackupDifferenceKey(command.difference);
+      if (command.difference.reference?.storage === "indexedDB") throw new Error("Просмотр метаданных не подтверждает содержимое, принадлежность и право на файл. Выбор файловой версии пока недоступен.");
       if (!["archive", "browser"].includes(command.version) || !snapshot.reviewed.has(key)) throw new Error("Сначала просмотрите обе поддерживаемые версии записи. Выбор не сохранён.");
       captureCurrent(dependencies, snapshot); dependencies.authorize(command); captureCurrent(dependencies, snapshot);
       snapshot.choices.set(key, command.version);
@@ -224,14 +228,34 @@ export const createBackupConflictPreviewService = (dependencies: BackupDependenc
   async preview(command: BackupConflictPreviewCommand) {
     try {
       checkBackupAbort(command.signal); dependencies.authorize(command);
-      const snapshot = resolveSnapshot(command);
+      const difference = structuredClone(command.difference), snapshot = resolveSnapshot({ ...command, difference });
       const browser = captureCurrent(dependencies, snapshot); command.onProgress?.("Читаем проверенные версии…");
       const archive = await readVerifiedArchive(dependencies, snapshot, command);
       dependencies.authorize(command);
-      const result = await readBackupRecordPreview(archive.localStorage, browser, command.difference, command.signal);
+      let result;
+      if (canPreviewBackupFileMetadata(difference)) {
+        const reference = difference.reference, definition = BACKUP_DATABASES.find(source => source.name === reference.database && source.store === reference.store);
+        const expected = snapshot.fileSnapshots.get(reference.database);
+        if (!definition || !expected) throw new Error(STALE);
+        const readCurrentFile = async () => {
+          checkBackupAbort(command.signal); dependencies.authorize(command);
+          const available = await dependencies.listDatabases();
+          if (!available.some(database => database.name === definition.name)) throw new Error(STALE);
+          const raw = await dependencies.readDatabase(definition.name, definition.store, command.signal);
+          if (raw.name !== definition.name) throw new Error(STALE);
+          return raw;
+        };
+        command.onProgress?.("Проверяем файловые версии и метаданные…");
+        const current = await captureBackupDatabaseSnapshot(await readCurrentFile(), createBackupBudget(), command.signal);
+        if (current.fingerprint !== expected) throw new Error(STALE);
+        const archived = archive.databases.filter(database => database.name === definition.name);
+        if (archived.length !== 1) throw new Error(STALE);
+        result = await readBackupFileMetadataPreview(archived[0], current.database, difference, command.signal);
+        if (await fingerprintBackupDatabaseSnapshot(await readCurrentFile(), createBackupBudget(), command.signal) !== expected) throw new Error(STALE);
+      } else result = await readBackupRecordPreview(archive.localStorage, browser, difference, command.signal);
       checkBackupAbort(command.signal); dependencies.authorize(command); captureCurrent(dependencies, snapshot);
       if (snapshots.get(command.inspection) !== snapshot) throw new Error(STALE);
-      if (!result.hasUnpreviewedFields && result.rows.length > 0) snapshot.reviewed.add(getBackupDifferenceKey(command.difference));
+      if (result.mode !== "file-metadata" && !result.hasUnpreviewedFields && result.rows.length > 0) snapshot.reviewed.add(getBackupDifferenceKey(difference));
       return result;
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) console.error("Не удалось открыть сравнение версий резервной копии:", error);
