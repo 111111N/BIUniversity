@@ -8,6 +8,7 @@ import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument, emptyAcade
 import { isAccountActive } from "../domain/accounts";
 import { readGroupCalendarsDocument } from "./groupCalendarRead";
 import { calendarClosedMessage } from "../domain/groupCalendars";
+import { calendarRestrictsCurriculumBinding, getCurriculumBindingCalendarChange } from "../domain/curriculumCalendarRules";
 import { decodeCurricula, executeCurriculumCommand, type CurriculumDependencies } from "../domain/curricula";
 import { CURRICULA_KEY, emptyCurricula, type CurriculumCommand, type CurriculumContext, type CurriculumEvent } from "../domain/curriculumTypes";
 
@@ -47,7 +48,8 @@ export const curriculaService = {
         const source = sources(captured.actorId);
         if (captured.type === "bind") {
           const previous = source.state.bindings.find(row => row.group.id === captured.groupId);
-          const locked = readGroupCalendarsDocument().calendars.find(calendar => calendar.state === "closed" && calendar.group.id === captured.groupId && previous?.periods.some(entry => entry.period.term.id === calendar.period.term.id) && (previous.planId !== captured.planId || previous.periods.some(entry => entry.period.term.id === calendar.period.term.id && !captured.periods.some(next => next.semester === entry.semester && next.termId === entry.period.term.id))));
+          const change = getCurriculumBindingCalendarChange(captured.groupId, previous, captured.planId, captured.periods);
+          const locked = readGroupCalendarsDocument().calendars.find(calendar => calendarRestrictsCurriculumBinding(calendar, change));
           if (locked) throw new Error(calendarClosedMessage(locked));
         }
         const next = executeCurriculumCommand(source.state, captured, source.actor, source.dependencies, { id: crypto.randomUUID(), eventId: crypto.randomUUID(), occurredAt: new Date().toISOString() });

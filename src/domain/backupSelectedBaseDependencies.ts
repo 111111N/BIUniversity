@@ -11,15 +11,17 @@ import { inspectArchivedGroupHistory } from "./backupGroupHistory";
 import { inspectArchivedSubjectStates } from "./backupSubjectStates";
 import { inspectArchivedScheduleConflicts } from "./backupScheduleConflicts";
 import { inspectArchivedSchedulePublications } from "./backupSchedulePublications";
-import { indexArchivedAccountHistory } from "./backupAccountHistory";
+import { resolveArchivedAccountHistory, type ArchivedAccountHistoryIndex } from "./backupAccountHistory";
 import { inspectArchivedStudentNumbers } from "./backupStudentNumbers";
 import { inspectArchivedStudentNumberHistory } from "./backupStudentNumberHistory";
 import { inspectArchivedStudentOperations } from "./backupStudentOperations";
 import { inspectArchivedStudentImports } from "./backupStudentImports";
+import { isCanonicalBackupInstant } from "./backupHistoryTime";
 
 interface Sources {
   accounts?: AccountsDocument; groups?: GroupCatalogDocument; subjects?: SubjectCatalogDocument;
   schedule?: ManagedScheduleSnapshot; rooms?: RoomsDocument; assessments?: AssessmentDocument;
+  accountHistory?: ArchivedAccountHistoryIndex;
 }
 
 /** Sources have passed full-source selection. Current roles never prove historical authority. */
@@ -42,7 +44,9 @@ export async function inspectSelectedBaseDependencies(sources: Sources, checkedA
   const timestamp = (kind: BackupDocumentKind, recordId: string, value?: string) => {
     if (value === undefined) return;
     const instant = Date.parse(value);
-    if (!Number.isFinite(instant) || instant > cutoff) issue({ kind, level: "error", code: "invalid-selected-base-event-time", recordId, message: "Время сохранения записи некорректно или позже момента проверки выбранного набора. Дата будущего занятия сама по себе не является ошибкой." });
+    if (!Number.isFinite(instant)) issue({ kind, level: "error", code: "invalid-selected-base-event-time", recordId, message: "Время сохранения записи некорректно или позже момента проверки выбранного набора. Дата будущего занятия сама по себе не является ошибкой." });
+    else if (!isCanonicalBackupInstant(value)) issue({ kind, level: "review", code: "unconfirmed-selected-base-event-instant", recordId, message: "Старый формат времени не подтверждает канонический момент записи. Строгая проверка границы не выполнялась по условной полуночи." });
+    else if (instant > cutoff) issue({ kind, level: "error", code: "invalid-selected-base-event-time", recordId, message: "Время сохранения записи некорректно или позже момента проверки выбранного набора. Дата будущего занятия сама по себе не является ошибкой." });
   };
   const memberships = async (recordId: string, rows: AccountsDocument["accounts"][number]["memberships"]) => {
     for (const membership of rows) {
@@ -83,7 +87,7 @@ export async function inspectSelectedBaseDependencies(sources: Sources, checkedA
     }
     if (accounts.version === 1) issue({ kind: "accounts", level: "review", code: "unconfirmed-selected-legacy-people", message: "Старый документ учёток не содержит подтверждённого реестра людей и его истории. Человек не создавался и не объединялся по ФИО." });
     if (accounts.history.length || accounts.personHistory?.length || accounts.educationEvents?.length) issue({ kind: "accounts", level: "review", code: "unconfirmed-selected-account-authority", message: "Наличие авторов в выбранных учётках не подтверждает их роли и полномочия на момент исторических действий." });
-    const history = await indexArchivedAccountHistory(accounts.history, signal);
+    const history = await resolveArchivedAccountHistory(accounts.history, signal, sources.accountHistory);
     for (const finding of (await inspectArchivedStudentNumbers(accounts, signal)).issues) issue(finding);
     for (const finding of (await inspectArchivedStudentNumberHistory(accounts, signal, history)).issues) issue(finding);
     for (const finding of (await inspectArchivedStudentOperations(accounts, signal, history)).issues) issue(finding);

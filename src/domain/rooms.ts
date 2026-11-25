@@ -44,10 +44,11 @@ export const appendRoom = (source: RoomsDocument, after: Room, metadata: { id: s
 
 export interface LessonRoom { room: string; roomId?: string; roomRevision?: number; roomBuilding?: string }
 export interface RoomIndex { byId: Map<string, Room>; candidatesByLegacyKey: Map<string, Set<string>> }
+export const getRoomLegacyKeys = (room: Room) => new Set([room.name, roomLabel(room), ...room.aliases].map(getScheduleRoomKey).filter(Boolean));
 /** Old labels remain candidates, not confirmed identities. Explicit room IDs resolve ambiguity. */
 export const indexRooms = (document: RoomsDocument): RoomIndex => {
   const candidatesByLegacyKey = new Map<string, Set<string>>();
-  const add = (room: Room) => { for (const label of [room.name, roomLabel(room), ...room.aliases]) { const key = getScheduleRoomKey(label); if (!key) continue; const ids = candidatesByLegacyKey.get(key) ?? new Set<string>(); ids.add(room.id); candidatesByLegacyKey.set(key, ids); } };
+  const add = (room: Room) => { for (const key of getRoomLegacyKeys(room)) { const ids = candidatesByLegacyKey.get(key) ?? new Set<string>(); ids.add(room.id); candidatesByLegacyKey.set(key, ids); } };
   document.history.forEach(event => { if (event.before) add(event.before); add(event.after); });
   return { byId: new Map(document.rooms.map(room => [room.id, room])), candidatesByLegacyKey };
 };

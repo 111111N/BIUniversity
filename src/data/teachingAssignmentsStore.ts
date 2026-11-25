@@ -12,6 +12,7 @@ import { isAccountActive } from "../domain/accounts";
 import { isGroupActive } from "../domain/groupCatalog";
 import { isSubjectActive } from "../domain/subjectCatalog";
 import { calendarClosedMessage } from "../domain/groupCalendars";
+import { calendarRestrictsTeachingChange, getTeachingCalendarChange } from "../domain/teachingCalendarRules";
 import { lessonTypeLabels } from "../domain/academic";
 import { appendTeachingAssignment, canTeachLesson, findTeachingAssignment, hasGeneralTeachingMembership, sameTeachingData, TEACHING_ASSIGNMENTS_KEY, type TeachingAssignment, type TeachingAssignmentCommand, type TeachingAssignmentContext } from "../domain/teachingAssignments";
 
@@ -54,9 +55,8 @@ export const teachingAssignmentsService = {
           periods: captured.periods.map(entry => ({ period: resolveAssessmentAcademicPeriod(source.periods, { termId: entry.termId, expectedRevision: captured.periodsRevision }, now), types: [...entry.types].sort() })).sort((a, b) => a.period.term.startsOn.localeCompare(b.period.term.startsOn) || a.period.term.id.localeCompare(b.period.term.id)) };
         if (after.periods.some((entry, index) => index > 0 && entry.period.term.startsOn <= after.periods[index - 1].period.term.endsOn)) throw new Error("Семестры назначения не должны пересекаться по датам.");
         if (sameTeachingData({ mode: before?.mode ?? "general", periods: before?.periods ?? [] }, { mode: after.mode, periods: after.periods })) throw new Error("Назначение не изменилось.");
-        const locked = source.calendars.calendars.find(calendar => calendar.group.id === group.id && calendar.state === "closed" && (
-          (before?.mode ?? "general") !== after.mode || [...(before?.periods ?? []), ...after.periods].some(entry => entry.period.term.id === calendar.period.term.id && !sameTeachingData(before?.periods.find(row => row.period.term.id === entry.period.term.id), after.periods.find(row => row.period.term.id === entry.period.term.id)))
-        ));
+        const change = getTeachingCalendarChange(before, after);
+        const locked = source.calendars.calendars.find(calendar => calendarRestrictsTeachingChange(calendar, change));
         if (locked) throw new Error(calendarClosedMessage(locked));
         const next = appendTeachingAssignment(source.state, after, { id: crypto.randomUUID(), actorId: source.actor.id, occurredAt: now });
         const conflicts = source.schedule.published.flatMap(week => week.lessons).filter(lesson => lesson.teacherId === teacher.id && lesson.subjectId === subject.id && lesson.groupId === group.id && Date.parse(`${lesson.date}T${lesson.endsAt}:00+03:00`) > Date.parse(now) && !canTeachLesson(next, teacher, lesson));

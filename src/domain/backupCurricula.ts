@@ -3,7 +3,8 @@ import { createAssessmentPeriodHistoryLookup } from "./assessmentPeriods";
 import type { EducationDirectoriesDocument } from "./educationDirectories";
 import type { CurriculaDocument } from "./curriculumTypes";
 import { sameCurriculumData } from "./curricula";
-import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget } from "./localBackup";
+import { checkBackupAbort } from "./localBackup";
+import { createBackupInspectionWork, createBackupIssueCollector } from "./backupIssueCollector";
 import type { BackupDocumentIssue } from "./localBackupDocuments";
 import type { SubjectCatalogDocument } from "./subjectCatalog";
 import { createBackupSubjectSnapshotLookup } from "./backupSubjectSnapshots";
@@ -18,22 +19,13 @@ const SUBJECT_SNAPSHOT_MESSAGES = {
 
 interface Dependencies { accountIds?: Set<string>; groupIds?: Set<string>; subjectIds?: Set<string>; subjects?: SubjectCatalogDocument; directories?: EducationDirectoriesDocument; periods?: AcademicPeriodsDocument }
 /** Only archive contents are used; a valid schema does not establish historical authority. */
-export async function inspectArchivedCurricula(document: CurriculaDocument, dependencies: Dependencies, completedAt: string, signal?: AbortSignal): Promise<BackupDocumentIssue[]> {
-  const issues: BackupDocumentIssue[] = [], seen = new Set<string>(), budget = createBackupBudget();
-  const issue = (value: Omit<BackupDocumentIssue, "kind">) => {
-    const key = JSON.stringify([value.code, value.referenceId, value.recordId]);
-    if (seen.has(key)) return;
-    if (issues.length >= BACKUP_LIMITS.records) throw new Error("Замечаний к зависимостям учебных планов больше 25 000. Частичный результат не создан.");
-    const finding: BackupDocumentIssue = { kind: "curricula", ...value };
-    addBackupText(budget, JSON.stringify(finding)); seen.add(key); issues.push(finding);
-  };
-  let count = 0;
-  const step = async () => {
-    if (++count % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0));
-    checkBackupAbort(signal);
-  };
-  checkBackupAbort(signal);
+async function inspectCurriculumSources(document: CurriculaDocument, dependencies: Dependencies, completedAt: string, signal?: AbortSignal): Promise<BackupDocumentIssue[]> {
+  const { issues, add } = createBackupIssueCollector("зависимостям учебных планов"), work = createBackupInspectionWork("сверки учебных планов", signal), step = work.step;
+  const issue = (value: Omit<BackupDocumentIssue, "kind">) => add({ kind: "curricula", ...value });
+  await step(0); work.assertRecords(document.history.length);
   if (!document.history.length) return issues;
+  for (const rows of [dependencies.directories?.history ?? [], dependencies.periods?.history ?? []]) work.assertRecords(rows.length);
+  await step(dependencies.periods?.history.length ?? 0);
   const checkReference = (ids: Set<string> | undefined, id: string, label: string, recordId: string) => {
     if (!ids) issue({ level: "review", code: `unchecked-curriculum-${label}`, referenceId: id, recordId, message: "Связь учебного плана не проверена: соответствующий справочник отсутствует или не читается в архиве." });
     else if (!ids.has(id)) issue({ level: label === "author" ? "error" : "review", code: `unresolved-curriculum-${label}`, referenceId: id, recordId, message: "Связь учебного плана не подтверждена сохранённым справочником. Встроенные примеры и данные браузера не подставляются." });
@@ -44,6 +36,7 @@ export async function inspectArchivedCurricula(document: CurriculaDocument, depe
   for (const event of dependencies.directories?.history ?? []) {
     await step();
     const key = JSON.stringify([event.entity, event.after.id, event.after.revision]);
+    work.addText(key);
     directorySnapshots.set(key, { at: Date.parse(event.occurredAt), value: event.after });
   }
   for (const event of document.history) {
@@ -79,4 +72,12 @@ export async function inspectArchivedCurricula(document: CurriculaDocument, depe
   }
   checkBackupAbort(signal);
   return issues;
+}
+
+export async function inspectArchivedCurricula(...args: Parameters<typeof inspectCurriculumSources>) {
+  try { return await inspectCurriculumSources(...args); }
+  catch (error) {
+    if (!(error instanceof Error && error.name === "AbortError")) console.error("Не удалось проверить зависимости исторических учебных планов:", error);
+    throw error;
+  }
 }

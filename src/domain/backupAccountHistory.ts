@@ -1,5 +1,6 @@
-import type { AccountChange } from "./accounts";
+import type { AccountChange, AccountsDocument } from "./accounts";
 import { checkBackupAbort } from "./localBackup";
+import { createBackupInspectionWork } from "./backupIssueCollector";
 
 export const archivedAccountBatchKey = (batchId: string, accountId: string) => JSON.stringify([batchId, accountId]);
 export interface ArchivedAccountHistoryIndex {
@@ -9,17 +10,24 @@ export interface ArchivedAccountHistoryIndex {
   readonly imports: ReadonlyMap<string, readonly AccountChange[]>;
   readonly issuances: readonly { entry: AccountChange; position: number }[];
 }
+export interface CoherentAccountHistoryContext {
+  source: AccountsDocument;
+  coherentAccounts: ReadonlySet<string>;
+  histories: ReadonlyMap<string, readonly AccountChange[]>;
+}
 
-export const indexArchivedAccountHistory = async (history: readonly AccountChange[], signal?: AbortSignal): Promise<ArchivedAccountHistoryIndex> => {
-  checkBackupAbort(signal);
+const buildArchivedAccountHistory = async (history: readonly AccountChange[], signal?: AbortSignal): Promise<ArchivedAccountHistoryIndex> => {
+  const work = createBackupInspectionWork("индекса истории учёток", signal);
+  await work.step(0); work.assertRecords(history.length);
   const idCounts = new Map<string, number>(); const operations = new Map<string, AccountChange[]>(); const imports = new Map<string, AccountChange[]>();
   const issuances: { entry: AccountChange; position: number }[] = [];
   const append = (map: Map<string, AccountChange[]>, batchId: string, entry: AccountChange) => {
     const key = archivedAccountBatchKey(batchId, entry.accountId); const rows = map.get(key) ?? [];
+    if (!map.has(key)) work.addText(key);
     rows.push(entry); map.set(key, rows);
   };
   for (const [position, entry] of history.entries()) {
-    if (position % 128 === 0) { await new Promise<void>((resolve) => setTimeout(resolve, 0)); checkBackupAbort(signal); }
+    await work.step(); if (!idCounts.has(entry.id)) work.addText(entry.id);
     idCounts.set(entry.id, (idCounts.get(entry.id) ?? 0) + 1);
     if (entry.studentOperationBatchId !== undefined) append(operations, entry.studentOperationBatchId, entry);
     if (entry.importBatchId !== undefined) append(imports, entry.importBatchId, entry);
@@ -27,6 +35,14 @@ export const indexArchivedAccountHistory = async (history: readonly AccountChang
   }
   checkBackupAbort(signal);
   return { source: history, idCounts, operations, imports, issuances };
+};
+
+export const indexArchivedAccountHistory = async (...args: Parameters<typeof buildArchivedAccountHistory>): Promise<ArchivedAccountHistoryIndex> => {
+  try { return await buildArchivedAccountHistory(...args); }
+  catch (error) {
+    if (!(error instanceof Error && error.name === "AbortError")) console.error("Не удалось подготовить ограниченный индекс истории учёток:", error);
+    throw error;
+  }
 };
 
 export const resolveArchivedAccountHistory = (history: readonly AccountChange[], signal?: AbortSignal, index?: ArchivedAccountHistoryIndex) => {

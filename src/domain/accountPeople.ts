@@ -1,9 +1,9 @@
 import type { AccountChange, AccountDraft, AccountsDocument, PortalAccount } from "./accounts";
 import type { Person, PersonChange, PersonDraft } from "./personTypes";
+import { getPersonExternalReferenceKey as externalKey } from "./personExternalReference";
 
 const text = (value: unknown, min = 1, max = 256): value is string => typeof value === "string" && value.length >= min && value.length <= max && value.trim() === value && !Array.from(value).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
 const timestamp = (value: unknown): value is string => typeof value === "string" && Number.isFinite(Date.parse(value));
-const externalKey = (reference: Person["externalReference"]) => reference ? JSON.stringify([reference.source.normalize("NFKC").toLowerCase(), reference.value]) : "";
 export const normalizePersonDraft = (draft: PersonDraft, persons: readonly Person[], excludedId?: string): PersonDraft => {
   if (!draft || typeof draft.name !== "string") throw new Error("Укажите имя человека.");
   const name = draft.name.trim().replace(/\s+/g, " ");

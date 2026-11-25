@@ -69,10 +69,15 @@ export const decodeTeachingAssignments = (raw: string): TeachingAssignmentsDocum
 };
 export const findTeachingAssignment = (document: Pick<TeachingAssignmentsDocument, "assignments">, teacherId: string, subjectId: string, groupId: string) => document.assignments.find(row => row.teacherId === teacherId && row.subjectId === subjectId && row.groupId === groupId);
 export const hasGeneralTeachingMembership = (teacher: { memberships: AcademicMembership[] }, subjectId: string, groupId: string) => teacher.memberships.some(row => row.subjectId === subjectId && row.groupIds.includes(groupId));
-export const canTeachLesson = (document: Pick<TeachingAssignmentsDocument, "assignments">, teacher: { id: string; memberships: AcademicMembership[] }, lesson: { subjectId: string; groupId: string; type: LessonType; date: string }) => {
-  if (!hasGeneralTeachingMembership(teacher, lesson.subjectId, lesson.groupId) || !isAcademicCalendarDate(lesson.date) || !Object.hasOwn(lessonTypeLabels, lesson.type)) return false;
-  const assignment = findTeachingAssignment(document, teacher.id, lesson.subjectId, lesson.groupId);
+// Date/type coverage alone does not establish the teacher's general membership or authority.
+export const teachingAssignmentAllowsLesson = (assignment: TeachingAssignment | undefined, lesson: { type: LessonType; date: string }) => {
+  if (!isAcademicCalendarDate(lesson.date) || !Object.hasOwn(lessonTypeLabels, lesson.type)) return false;
   return !assignment || assignment.mode === "general" || assignment.periods.some(entry => entry.types.includes(lesson.type) && entry.period.term.startsOn <= lesson.date && entry.period.term.endsOn >= lesson.date);
+};
+export const canTeachLesson = (document: Pick<TeachingAssignmentsDocument, "assignments">, teacher: { id: string; memberships: AcademicMembership[] }, lesson: { subjectId: string; groupId: string; type: LessonType; date: string }) => {
+  if (!hasGeneralTeachingMembership(teacher, lesson.subjectId, lesson.groupId)) return false;
+  const assignment = findTeachingAssignment(document, teacher.id, lesson.subjectId, lesson.groupId);
+  return teachingAssignmentAllowsLesson(assignment, lesson);
 };
 export interface ScheduleTeacher { id: string; memberships: AcademicMembership[]; teachingAssignments?: TeachingAssignment[] }
 export const canScheduleTeacher = (teacher: ScheduleTeacher, lesson: Parameters<typeof canTeachLesson>[2]) => canTeachLesson({ assignments: teacher.teachingAssignments ?? [] }, teacher, lesson);

@@ -13,13 +13,12 @@ import type { BackupRecordEntries } from "./backupRecordComparison";
 import type { BackupDocumentIssue } from "./localBackupDocuments";
 import { addBackupText, BACKUP_LIMITS, checkBackupAbort, createBackupBudget, encodeBackupValue } from "./localBackup";
 import { canonicalBackupValue } from "./localBackupValidation";
-import { inspectArchivedCurricula } from "./backupCurricula";
 import { inspectArchivedGroupCalendars } from "./backupGroupCalendars";
 import { inspectArchivedTeachingAssignments } from "./backupTeachingAssignments";
-import { inspectArchivedRooms } from "./backupRooms";
 import { inspectArchivedScheduleTemplates } from "./backupScheduleTemplates";
 import type { SelectedBaseDocuments } from "./backupBaseSelection";
 import { inspectSelectedBaseDependencies } from "./backupSelectedBaseDependencies";
+import { indexArchivedAccountHistory } from "./backupAccountHistory";
 import { ASSESSMENTS_STORAGE_KEY, type AssessmentDocument } from "./assessmentTypes";
 import { inspectAssessmentDependencies } from "./backupAssessmentDependencies";
 import { inspectArchivedAssessmentCalendars } from "./backupAssessmentCalendars";
@@ -81,7 +80,13 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
   const accountIds = accounts.document && new Set(accounts.document.accounts.map(row => row.id)), groupIds = groups.document && new Set(groups.document.groups.map(row => row.id)), subjectIds = subjects.document && new Set(subjects.document.subjects.map(row => row.id));
   const assessments = selected.get(ASSESSMENTS_STORAGE_KEY) as AssessmentDocument | undefined;
   if (preferences) for (const finding of (await inspectBackupSettings(preferences, accounts.document?.accounts, signal)).issues) issue(finding);
-  await inspectSelectedBaseDependencies({ accounts: accounts.document, groups: groups.document, subjects: subjects.document, schedule: schedule.document, rooms, assessments }, checkedAt, issue, signal);
+  const accountHistory = accounts.document && await indexArchivedAccountHistory(accounts.document.history, signal);
+  await inspectSelectedBaseDependencies({ accounts: accounts.document, groups: groups.document, subjects: subjects.document, schedule: schedule.document, rooms, assessments, accountHistory }, checkedAt, issue, signal);
+  if (accounts.document) {
+    checkBackupAbort(signal);
+    const { inspectArchivedPersonExternalHistory } = await import("./backupPersonExternalHistory");
+    for (const finding of (await inspectArchivedPersonExternalHistory(accounts.document, checkedAt, signal)).issues) issue(finding);
+  }
   if (assessments) for (const finding of await inspectAssessmentDependencies(assessments, { accountIds, groupIds, subjectIds, periods }, checkedAt, signal)) issue(finding);
   if (assessments) for (const finding of (await inspectArchivedAssessmentCalendars(assessments, calendars, periods, checkedAt, signal)).issues) issue(finding);
   if (lists) {
@@ -107,13 +112,42 @@ export async function inspectSelectedBackupDependencies(archive: BackupRecordEnt
     if (Date.parse(event.occurredAt) > Date.parse(checkedAt)) issue({ kind: "educationDirectories", level: "error", code: "selected-directory-event-after-check", recordId: event.id, message: "Событие программы/формы датировано позже момента проверки выбранных данных." });
   }
   if (directories?.history.length) issue({ kind: "educationDirectories", level: "review", code: "unconfirmed-selected-directory-authority", message: "Наличие автора не подтверждает его исторические полномочия на изменение программы или формы обучения." });
-  if (curricula) for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds, subjectIds, subjects: subjects.document, directories, periods }, checkedAt, signal)) issue(finding);
+  if (curricula) {
+    checkBackupAbort(signal);
+    const { inspectArchivedCurricula } = await import("./backupCurricula");
+    for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds, subjectIds, subjects: subjects.document, directories, periods }, checkedAt, signal)) issue(finding);
+  }
+  if (curricula) {
+    checkBackupAbort(signal);
+    const { inspectArchivedCurriculumCalendars } = await import("./backupCurriculumCalendars");
+    for (const finding of (await inspectArchivedCurriculumCalendars(curricula, calendars, periods, checkedAt, signal)).issues) issue(finding);
+  }
   if (calendars) for (const finding of await inspectArchivedGroupCalendars(calendars, { accountIds, groupIds, periods }, checkedAt, signal)) issue(finding);
   for (const finding of (await inspectArchivedScheduleCalendars(schedule.document, calendars, periods, checkedAt, signal)).issues) issue(finding);
   if (teaching) for (const finding of await inspectArchivedTeachingAssignments(teaching, { accountIds, groupIds, subjectIds, periods, schedule: schedule.document }, checkedAt, signal)) issue(finding);
+  if (teaching) {
+    checkBackupAbort(signal);
+    const { inspectArchivedTeachingCalendars } = await import("./backupTeachingCalendars");
+    for (const finding of (await inspectArchivedTeachingCalendars(teaching, calendars, periods, checkedAt, signal)).issues) issue(finding);
+    checkBackupAbort(signal);
+    const { inspectArchivedTeachingPublications } = await import("./backupTeachingPublications");
+    for (const finding of (await inspectArchivedTeachingPublications(teaching, schedule.document, periods, checkedAt, signal)).issues) issue(finding);
+  }
   else if (schedule.document && [...schedule.document.published.flatMap(week => week.lessons), ...schedule.document.journal, ...(schedule.document.publications?.flatMap(version => version.week.lessons) ?? [])].some(lesson => lesson.teachingAssignmentId)) issue({ kind: "teachingAssignments", level: "error", code: "missing-selected-teaching-source", message: "Расписание ссылается на версии назначений, но выбранный источник назначений отсутствует или не согласован со своей историей." });
-  if (rooms || schedule.document) for (const finding of await inspectArchivedRooms(rooms, { accountIds, schedule: schedule.document }, checkedAt, signal)) issue(finding);
+  if (rooms || schedule.document) {
+    checkBackupAbort(signal);
+    const { inspectArchivedRooms } = await import("./backupRooms");
+    for (const finding of await inspectArchivedRooms(rooms, { accountIds, schedule: schedule.document }, checkedAt, signal)) issue(finding);
+  }
   if (templates) for (const finding of await inspectArchivedScheduleTemplates(templates, { accountIds, schedule: schedule.document }, checkedAt, signal)) issue(finding);
+  checkBackupAbort(signal);
+  const { inspectArchivedActorChronology } = await import("./backupActorChronology");
+  for (const finding of (await inspectArchivedActorChronology({ accounts: accounts.document, groups: groups.document, subjects: subjects.document, periods, directories, curricula, calendars, teaching, rooms, schedule: schedule.document, templates }, checkedAt, signal)).issues) issue(finding);
+  if (accounts.document) {
+    checkBackupAbort(signal);
+    const { inspectArchivedAccountRoleHistory } = await import("./backupAccountRoleHistory");
+    for (const finding of (await inspectArchivedAccountRoleHistory(accounts.document, checkedAt, signal, accountHistory, schedule.document, { accounts: accounts.document, groups: groups.document, subjects: subjects.document, periods, directories, curricula, calendars, teaching, rooms, schedule: schedule.document, templates })).issues) issue(finding);
+  }
   checkBackupAbort(signal);
   return { scope: "selected-document-dependencies", status: issues.length ? "blocked" : "checks-complete", checkedAt, issues, counts: { errors: issues.filter(row => row.level === "error").length, unconfirmed: issues.filter(row => row.level === "review").length } };
 }

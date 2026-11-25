@@ -5,7 +5,6 @@ import { ACADEMIC_PERIODS_STORAGE_KEY, decodeAcademicPeriodsDocument } from "./a
 import { EDUCATION_DIRECTORIES_KEY, decodeEducationDirectories } from "./educationDirectories";
 import { CURRICULA_KEY } from "./curriculumTypes";
 import { decodeCurricula } from "./curricula";
-import { inspectArchivedCurricula } from "./backupCurricula";
 import { GROUP_CALENDARS_KEY } from "./groupCalendarTypes";
 import { decodeGroupCalendars } from "./groupCalendars";
 import { inspectArchivedGroupCalendars } from "./backupGroupCalendars";
@@ -15,7 +14,6 @@ import { inspectArchivedSchedulePublications } from "./backupSchedulePublication
 import { SCHEDULE_TEMPLATES_KEY, decodeScheduleTemplates } from "./scheduleTemplates";
 import { inspectArchivedScheduleTemplates } from "./backupScheduleTemplates";
 import { ROOMS_KEY, decodeRooms } from "./rooms";
-import { inspectArchivedRooms } from "./backupRooms";
 import { decodeManagedSchedule, MANAGED_SCHEDULE_KEY, type ManagedScheduleSnapshot } from "./scheduleManagement";
 import { checkBackupAbort, type AdministrativeBackup } from "./localBackup";
 import { decodeBackupAssignments, decodeBackupSubmissions } from "./assignmentStorage";
@@ -33,7 +31,7 @@ import { inspectArchivedScheduleConflicts } from "./backupScheduleConflicts";
 import { inspectArchivedStudentNumbers } from "./backupStudentNumbers";
 import { inspectArchivedStudentNumberHistory } from "./backupStudentNumberHistory";
 import { inspectArchivedStudentOperations } from "./backupStudentOperations";
-import { indexArchivedAccountHistory } from "./backupAccountHistory";
+import { indexArchivedAccountHistory, type ArchivedAccountHistoryIndex } from "./backupAccountHistory";
 import { inspectArchivedStudentImports } from "./backupStudentImports";
 import { BACKUP_ASSESSMENT_DOCUMENTS, inspectBackupAssessments, isBackupAssessmentKey } from "./backupAssessmentDocuments";
 import { createBackupIssueCollector } from "./backupIssueCollector";
@@ -125,6 +123,7 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     }
   }
   const accounts: AccountsDocument | undefined = await read("accounts", decodeAccountsDocument);
+  let accountHistoryIndex: ArchivedAccountHistoryIndex | undefined;
   const groups: GroupCatalogDocument | undefined = await read("groups", decodeGroupCatalog);
   const subjects: SubjectCatalogDocument | undefined = await read("subjects", (raw) => {
     const document = decodeSubjectCatalog(raw);
@@ -140,6 +139,8 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   const scheduleTemplates = await read("scheduleTemplates", decodeScheduleTemplates);
   const rooms = await read("rooms", decodeRooms);
   if (rooms) result.checks.find(row => row.kind === "rooms")!.records = rooms.rooms.length;
+  checkBackupAbort(signal);
+  const { inspectArchivedRooms } = await import("./backupRooms");
   for (const finding of await inspectArchivedRooms(rooms, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), schedule }, archive.completedAt, signal)) issue(finding);
   if (scheduleTemplates) {
     result.checks.find(row => row.kind === "scheduleTemplates")!.records = scheduleTemplates.templates.length;
@@ -156,10 +157,26 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   if (teachingAssignments) {
     result.checks.find(row => row.kind === "teachingAssignments")!.records = teachingAssignments.assignments.length;
     for (const finding of await inspectArchivedTeachingAssignments(teachingAssignments, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), groupIds: groups && new Set(groups.groups.map(row => row.id)), subjectIds: subjects && new Set(subjects.subjects.map(row => row.id)), periods, schedule }, archive.completedAt, signal)) issue(finding);
+    checkBackupAbort(signal);
+    const { inspectArchivedTeachingCalendars } = await import("./backupTeachingCalendars");
+    const calendarReview = await inspectArchivedTeachingCalendars(teachingAssignments, groupCalendars, periods, archive.completedAt, signal);
+    result.checks.find(row => row.kind === "teachingAssignments")!.message += ` ${calendarReview.summary}`;
+    for (const finding of calendarReview.issues) issue(finding);
+    checkBackupAbort(signal);
+    const { inspectArchivedTeachingPublications } = await import("./backupTeachingPublications");
+    const publicationReview = await inspectArchivedTeachingPublications(teachingAssignments, schedule, periods, archive.completedAt, signal);
+    result.checks.find(row => row.kind === "teachingAssignments")!.message += ` ${publicationReview.summary}`;
+    for (const finding of publicationReview.issues) issue(finding);
   } else if (schedule && [...schedule.published.flatMap(week => week.lessons), ...schedule.journal, ...(schedule.publications?.flatMap(version => version.week.lessons) ?? [])].some(lesson => lesson.teachingAssignmentId)) issue({ kind: "teachingAssignments", level: "error", code: "missing-teaching-source", message: "Расписание ссылается на версии назначений по типам занятий, но их источник отсутствует или повреждён в архиве." });
   if (schedule) for (const finding of await inspectArchivedSchedulePublications(schedule, { accountIds: accounts && new Set(accounts.accounts.map(row => row.id)), groupIds: groups && new Set(groups.groups.map(row => row.id)), subjectIds: subjects && new Set(subjects.subjects.map(row => row.id)) }, archive.completedAt, signal)) issue(finding);
   if (accounts) {
+    checkBackupAbort(signal);
+    const { inspectArchivedPersonExternalHistory } = await import("./backupPersonExternalHistory");
+    const personReview = await inspectArchivedPersonExternalHistory(accounts, archive.completedAt, signal);
+    result.checks.find(row => row.kind === "accounts")!.message += ` ${personReview.summary}`;
+    for (const finding of personReview.issues) issue(finding);
     const history = await indexArchivedAccountHistory(accounts.history, signal);
+    accountHistoryIndex = history;
     const studentNumbers = await inspectArchivedStudentNumbers(accounts, signal);
     if (studentNumbers.summary) result.checks.find((check) => check.kind === "accounts")!.message += ` ${studentNumbers.summary}`;
     for (const finding of studentNumbers.issues) issue(finding);
@@ -220,7 +237,14 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
   }
   if (curricula) {
     result.checks.find(row => row.kind === "curricula")!.records = curricula.plans.length + curricula.bindings.length;
+    checkBackupAbort(signal);
+    const { inspectArchivedCurricula } = await import("./backupCurricula");
     for (const finding of await inspectArchivedCurricula(curricula, { accountIds, groupIds: groups ? savedGroupIds : undefined, subjectIds, subjects, directories: educationDirectories, periods }, archive.completedAt, signal)) issue(finding);
+    checkBackupAbort(signal);
+    const { inspectArchivedCurriculumCalendars } = await import("./backupCurriculumCalendars");
+    const calendarReview = await inspectArchivedCurriculumCalendars(curricula, groupCalendars, periods, archive.completedAt, signal);
+    result.checks.find(row => row.kind === "curricula")!.message += ` ${calendarReview.summary}`;
+    for (const finding of calendarReview.issues) issue(finding);
   }
   if (educationDirectories) {
     result.checks.find(row => row.kind === "educationDirectories")!.records = educationDirectories.programs.length + educationDirectories.forms.length;
@@ -260,6 +284,18 @@ export async function inspectBackupDocuments(archive: AdministrativeBackup, acto
     if (!ids.has(id)) issue({ level: "error", kind, code: `missing-${target}`, referenceId: id, message: `Ссылка ведёт на отсутствующую ${target === "group" ? "группу" : target === "subject" ? "дисциплину" : "учётную запись преподавателя"}.` });
     else if (target === "group" && !savedGroupIds.has(id)) builtInGroups = true;
   };
+  checkBackupAbort(signal);
+  const { inspectArchivedActorChronology } = await import("./backupActorChronology");
+  const actorChronology = await inspectArchivedActorChronology({ accounts, groups, subjects, periods, directories: educationDirectories, curricula, calendars: groupCalendars, teaching: teachingAssignments, rooms, schedule, templates: scheduleTemplates }, archive.completedAt, signal);
+  if (accounts) result.checks.find(row => row.kind === "accounts")!.message += ` ${actorChronology.summary}`;
+  for (const finding of actorChronology.issues) issue(finding);
+  if (accounts) {
+    checkBackupAbort(signal);
+    const { inspectArchivedAccountRoleHistory } = await import("./backupAccountRoleHistory");
+    const roleHistory = await inspectArchivedAccountRoleHistory(accounts, archive.completedAt, signal, accountHistoryIndex, schedule, { accounts, groups, subjects, periods, directories: educationDirectories, curricula, calendars: groupCalendars, teaching: teachingAssignments, rooms, schedule, templates: scheduleTemplates });
+    result.checks.find(row => row.kind === "accounts")!.message += ` ${roleHistory.summary}`;
+    for (const finding of roleHistory.issues) issue(finding);
+  }
   if (accounts) {
     const actor = accounts.accounts.find((account) => account.id === actorId);
     if (!actor || actor.role !== "configurator" || !isAccountActive(actor)) issue({ level: "error", kind: "accounts", code: "actor-access", message: "Текущий настройщик не сохранит доступ по этому набору учёток. До восстановления нужен отдельный выбор и проверка способа входа." });
